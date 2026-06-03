@@ -3,8 +3,7 @@ const app = express();
 app.use(express.json());
 
 const VERIFY_TOKEN = "shliah_beth_habad";
-const WHATSAPP_TOKEN = "EAA7xa4ZCBA7ABRsvAJuW71eSJRDAPfqYJ9leoKABQ5H2YmZAVIfYFQYhb6ggpZAxU59zMHIQMFIZAha6t59FieAo89TVXlXfnTmDqKedhDRXkTOAwYvNHA3eIN1bmdI3BAydkLsgKDYmm3AicF0NBQu4qeJaWj5DiGvUu72GuAVZCX7vUXkzVaY3JIefpvjwGgXQGxa8TpGjZCqwGeffxY2x80TaZBoCiNSJFtKrE5IztTILatWSJJjtAQbb4vEKZBDaAEEWZCukSNZCjVupKAde29EOYjKHJTkm6QaFcZD";
-const ANTHROPIC_API_KEY = "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";
+const WHATSAPP_TOKEN = "EAA7xa4ZCBA7ABRu33NwnDHQZCsoC1h2oxiCLnG7F7BZBZC5XmFe0zwI3BUOmclJOyTNvviCjzlDwR2qpXEZCLHqepSZBkweySBSDNI09NvQoL42s7GEJZC0QC2OtrHZAfLIj4nVmLqKpM81f6XaswAXs395vZBnsGmheesgQFIZB4jbZBKjSWvHUWIMKeERyvcEe7qGIAZDZD";const ANTHROPIC_API_KEY = "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";
 const PHONE_NUMBER_ID = "1130585603476547";
 
 const SYSTEM_PROMPT = `Tu es l'assistant virtuel du Beth Habad Saint-Maurice, représentant le Rav Levi Basanger, Shliah du Rabbi, et la Rebbetzin Myriam Basanger.
