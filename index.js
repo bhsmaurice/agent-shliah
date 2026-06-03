@@ -2,6 +2,15 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
+// CORS - autoriser GitHub Pages
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "shliah_beth_habad";
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -38,7 +47,6 @@ Beth Habad Saint-Maurice
 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice
 Téléphone : 07 70 24 17 46`;
 
-// Stockage en mémoire des infos ajoutées via l'admin
 let extraInfos = [];
 
 function getFullPrompt() {
@@ -46,7 +54,7 @@ function getFullPrompt() {
   return SYSTEM_PROMPT_BASE + "\n\n" + extraInfos.join("\n\n");
 }
 
-// ─── WEBHOOK META ───────────────────────────────────────────
+// ─── WEBHOOK META ────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -77,45 +85,28 @@ app.post('/webhook', async (req, res) => {
 });
 
 // ─── API ADMIN ───────────────────────────────────────────────
-
-// Ajouter une info
 app.post('/admin/add', (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  }
-  if (!titre || !contenu) {
-    return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
-  }
-  const labels = {
-    priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH',
-    service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION'
-  };
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!titre || !contenu) return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
+  const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
   let bloc = `--- ${labels[categorie] || 'INFO'} : ${titre.toUpperCase()} ---\n${contenu}`;
   if (instruction) bloc += `\nInstruction : ${instruction}`;
   extraInfos.push(bloc);
   res.json({ ok: true, message: "Information ajoutée avec succès !", total: extraInfos.length });
 });
 
-// Voir toutes les infos ajoutées
 app.get('/admin/list', (req, res) => {
   const { password } = req.query;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  }
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   res.json({ ok: true, infos: extraInfos, total: extraInfos.length });
 });
 
-// Supprimer une info par index
 app.delete('/admin/delete/:index', (req, res) => {
   const { password } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  }
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const i = parseInt(req.params.index);
-  if (i < 0 || i >= extraInfos.length) {
-    return res.status(400).json({ ok: false, message: "Index invalide" });
-  }
+  if (i < 0 || i >= extraInfos.length) return res.status(400).json({ ok: false, message: "Index invalide" });
   extraInfos.splice(i, 1);
   res.json({ ok: true, message: "Supprimé", total: extraInfos.length });
 });
@@ -125,39 +116,20 @@ async function askClaude(userMessage) {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        system: getFullPrompt(),
-        messages: [{ role: 'user', content: userMessage }]
-      })
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, system: getFullPrompt(), messages: [{ role: 'user', content: userMessage }] })
     });
     const data = await response.json();
     if (data.content && data.content[0]) return data.content[0].text;
     return "Erreur: " + JSON.stringify(data);
-  } catch (e) {
-    return "Erreur: " + e.message;
-  }
+  } catch (e) { return "Erreur: " + e.message; }
 }
 
 async function sendWhatsApp(to, message) {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: to,
-      type: 'text',
-      text: { body: message }
-    })
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to: to, type: 'text', text: { body: message } })
   });
 }
 
