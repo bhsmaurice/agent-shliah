@@ -49,18 +49,23 @@ async function askClaude(userMessage) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
-model: 'claude-haiku-4-5-20251001',      },
+        'anthropic-version': '2023-06-01'
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }]
       })
     });
     const data = await response.json();
-    return data.content[0].text;
+    console.log('Claude response:', JSON.stringify(data));
+    if (data.content && data.content[0]) {
+      return data.content[0].text;
+    }
+    return "Erreur Claude: " + JSON.stringify(data);
   } catch (e) {
-    return "Désolé, une erreur s'est produite. Contactez le Rav Levi directement.";
+    return "Erreur: " + e.message;
   }
 }
 
