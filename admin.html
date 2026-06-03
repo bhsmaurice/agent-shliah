@@ -7,249 +7,53 @@
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Heebo:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --gold: #B8972A;
-    --gold-light: #F5E9C0;
-    --gold-dark: #8A6E1A;
-    --navy: #1A2540;
-    --navy-light: #2C3E66;
-    --bg: #F9F7F2;
-    --white: #FFFFFF;
-    --text: #1A2540;
-    --text-muted: #6B7A9B;
-    --border: #E2D9C5;
-    --success: #2D7A4F;
-    --success-bg: #E8F5EE;
-    --radius: 12px;
-    --shadow: 0 2px 16px rgba(26,37,64,0.08);
+    --gold: #B8972A; --gold-light: #F5E9C0; --gold-dark: #8A6E1A;
+    --navy: #1A2540; --navy-light: #2C3E66;
+    --bg: #F9F7F2; --white: #FFFFFF; --text: #1A2540; --text-muted: #6B7A9B;
+    --border: #E2D9C5; --success: #2D7A4F; --success-bg: #E8F5EE;
+    --danger: #C0392B; --danger-bg: #FDECEA; --radius: 12px;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Heebo', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding-bottom: 40px;
-  }
-
-  header {
-    background: var(--navy);
-    padding: 20px 20px 16px;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  header .hebrew {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 13px;
-    color: var(--gold);
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-
-  header h1 {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--white);
-    margin-bottom: 2px;
-  }
-
-  header p {
-    font-size: 12px;
-    color: rgba(255,255,255,0.5);
-    font-weight: 300;
-  }
-
-  .main { padding: 20px 16px; max-width: 480px; margin: 0 auto; }
-
-  .step-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--gold-dark);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 8px;
-  }
-
-  .card {
-    background: var(--white);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 18px;
-    margin-bottom: 14px;
-    box-shadow: var(--shadow);
-  }
-
-  .card h2 {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 14px;
-  }
-
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 6px;
-    margin-top: 14px;
-  }
-
+  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+  header { background: var(--navy); padding: 18px 20px 14px; text-align: center; position: sticky; top: 0; z-index: 10; }
+  header .hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 13px; color: var(--gold); letter-spacing: 1px; margin-bottom: 3px; }
+  header h1 { font-family: 'Frank Ruhl Libre', serif; font-size: 20px; font-weight: 700; color: var(--white); }
+  header p { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 73px; z-index: 9; }
+  .tab { flex: 1; padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--navy); border-bottom-color: var(--gold); }
+  .page { display: none; padding: 18px 16px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; }
+  .card h2 { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+  label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; margin-top: 14px; }
   label:first-of-type { margin-top: 0; }
-
-  select, input[type="text"], textarea {
-    width: 100%;
-    font-family: 'Heebo', sans-serif;
-    font-size: 15px;
-    padding: 11px 13px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text);
-    appearance: none;
-    -webkit-appearance: none;
-    outline: none;
-    transition: border-color 0.2s;
+  input[type="text"], input[type="password"], textarea {
+    width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px;
+    padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s;
   }
-
-  select:focus, input[type="text"]:focus, textarea:focus {
-    border-color: var(--gold);
-  }
-
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7A9B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 13px center;
-    padding-right: 36px;
-  }
-
-  textarea {
-    resize: vertical;
-    min-height: 100px;
-    line-height: 1.6;
-  }
-
-  .grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .cat-btn {
-    padding: 10px 8px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    font-family: 'Heebo', sans-serif;
-    font-size: 13px;
-    color: var(--text-muted);
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.15s;
-    font-weight: 400;
-  }
-
-  .cat-btn.active {
-    border-color: var(--gold);
-    background: var(--gold-light);
-    color: var(--gold-dark);
-    font-weight: 500;
-  }
-
-  .btn-generate {
-    width: 100%;
-    padding: 14px;
-    background: var(--navy);
-    color: var(--white);
-    font-family: 'Heebo', sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    margin-top: 6px;
-    transition: background 0.2s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .btn-generate:active { transform: scale(0.98); background: var(--navy-light); }
-
-  .btn-copy {
-    width: 100%;
-    padding: 13px;
-    background: var(--gold);
-    color: var(--white);
-    font-family: 'Heebo', sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    margin-top: 10px;
-    transition: background 0.2s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .btn-copy:active { transform: scale(0.98); background: var(--gold-dark); }
-  .btn-copy.copied { background: var(--success); }
-
-  .preview-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 13px;
-    font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 220px;
-    overflow-y: auto;
-    font-family: 'Heebo', sans-serif;
-  }
-
-  .tip-box {
-    background: #EEF2FF;
-    border: 1px solid #C7D2FE;
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 13px;
-    color: #3730A3;
-    line-height: 1.6;
-    margin-top: 10px;
-  }
-
-  .tip-box strong { font-weight: 500; display: block; margin-bottom: 2px; }
-
-  .result-card { display: none; }
-
-  .divider {
-    text-align: center;
-    font-size: 11px;
-    color: var(--text-muted);
-    margin: 6px 0 14px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  /* Scrollbar style */
-  .preview-box::-webkit-scrollbar { width: 4px; }
-  .preview-box::-webkit-scrollbar-track { background: transparent; }
-  .preview-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  input:focus, textarea:focus { border-color: var(--gold); }
+  textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cat-btn { padding: 10px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-family: 'Heebo', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.15s; }
+  .cat-btn.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 500; }
+  .btn { width: 100%; padding: 13px; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 500; border: none; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+  .btn-primary { background: var(--navy); color: var(--white); }
+  .btn-primary:active { background: var(--navy-light); transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; }
+  .alert { border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
+  .alert.success { background: var(--success-bg); color: var(--success); border: 1px solid #A8D5B8; }
+  .alert.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #F5B7B1; }
+  .server-url { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: var(--text-muted); font-family: monospace; word-break: break-all; margin-top: 8px; }
+  .info-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 36px 12px 12px; margin-bottom: 10px; position: relative; }
+  .info-item .cat-tag { font-size: 10px; font-weight: 500; color: var(--gold-dark); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .info-item .info-content { font-size: 12px; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap; max-height: 60px; overflow: hidden; }
+  .btn-delete { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px; }
+  .btn-delete:hover { color: var(--danger); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+  .config-note { background: #FFF8E1; border: 1px solid #FFE082; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #7B5800; line-height: 1.6; margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -260,12 +64,17 @@
   <p>Panneau d'administration</p>
 </header>
 
-<div class="main">
+<div class="tabs">
+  <div class="tab active" onclick="showTab('ajouter', this)">➕ Ajouter</div>
+  <div class="tab" onclick="showTab('liste', this)">📋 Mes infos</div>
+  <div class="tab" onclick="showTab('config', this)">⚙️ Config</div>
+</div>
 
-  <div class="step-label">Étape 1 — Nouvelle information</div>
-
-  <div class="card">
-    <h2>Catégorie</h2>
+<!-- PAGE AJOUTER -->
+<div class="page active" id="tab-ajouter">
+  <div class="card" style="margin-top:16px">
+    <h2>Nouvelle information</h2>
+    <label>Catégorie</label>
     <div class="grid-2">
       <button class="cat-btn active" data-cat="priere" onclick="selectCat(this)">🙏 Prière</button>
       <button class="cat-btn" data-cat="horaire" onclick="selectCat(this)">🕐 Horaire</button>
@@ -274,113 +83,183 @@
       <button class="cat-btn" data-cat="evenement" onclick="selectCat(this)">✡️ Événement</button>
       <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
     </div>
-  </div>
-
-  <div class="card">
     <label for="titre">Titre</label>
     <input type="text" id="titre" placeholder="Ex: Téfilat HaDerech">
-
     <label for="contenu">Contenu</label>
     <textarea id="contenu" placeholder="Écrivez ici l'information à ajouter à l'agent..."></textarea>
-
     <label for="instruction">Comment l'agent doit réagir ? (facultatif)</label>
     <input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer">
-
-    <button class="btn-generate" onclick="generer()">
-      ✦ Générer
-    </button>
+    <label for="password-add">Mot de passe admin</label>
+    <input type="password" id="password-add" placeholder="Votre mot de passe">
+    <button class="btn btn-primary" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
+    <div class="alert success" id="alert-success"></div>
+    <div class="alert error" id="alert-error"></div>
   </div>
+</div>
 
-  <div class="result-card card" id="result-card">
-    <div class="step-label" style="margin-bottom:10px">Étape 2 — Copier et envoyer à Claude</div>
-    <div class="preview-box" id="preview"></div>
-    <button class="btn-copy" id="btn-copy" onclick="copier()">
-      📋 Copier le texte
-    </button>
-    <div class="tip-box">
-      <strong>Ensuite :</strong>
-      Collez ce texte dans Claude.ai et écrivez :<br>
-      <em>"Rajoute ça dans mon index.js"</em>
+<!-- PAGE LISTE -->
+<div class="page" id="tab-liste">
+  <div class="card" style="margin-top:16px">
+    <h2>Informations ajoutées</h2>
+    <label for="password-list">Mot de passe admin</label>
+    <input type="password" id="password-list" placeholder="Votre mot de passe">
+    <button class="btn btn-primary" onclick="chargerListe()">🔄 Charger la liste</button>
+  </div>
+  <div id="liste-container"></div>
+</div>
+
+<!-- PAGE CONFIG -->
+<div class="page" id="tab-config">
+  <div class="card" style="margin-top:16px">
+    <h2>Configuration</h2>
+    <div class="config-note">⚠️ Entrez l'adresse de votre serveur Railway une seule fois — elle sera sauvegardée sur votre téléphone.</div>
+    <label>Adresse du serveur Railway</label>
+    <input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app">
+    <button class="btn btn-primary" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
+    <div class="alert success" id="alert-config"></div>
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.8px;">URL actuelle</div>
+      <div class="server-url" id="current-url">Non configurée</div>
     </div>
   </div>
-
 </div>
 
 <script>
   let catSelected = 'priere';
 
+  window.onload = function() {
+    const saved = localStorage.getItem('railway_url');
+    if (saved) {
+      document.getElementById('server-url').value = saved;
+      document.getElementById('current-url').textContent = saved;
+    }
+  };
+
+  function getServerUrl() {
+    return (localStorage.getItem('railway_url') || '').replace(/\/$/, '');
+  }
+
+  function showTab(name, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+  }
+
   function selectCat(btn) {
     document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     catSelected = btn.dataset.cat;
-
     const placeholders = {
-      priere: 'Collez le texte de la prière (hébreu, phonétique ou français)...',
+      priere: 'Texte de la prière (hébreu, phonétique, français)...',
       horaire: 'Ex: Minha du vendredi à 19h45 à partir du 1er juillet',
-      cours: 'Nom du cours, jour, heure, public, animateur...',
-      service: 'Décrivez le service, le prix, les conditions...',
-      evenement: 'Nom, date, heure, lieu, comment s\'inscrire...',
-      autre: 'Écrivez l\'information à ajouter à l\'agent...'
+      cours: 'Nom, jour, heure, public, animateur...',
+      service: 'Description, prix, conditions...',
+      evenement: 'Nom, date, heure, lieu, inscription...',
+      autre: "Information à ajouter à l'agent..."
     };
     document.getElementById('contenu').placeholder = placeholders[catSelected] || '';
   }
 
-  function generer() {
+  async function envoyer() {
+    const url = getServerUrl();
     const titre = document.getElementById('titre').value.trim();
     const contenu = document.getElementById('contenu').value.trim();
     const instruction = document.getElementById('instruction').value.trim();
-
-    if (!titre || !contenu) {
-      alert('Merci de remplir le titre et le contenu.');
-      return;
+    const password = document.getElementById('password-add').value.trim();
+    hideAlerts();
+    if (!url) return showError("Configurez d'abord l'adresse du serveur dans l'onglet ⚙️ Config");
+    if (!titre || !contenu) return showError("Remplissez le titre et le contenu");
+    if (!password) return showError("Entrez le mot de passe admin");
+    const btn = document.getElementById('btn-send');
+    btn.disabled = true; btn.textContent = '⏳ Envoi en cours...';
+    try {
+      const res = await fetch(url + '/admin/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, categorie: catSelected, titre, contenu, instruction })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showSuccess('✓ ' + data.message + ' (' + data.total + ' info(s) en mémoire)');
+        document.getElementById('titre').value = '';
+        document.getElementById('contenu').value = '';
+        document.getElementById('instruction').value = '';
+      } else { showError(data.message); }
+    } catch (e) {
+      showError("Impossible de contacter le serveur. Vérifiez l'adresse dans ⚙️ Config.");
     }
-
-    const labels = {
-      priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH',
-      service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION'
-    };
-
-    let texte = `--- ${labels[catSelected] || 'INFO'} : ${titre.toUpperCase()} ---\n\n${contenu}`;
-    if (instruction) texte += `\n\nInstruction pour l'agent : ${instruction}`;
-
-    document.getElementById('preview').textContent = texte;
-    const card = document.getElementById('result-card');
-    card.style.display = 'block';
-    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-
-    const btn = document.getElementById('btn-copy');
-    btn.classList.remove('copied');
-    btn.textContent = '📋 Copier le texte';
+    btn.disabled = false; btn.textContent = '✦ Envoyer à l\'agent';
   }
 
-  function copier() {
-    const texte = document.getElementById('preview').textContent;
-    navigator.clipboard.writeText(texte).then(() => {
-      const btn = document.getElementById('btn-copy');
-      btn.classList.add('copied');
-      btn.textContent = '✓ Copié !';
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        btn.textContent = '📋 Copier le texte';
-      }, 2500);
-    }).catch(() => {
-      const preview = document.getElementById('preview');
-      const range = document.createRange();
-      range.selectNode(preview);
-      window.getSelection().removeAllRanges();
-      window.getSelection().addRange(range);
-      document.execCommand('copy');
-      window.getSelection().removeAllRanges();
-      const btn = document.getElementById('btn-copy');
-      btn.classList.add('copied');
-      btn.textContent = '✓ Copié !';
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        btn.textContent = '📋 Copier le texte';
-      }, 2500);
-    });
+  async function chargerListe() {
+    const url = getServerUrl();
+    const password = document.getElementById('password-list').value.trim();
+    if (!url) return alert("Configurez d'abord l'adresse du serveur");
+    if (!password) return alert("Entrez le mot de passe");
+    const container = document.getElementById('liste-container');
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Chargement...</div>';
+    try {
+      const res = await fetch(url + '/admin/list?password=' + encodeURIComponent(password));
+      const data = await res.json();
+      if (!data.ok) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">' + data.message + '</p></div>'; return; }
+      if (data.infos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div>Aucune information ajoutée pour l\'instant</div>';
+        return;
+      }
+      container.innerHTML = '';
+      data.infos.forEach((info, i) => {
+        const lines = info.split('\n');
+        const titleLine = lines[0] || '';
+        const rest = lines.slice(1).join('\n').trim();
+        const el = document.createElement('div');
+        el.className = 'info-item';
+        el.innerHTML = '<div class="cat-tag">' + titleLine + '</div><div class="info-content">' + rest + '</div><button class="btn-delete" onclick="supprimer(' + i + ')">✕</button>';
+        container.appendChild(el);
+      });
+    } catch (e) {
+      container.innerHTML = '<div class="card"><p style="color:var(--danger)">Erreur de connexion au serveur</p></div>';
+    }
+  }
+
+  async function supprimer(index) {
+    if (!confirm('Supprimer cette information ?')) return;
+    const url = getServerUrl();
+    const password = document.getElementById('password-list').value.trim();
+    try {
+      const res = await fetch(url + '/admin/delete/' + index, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.ok) chargerListe();
+      else alert(data.message);
+    } catch (e) { alert('Erreur de connexion'); }
+  }
+
+  function sauvegarderConfig() {
+    const url = document.getElementById('server-url').value.trim().replace(/\/$/, '');
+    if (!url) return;
+    localStorage.setItem('railway_url', url);
+    document.getElementById('current-url').textContent = url;
+    const al = document.getElementById('alert-config');
+    al.className = 'alert success'; al.style.display = 'block'; al.textContent = '✓ Adresse sauvegardée !';
+    setTimeout(() => al.style.display = 'none', 2000);
+  }
+
+  function showSuccess(msg) {
+    const el = document.getElementById('alert-success');
+    el.textContent = msg; el.className = 'alert success'; el.style.display = 'block';
+  }
+  function showError(msg) {
+    const el = document.getElementById('alert-error');
+    el.textContent = msg; el.className = 'alert error'; el.style.display = 'block';
+  }
+  function hideAlerts() {
+    document.getElementById('alert-success').style.display = 'none';
+    document.getElementById('alert-error').style.display = 'none';
   }
 </script>
-
 </body>
 </html>
