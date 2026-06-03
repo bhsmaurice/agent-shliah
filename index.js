@@ -3,7 +3,7 @@ const app = express();
 app.use(express.json());
 
 const VERIFY_TOKEN = "shliah_beth_habad";
-const WHATSAPP_TOKEN = "EAA7xa4ZCBA7ABRu33NwnDHQZCsoC1h2oxiCLnG7F7BZBZC5XmFe0zwI3BUOmclJOyTNvviCjzlDwR2qpXEZCLHqepSZBkweySBSDNI09NvQoL42s7GEJZC0QC2OtrHZAfLIj4nVmLqKpM81f6XaswAXs395vZBnsGmheesgQFIZB4jbZBKjSWvHUWIMKeERyvcEe7qGIAZDZD";const ANTHROPIC_API_KEY = "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";
+const WHATSAPP_TOKEN = "EAA7xa4ZCBA7ABRu33NwnDHQZCsoC1h2oxiCLnG7F7BZBZC5XmFe0zwI3BUOmclJOyTNvviCjzlDwR2qpXEZCLHqepSZBkweySBSDNI09NvQoL42s7GEJZC0QC2OtrHZAfLIj4nVmLqKpM81f6XaswAXs395vZBnsGmheesgQFIZB4jbZBKjSWvHUWIMKeERyvcEe7qGIAZDZD";
 const ANTHROPIC_API_KEY = "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";
 const PHONE_NUMBER_ID = "1130585603476547";
 
@@ -13,7 +13,6 @@ Tu parles en français ou en hébreu selon la langue du message reçu. Ton ton e
 Pour toute question hala'hique ou urgence : oriente vers le Rav Levi directement.
 Termine chaque message par une note positive : Chabbat Chalom, Bonne semaine, A bientôt au Beth Habad !`;
 
-// Vérification webhook Meta
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -25,7 +24,6 @@ app.get('/webhook', (req, res) => {
   }
 });
 
-// Réception des messages WhatsApp
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'whatsapp_business_account') {
