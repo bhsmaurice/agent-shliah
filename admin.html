@@ -2,269 +2,470 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Admin — Shliah Bot</title>
-<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Heebo:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shliah Bot — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --gold: #B8972A; --gold-light: #F5E9C0; --gold-dark: #8A6E1A;
-    --navy: #1A2540; --navy-light: #2C3E66;
-    --bg: #F9F7F2; --white: #FFFFFF; --text: #1A2540; --text-muted: #6B7A9B;
-    --border: #E2D9C5; --success: #2D7A4F; --success-bg: #E8F5EE;
-    --danger: #C0392B; --danger-bg: #FDECEA; --radius: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
-  header { background: var(--navy); padding: 18px 20px 14px; text-align: center; position: sticky; top: 0; z-index: 10; }
-  header .hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 13px; color: var(--gold); letter-spacing: 1px; margin-bottom: 3px; }
-  header h1 { font-family: 'Frank Ruhl Libre', serif; font-size: 20px; font-weight: 700; color: var(--white); }
-  header p { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-  .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 73px; z-index: 9; }
-  .tab { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-  .tab.active { color: var(--navy); border-bottom-color: var(--gold); }
-  .page { display: none; padding: 18px 16px; max-width: 480px; margin: 0 auto; }
-  .page.active { display: block; }
-  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; }
-  .card h2 { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
-  label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; margin-top: 14px; }
-  label:first-of-type { margin-top: 0; }
-  input[type="text"], input[type="password"], textarea { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
-  input:focus, textarea:focus { border-color: var(--gold); }
-  textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .cat-btn { padding: 10px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-family: 'Heebo', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.15s; }
-  .cat-btn.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 500; }
-  .btn { width: 100%; padding: 13px; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 500; border: none; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
-  .btn-primary { background: var(--navy); color: var(--white); }
-  .btn-primary:active { background: var(--navy-light); transform: scale(0.98); }
-  .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; }
-  .alert { border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
-  .alert.success { background: var(--success-bg); color: var(--success); border: 1px solid #A8D5B8; }
-  .alert.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #F5B7B1; }
-  .server-url { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: var(--text-muted); font-family: monospace; word-break: break-all; margin-top: 8px; }
-  .info-item { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 40px 14px 14px; margin-bottom: 10px; position: relative; }
-  .info-item .cat-tag { font-size: 10px; font-weight: 700; color: var(--white); background: var(--gold); text-transform: uppercase; letter-spacing: 1.2px; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
-  .info-item .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
-  .info-item .info-content { font-size: 12px; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; max-height: 70px; overflow: hidden; }
-  .btn-delete { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px; }
-  .conv-item { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-  .conv-phone { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
-  .conv-q { font-size: 13px; color: var(--navy); font-weight: 500; margin-bottom: 4px; }
-  .conv-q::before { content: "👤 "; }
-  .conv-r { font-size: 12px; color: var(--text-muted); line-height: 1.5; max-height: 60px; overflow: hidden; }
-  .conv-r::before { content: "🤖 "; }
-  .conv-date { font-size: 10px; color: var(--text-muted); margin-top: 6px; text-align: right; }
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
-  .config-note { background: #FFF8E1; border: 1px solid #FFE082; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #7B5800; line-height: 1.6; margin-bottom: 14px; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --gold: #B8972A; --gold-light: #F5E9C0; --gold-dark: #8A6E1A;
+  --navy: #1A2540; --navy2: #2C3E66;
+  --bg: #F4F2ED; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
+  --border: #E0D8C8; --green: #2D7A4F; --green-bg: #E8F5EE;
+  --red: #C0392B; --red-bg: #FDECEA; --r: 14px;
+}
+html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); }
+
+/* HEADER */
+.header { background: var(--navy); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
+.header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+.header-right { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
+
+/* TABS */
+.tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 1; min-width: 70px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+.tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
+
+/* PAGES */
+.page { display: none; min-height: calc(100vh - 120px); }
+.page.active { display: block; }
+.inner { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+/* CARDS */
+.card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+.card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+
+/* FORM */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
+.field input, .field textarea { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
+.field input:focus, .field textarea:focus { border-color: var(--gold); background: #fff; }
+.field textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+
+/* CATEGORY GRID */
+.cat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.cat-btn { padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); font-family: 'Heebo', sans-serif; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
+.cat-btn.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 600; }
+
+/* BUTTONS */
+.btn-main { width: 100%; padding: 14px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+.btn-main:active { background: var(--navy2); transform: scale(0.98); }
+.btn-main:disabled { background: var(--muted); cursor: not-allowed; }
+.btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--navy); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.btn-secondary:active { background: var(--bg); }
+
+/* ALERTS */
+.alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
+.alert.ok { background: var(--green-bg); color: var(--green); border: 1px solid #A8D5B8; }
+.alert.err { background: var(--red-bg); color: var(--red); border: 1px solid #F5B7B1; }
+
+/* SEARCH */
+.search-box { position: relative; margin-bottom: 14px; }
+.search-box input { width: 100%; padding: 12px 14px 12px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-family: 'Heebo', sans-serif; font-size: 14px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; }
+.search-box input:focus { border-color: var(--gold); }
+.search-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
+
+/* FILTER CHIPS */
+.filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 14px; }
+.filter-chips::-webkit-scrollbar { display: none; }
+.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* INFO CARDS */
+.info-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+.badge-priere { background: #EEF2FF; color: #4338CA; }
+.badge-horaire { background: #FEF3C7; color: #92400E; }
+.badge-cours { background: #ECFDF5; color: #065F46; }
+.badge-service { background: #FFF1F2; color: #9F1239; }
+.badge-evenement { background: #F3E8FF; color: #6B21A8; }
+.badge-autre { background: #F1F5F9; color: #334155; }
+.info-card .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 60px; }
+.info-card .info-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; white-space: pre-wrap; }
+.info-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; color: var(--muted); transition: color 0.15s; }
+.btn-icon.edit:hover { color: var(--gold); }
+.btn-icon.del:hover { color: var(--red); }
+
+/* CONV CARDS */
+.conv-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; }
+.conv-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.conv-phone { font-size: 12px; font-weight: 600; color: var(--navy); background: var(--bg); padding: 3px 10px; border-radius: 20px; }
+.conv-date { font-size: 11px; color: var(--muted); }
+.conv-q { font-size: 13px; color: var(--navy); font-weight: 500; padding: 8px 10px; background: #EEF2FF; border-radius: 8px; margin-bottom: 6px; }
+.conv-r { font-size: 12px; color: var(--muted); padding: 8px 10px; background: var(--bg); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--white); border-radius: 20px 20px 0 0; padding: 24px 20px 36px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 20px; }
+.modal-title { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 18px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+.modal-cancel { flex: 1; padding: 13px; background: var(--bg); color: var(--muted); font-family: 'Heebo', sans-serif; font-size: 14px; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; }
+.modal-save { flex: 2; padding: 13px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; }
+
+/* CONFIG */
+.config-note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400E; line-height: 1.6; margin-bottom: 14px; }
+.url-display { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 12px; font-family: monospace; color: var(--muted); word-break: break-all; margin-top: 10px; }
+
+.empty { text-align: center; padding: 50px 20px; color: var(--muted); }
+.empty .icon { font-size: 40px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="hebrew">בית חב"ד</div>
-  <h1>Shliah Bot 🤖</h1>
-  <p>Panneau d'administration</p>
-</header>
+<div class="header">
+  <div class="header-left">
+    <div class="site-name">Shliah Bot 🤖</div>
+    <div class="site-sub">Panneau d'administration</div>
+  </div>
+  <div class="header-right">בית חב"ד</div>
+</div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('ajouter', this)">➕ Ajouter</div>
-  <div class="tab" onclick="showTab('liste', this)">📋 Infos</div>
-  <div class="tab" onclick="showTab('convs', this)">💬 Questions</div>
-  <div class="tab" onclick="showTab('config', this)">⚙️ Config</div>
+  <div class="tab active" onclick="showTab('ajouter',this)">➕ Ajouter</div>
+  <div class="tab" onclick="showTab('infos',this)">📋 Infos</div>
+  <div class="tab" onclick="showTab('questions',this)">💬 Questions</div>
+  <div class="tab" onclick="showTab('config',this)">⚙️ Config</div>
 </div>
 
-<!-- AJOUTER -->
+<!-- ─── AJOUTER ─── -->
 <div class="page active" id="tab-ajouter">
-  <div class="card" style="margin-top:16px">
-    <h2>Nouvelle information</h2>
-    <label>Catégorie</label>
-    <div class="grid-2">
-      <button class="cat-btn active" data-cat="priere" onclick="selectCat(this)">🙏 Prière</button>
-      <button class="cat-btn" data-cat="horaire" onclick="selectCat(this)">🕐 Horaire</button>
-      <button class="cat-btn" data-cat="cours" onclick="selectCat(this)">📚 Cours</button>
-      <button class="cat-btn" data-cat="service" onclick="selectCat(this)">🔧 Service</button>
-      <button class="cat-btn" data-cat="evenement" onclick="selectCat(this)">✡️ Événement</button>
-      <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
+  <div class="inner">
+    <div class="card">
+      <div class="card-title">Nouvelle information</div>
+      <div class="field">
+        <label>Catégorie</label>
+        <div class="cat-grid">
+          <button class="cat-btn active" data-cat="priere" onclick="selectCat(this)">🙏 Prière</button>
+          <button class="cat-btn" data-cat="horaire" onclick="selectCat(this)">🕐 Horaire</button>
+          <button class="cat-btn" data-cat="cours" onclick="selectCat(this)">📚 Cours</button>
+          <button class="cat-btn" data-cat="service" onclick="selectCat(this)">🔧 Service</button>
+          <button class="cat-btn" data-cat="evenement" onclick="selectCat(this)">✡️ Événement</button>
+          <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Titre</label>
+        <input type="text" id="titre" placeholder="Ex: Téfilat HaDerech">
+      </div>
+      <div class="field">
+        <label>Contenu</label>
+        <textarea id="contenu" placeholder="Écrivez ici l'information à ajouter..."></textarea>
+      </div>
+      <div class="field">
+        <label>Instruction pour l'agent (facultatif)</label>
+        <input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer">
+      </div>
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-add" placeholder="••••••••">
+      </div>
+      <button class="btn-main" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
+      <div class="alert ok" id="alert-ok"></div>
+      <div class="alert err" id="alert-err"></div>
     </div>
-    <label for="titre">Titre</label>
-    <input type="text" id="titre" placeholder="Ex: Téfilat HaDerech">
-    <label for="contenu">Contenu</label>
-    <textarea id="contenu" placeholder="Écrivez ici l'information..."></textarea>
-    <label for="instruction">Comment l'agent doit réagir ? (facultatif)</label>
-    <input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer">
-    <label for="password-add">Mot de passe admin</label>
-    <input type="password" id="password-add" placeholder="Votre mot de passe">
-    <button class="btn btn-primary" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
-    <div class="alert success" id="alert-success"></div>
-    <div class="alert error" id="alert-error"></div>
   </div>
 </div>
 
-<!-- LISTE INFOS -->
-<div class="page" id="tab-liste">
-  <div class="card" style="margin-top:16px">
-    <h2>Informations ajoutées</h2>
-    <label for="password-list">Mot de passe admin</label>
-    <input type="password" id="password-list" placeholder="Votre mot de passe">
-    <button class="btn btn-primary" onclick="chargerListe()">🔄 Charger</button>
+<!-- ─── INFOS ─── -->
+<div class="page" id="tab-infos">
+  <div class="inner">
+    <div class="card">
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-list" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="chargerListe()">🔄 Charger les infos</button>
+    </div>
+    <div class="search-box" id="search-wrap" style="display:none">
+      <span class="icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()">
+    </div>
+    <div class="filter-chips" id="filter-chips" style="display:none">
+      <div class="chip active" data-filter="tous" onclick="selectFilter(this)">Tous</div>
+      <div class="chip" data-filter="priere" onclick="selectFilter(this)">🙏 Prière</div>
+      <div class="chip" data-filter="horaire" onclick="selectFilter(this)">🕐 Horaire</div>
+      <div class="chip" data-filter="cours" onclick="selectFilter(this)">📚 Cours</div>
+      <div class="chip" data-filter="service" onclick="selectFilter(this)">🔧 Service</div>
+      <div class="chip" data-filter="evenement" onclick="selectFilter(this)">✡️ Événement</div>
+      <div class="chip" data-filter="autre" onclick="selectFilter(this)">📝 Autre</div>
+    </div>
+    <div id="liste-container"></div>
   </div>
-  <div id="liste-container"></div>
 </div>
 
-<!-- CONVERSATIONS -->
-<div class="page" id="tab-convs">
-  <div class="card" style="margin-top:16px">
-    <h2>Questions reçues</h2>
-    <label for="password-convs">Mot de passe admin</label>
-    <input type="password" id="password-convs" placeholder="Votre mot de passe">
-    <button class="btn btn-primary" onclick="chargerConvs()">🔄 Charger</button>
+<!-- ─── QUESTIONS ─── -->
+<div class="page" id="tab-questions">
+  <div class="inner">
+    <div class="card">
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-convs" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button>
+    </div>
+    <div id="convs-container"></div>
   </div>
-  <div id="convs-container"></div>
 </div>
 
-<!-- CONFIG -->
+<!-- ─── CONFIG ─── -->
 <div class="page" id="tab-config">
-  <div class="card" style="margin-top:16px">
-    <h2>Configuration</h2>
-    <div class="config-note">⚠️ Entrez l'adresse de votre serveur Railway une seule fois.</div>
-    <label>Adresse du serveur Railway</label>
-    <input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app">
-    <button class="btn btn-primary" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
-    <div class="alert success" id="alert-config"></div>
-    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
-      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.8px;">URL actuelle</div>
-      <div class="server-url" id="current-url">Non configurée</div>
+  <div class="inner">
+    <div class="card">
+      <div class="card-title">Configuration serveur</div>
+      <div class="config-note">⚠️ Entrez l'adresse Railway une seule fois — elle sera mémorisée sur votre téléphone.</div>
+      <div class="field">
+        <label>Adresse du serveur Railway</label>
+        <input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app">
+      </div>
+      <button class="btn-main" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
+      <div class="alert ok" id="alert-config"></div>
+      <div style="margin-top:18px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">URL actuelle</div>
+        <div class="url-display" id="current-url">Non configurée</div>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- ─── MODAL MODIFIER ─── -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Modifier l'information</div>
+    <input type="hidden" id="edit-id">
+    <div class="field">
+      <label>Catégorie</label>
+      <div class="cat-grid" id="edit-cat-grid">
+        <button class="cat-btn" data-cat="priere" onclick="selectEditCat(this)">🙏 Prière</button>
+        <button class="cat-btn" data-cat="horaire" onclick="selectEditCat(this)">🕐 Horaire</button>
+        <button class="cat-btn" data-cat="cours" onclick="selectEditCat(this)">📚 Cours</button>
+        <button class="cat-btn" data-cat="service" onclick="selectEditCat(this)">🔧 Service</button>
+        <button class="cat-btn" data-cat="evenement" onclick="selectEditCat(this)">✡️ Événement</button>
+        <button class="cat-btn" data-cat="autre" onclick="selectEditCat(this)">📝 Autre</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Titre</label>
+      <input type="text" id="edit-titre" placeholder="Titre">
+    </div>
+    <div class="field">
+      <label>Contenu</label>
+      <textarea id="edit-contenu" style="min-height:150px"></textarea>
+    </div>
+    <div class="field">
+      <label>Instruction (facultatif)</label>
+      <input type="text" id="edit-instruction" placeholder="Instruction pour l'agent">
+    </div>
+    <div class="field">
+      <label>Mot de passe admin</label>
+      <input type="password" id="edit-pw" placeholder="••••••••">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModal()">Annuler</button>
+      <button class="modal-save" onclick="sauvegarderModif()">💾 Sauvegarder</button>
+    </div>
+    <div class="alert ok" id="alert-edit-ok"></div>
+    <div class="alert err" id="alert-edit-err"></div>
   </div>
 </div>
 
 <script>
-  let catSelected = 'priere';
+let catSelected = 'priere';
+let editCatSelected = 'priere';
+let allInfos = [];
+let filterCat = 'tous';
 
-  window.onload = function() {
-    const saved = localStorage.getItem('railway_url');
-    if (saved) {
-      document.getElementById('server-url').value = saved;
-      document.getElementById('current-url').textContent = saved;
-    }
-  };
+window.onload = function() {
+  const saved = localStorage.getItem('railway_url');
+  if (saved) { document.getElementById('server-url').value = saved; document.getElementById('current-url').textContent = saved; }
+};
 
-  function getServerUrl() { return (localStorage.getItem('railway_url') || '').replace(/\/$/, ''); }
+function getUrl() { return (localStorage.getItem('railway_url') || '').replace(/\/$/, ''); }
 
-  function showTab(name, el) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    el.classList.add('active');
-  }
+function showTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+}
 
-  function selectCat(btn) {
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    catSelected = btn.dataset.cat;
-  }
+function selectCat(btn) {
+  document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); catSelected = btn.dataset.cat;
+}
 
-  async function envoyer() {
-    const url = getServerUrl();
-    const titre = document.getElementById('titre').value.trim();
-    const contenu = document.getElementById('contenu').value.trim();
-    const instruction = document.getElementById('instruction').value.trim();
-    const password = document.getElementById('password-add').value.trim();
-    hideAlerts();
-    if (!url) return showError("Configurez d'abord l'adresse dans ⚙️ Config");
-    if (!titre || !contenu) return showError("Remplissez le titre et le contenu");
-    if (!password) return showError("Entrez le mot de passe admin");
-    const btn = document.getElementById('btn-send');
-    btn.disabled = true; btn.textContent = '⏳ Envoi...';
-    try {
-      const res = await fetch(url + '/admin/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password, categorie: catSelected, titre, contenu, instruction }) });
-      const data = await res.json();
-      if (data.ok) {
-        showSuccess('✓ ' + data.message);
-        document.getElementById('titre').value = '';
-        document.getElementById('contenu').value = '';
-        document.getElementById('instruction').value = '';
-      } else showError(data.message);
-    } catch (e) { showError("Impossible de contacter le serveur."); }
-    btn.disabled = false; btn.textContent = '✦ Envoyer à l\'agent';
-  }
+function selectEditCat(btn) {
+  document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); editCatSelected = btn.dataset.cat;
+}
 
-  async function chargerListe() {
-    const url = getServerUrl();
-    const password = document.getElementById('password-list').value.trim();
-    if (!url || !password) return alert("URL et mot de passe requis");
-    const container = document.getElementById('liste-container');
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Chargement...</div>';
-    try {
-      const res = await fetch(url + '/admin/list?password=' + encodeURIComponent(password));
-      const data = await res.json();
-      if (!data.ok) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">' + data.message + '</p></div>'; return; }
-      if (data.infos.length === 0) { container.innerHTML = '<div class="empty-state"><div class="icon">📭</div>Aucune information</div>'; return; }
-      container.innerHTML = '';
-      data.infos.forEach((info, i) => {
-        const lines = info.split('\n');
-        const firstLine = lines[0] || '';
-        // Parse "--- CATÉGORIE : TITRE ---"
-        const match = firstLine.match(/---\s*([^:]+?)\s*:\s*(.+?)\s*---/);
-        const catLabel = match ? match[1].trim() : '';
-        const titleLabel = match ? match[2].trim() : firstLine;
-        const content = lines.slice(1).join('\n').trim();
-        const el = document.createElement('div');
-        el.className = 'info-item';
-        el.innerHTML = '<span class="cat-tag">' + catLabel + '</span><div class="info-title">' + titleLabel + '</div><div class="info-content">' + content + '</div><button class="btn-delete" onclick="supprimer(' + data.ids[i] + ')">✕</button>';
-        container.appendChild(el);
-      });
-    } catch (e) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">Erreur de connexion</p></div>'; }
-  }
+function selectFilter(chip) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active'); filterCat = chip.dataset.filter;
+  afficherInfos();
+}
 
-  async function supprimer(id) {
-    if (!confirm('Supprimer ?')) return;
-    const url = getServerUrl();
-    const password = document.getElementById('password-list').value.trim();
-    try {
-      const res = await fetch(url + '/admin/delete/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-      const data = await res.json();
-      if (data.ok) chargerListe();
-      else alert(data.message);
-    } catch (e) { alert('Erreur'); }
-  }
+function filtrerInfos() { afficherInfos(); }
 
-  async function chargerConvs() {
-    const url = getServerUrl();
-    const password = document.getElementById('password-convs').value.trim();
-    if (!url || !password) return alert("URL et mot de passe requis");
-    const container = document.getElementById('convs-container');
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Chargement...</div>';
-    try {
-      const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(password));
-      const data = await res.json();
-      if (!data.ok) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">' + data.message + '</p></div>'; return; }
-      if (data.conversations.length === 0) { container.innerHTML = '<div class="empty-state"><div class="icon">💬</div>Aucune conversation</div>'; return; }
-      container.innerHTML = '';
-      data.conversations.forEach(conv => {
-        const date = new Date(conv.created_at).toLocaleString('fr-FR');
-        const phone = conv.phone.replace(/(\d{2})(\d+)(\d{2})/, '$1 •••• $3');
-        const el = document.createElement('div');
-        el.className = 'conv-item';
-        el.innerHTML = '<div class="conv-phone">📱 ' + phone + '</div><div class="conv-q">' + conv.question + '</div><div class="conv-r">' + conv.reponse + '</div><div class="conv-date">' + date + '</div>';
-        container.appendChild(el);
-      });
-    } catch (e) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">Erreur de connexion</p></div>'; }
-  }
+function badgeClass(cat) {
+  const map = { priere: 'badge-priere', horaire: 'badge-horaire', cours: 'badge-cours', service: 'badge-service', evenement: 'badge-evenement', autre: 'badge-autre' };
+  return map[cat] || 'badge-autre';
+}
 
-  function sauvegarderConfig() {
-    const url = document.getElementById('server-url').value.trim().replace(/\/$/, '');
-    if (!url) return;
-    localStorage.setItem('railway_url', url);
-    document.getElementById('current-url').textContent = url;
-    const al = document.getElementById('alert-config');
-    al.className = 'alert success'; al.style.display = 'block'; al.textContent = '✓ Sauvegardé !';
-    setTimeout(() => al.style.display = 'none', 2000);
-  }
+function catLabel(cat) {
+  const map = { priere: '🙏 Prière', horaire: '🕐 Horaire', cours: '📚 Cours', service: '🔧 Service', evenement: '✡️ Événement', autre: '📝 Autre' };
+  return map[cat] || cat;
+}
 
-  function showSuccess(msg) { const el = document.getElementById('alert-success'); el.textContent = msg; el.className = 'alert success'; el.style.display = 'block'; }
-  function showError(msg) { const el = document.getElementById('alert-error'); el.textContent = msg; el.className = 'alert error'; el.style.display = 'block'; }
-  function hideAlerts() { document.getElementById('alert-success').style.display = 'none'; document.getElementById('alert-error').style.display = 'none'; }
+function afficherInfos() {
+  const search = (document.getElementById('search-input').value || '').toLowerCase();
+  const container = document.getElementById('liste-container');
+  const filtered = allInfos.filter(item => {
+    const matchCat = filterCat === 'tous' || item.categorie === filterCat;
+    const matchSearch = !search || item.titre.toLowerCase().includes(search) || item.contenu.toLowerCase().includes(search);
+    return matchCat && matchSearch;
+  });
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">🔍</div><p>Aucun résultat</p></div>'; return; }
+  container.innerHTML = '';
+  filtered.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'info-card';
+    el.innerHTML = `
+      <span class="badge ${badgeClass(item.categorie)}">${catLabel(item.categorie)}</span>
+      <div class="info-title">${item.titre}</div>
+      <div class="info-preview">${item.contenu}</div>
+      <div class="card-actions">
+        <button class="btn-icon edit" onclick="ouvrirModal(${item.id})">✏️</button>
+        <button class="btn-icon del" onclick="supprimer(${item.id})">✕</button>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+async function chargerListe() {
+  const url = getUrl(); const pw = document.getElementById('pw-list').value.trim();
+  if (!url || !pw) return alert("URL et mot de passe requis");
+  const container = document.getElementById('liste-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const res = await fetch(url + '/admin/list?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
+    allInfos = data.rawInfos || [];
+    document.getElementById('search-wrap').style.display = 'block';
+    document.getElementById('filter-chips').style.display = 'flex';
+    afficherInfos();
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+async function supprimer(id) {
+  if (!confirm('Supprimer cette information ?')) return;
+  const url = getUrl(); const pw = document.getElementById('pw-list').value.trim();
+  try {
+    const res = await fetch(url + '/admin/delete/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    const data = await res.json();
+    if (data.ok) { allInfos = allInfos.filter(i => i.id !== id); afficherInfos(); }
+    else alert(data.message);
+  } catch (e) { alert('Erreur'); }
+}
+
+function ouvrirModal(id) {
+  const item = allInfos.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-titre').value = item.titre;
+  document.getElementById('edit-contenu').value = item.contenu;
+  document.getElementById('edit-instruction').value = item.instruction || '';
+  editCatSelected = item.categorie;
+  document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === item.categorie);
+  });
+  document.getElementById('modal').classList.add('active');
+}
+
+function fermerModal() { document.getElementById('modal').classList.remove('active'); }
+function closeModal(e) { if (e.target === document.getElementById('modal')) fermerModal(); }
+
+async function sauvegarderModif() {
+  const url = getUrl();
+  const id = document.getElementById('edit-id').value;
+  const titre = document.getElementById('edit-titre').value.trim();
+  const contenu = document.getElementById('edit-contenu').value.trim();
+  const instruction = document.getElementById('edit-instruction').value.trim();
+  const pw = document.getElementById('edit-pw').value.trim();
+  if (!pw) { document.getElementById('alert-edit-err').textContent = 'Entrez le mot de passe'; document.getElementById('alert-edit-err').style.display = 'block'; return; }
+  try {
+    const res = await fetch(url + '/admin/update/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: editCatSelected, titre, contenu, instruction }) });
+    const data = await res.json();
+    if (data.ok) {
+      const idx = allInfos.findIndex(i => i.id == id);
+      if (idx !== -1) allInfos[idx] = { ...allInfos[idx], categorie: editCatSelected, titre, contenu, instruction };
+      afficherInfos(); fermerModal();
+    } else { document.getElementById('alert-edit-err').textContent = data.message; document.getElementById('alert-edit-err').style.display = 'block'; }
+  } catch (e) { document.getElementById('alert-edit-err').textContent = 'Erreur de connexion'; document.getElementById('alert-edit-err').style.display = 'block'; }
+}
+
+async function envoyer() {
+  const url = getUrl(); const titre = document.getElementById('titre').value.trim();
+  const contenu = document.getElementById('contenu').value.trim();
+  const instruction = document.getElementById('instruction').value.trim();
+  const pw = document.getElementById('pw-add').value.trim();
+  hideAlerts();
+  if (!url) return showErr("Configurez l'adresse dans ⚙️ Config");
+  if (!titre || !contenu) return showErr("Remplissez le titre et le contenu");
+  if (!pw) return showErr("Entrez le mot de passe admin");
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true; btn.textContent = '⏳ Envoi...';
+  try {
+    const res = await fetch(url + '/admin/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: catSelected, titre, contenu, instruction }) });
+    const data = await res.json();
+    if (data.ok) { showOk('✓ ' + data.message); document.getElementById('titre').value = ''; document.getElementById('contenu').value = ''; document.getElementById('instruction').value = ''; }
+    else showErr(data.message);
+  } catch (e) { showErr("Impossible de contacter le serveur."); }
+  btn.disabled = false; btn.textContent = '✦ Envoyer à l\'agent';
+}
+
+async function chargerConvs() {
+  const url = getUrl(); const pw = document.getElementById('pw-convs').value.trim();
+  if (!url || !pw) return alert("URL et mot de passe requis");
+  const container = document.getElementById('convs-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
+    if (data.conversations.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>'; return; }
+    container.innerHTML = '';
+    data.conversations.forEach(conv => {
+      const date = new Date(conv.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const phone = conv.phone.slice(0, 5) + '••••' + conv.phone.slice(-2);
+      const el = document.createElement('div');
+      el.className = 'conv-card';
+      el.innerHTML = `<div class="conv-meta"><span class="conv-phone">📱 ${phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;
+      container.appendChild(el);
+    });
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+function sauvegarderConfig() {
+  const url = document.getElementById('server-url').value.trim().replace(/\/$/, '');
+  if (!url) return;
+  localStorage.setItem('railway_url', url);
+  document.getElementById('current-url').textContent = url;
+  const al = document.getElementById('alert-config');
+  al.className = 'alert ok'; al.style.display = 'block'; al.textContent = '✓ Adresse sauvegardée !';
+  setTimeout(() => al.style.display = 'none', 2000);
+}
+
+function showOk(msg) { const el = document.getElementById('alert-ok'); el.textContent = msg; el.className = 'alert ok'; el.style.display = 'block'; }
+function showErr(msg) { const el = document.getElementById('alert-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
+function hideAlerts() { document.getElementById('alert-ok').style.display = 'none'; document.getElementById('alert-err').style.display = 'none'; }
 </script>
 </body>
 </html>
