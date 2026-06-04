@@ -111,6 +111,16 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .config-note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400E; line-height: 1.6; margin-bottom: 14px; }
 .url-display { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 12px; font-family: monospace; color: var(--muted); word-break: break-all; margin-top: 10px; }
 
+/* ANALYSE */
+.topic-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+.topic-bar-wrap { flex: 1; }
+.topic-name { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.topic-bar { height: 6px; background: var(--gold-light); border-radius: 4px; overflow: hidden; }
+.topic-bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.5s; }
+.topic-count { font-size: 13px; font-weight: 700; color: var(--gold-dark); min-width: 30px; text-align: right; }
+.suggest-btn { width: 100%; padding: 10px 14px; background: var(--gold-light); color: var(--gold-dark); font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--gold); border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; transition: all 0.15s; }
+.suggest-btn:hover { background: var(--gold); color: var(--white); }
+
 .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
 .empty .icon { font-size: 40px; margin-bottom: 12px; }
 .empty p { font-size: 14px; }
@@ -130,6 +140,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab active" onclick="showTab('ajouter',this)">➕ Ajouter</div>
   <div class="tab" onclick="showTab('infos',this)">📋 Infos</div>
   <div class="tab" onclick="showTab('questions',this)">💬 Questions</div>
+  <div class="tab" onclick="showTab('export',this)">📤 Export</div>
   <div class="tab" onclick="showTab('config',this)">⚙️ Config</div>
 </div>
 
@@ -210,6 +221,36 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button>
     </div>
     <div id="convs-container"></div>
+  </div>
+</div>
+
+<!-- ─── EXPORT ─── -->
+<div class="page" id="tab-export">
+  <div class="inner">
+
+    <div class="card">
+      <div class="card-title">📤 Exporter mes données</div>
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-export" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="exporterInfos()">📋 Exporter les infos (CSV)</button>
+      <button class="btn-secondary" onclick="exporterQuestions()">💬 Exporter les questions (CSV)</button>
+      <button class="btn-secondary" onclick="analyserQuestions()">🧠 Analyser les questions fréquentes</button>
+      <div class="alert ok" id="alert-export-ok"></div>
+      <div class="alert err" id="alert-export-err"></div>
+    </div>
+
+    <div class="card" id="analyse-card" style="display:none">
+      <div class="card-title">🧠 Questions fréquentes</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Les sujets les plus demandés par vos fidèles :</p>
+      <div id="analyse-container"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">💡 Cliquez sur un sujet pour créer une nouvelle info :</p>
+        <div id="suggestions-container"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -466,6 +507,114 @@ function sauvegarderConfig() {
 function showOk(msg) { const el = document.getElementById('alert-ok'); el.textContent = msg; el.className = 'alert ok'; el.style.display = 'block'; }
 function showErr(msg) { const el = document.getElementById('alert-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
 function hideAlerts() { document.getElementById('alert-ok').style.display = 'none'; document.getElementById('alert-err').style.display = 'none'; }
+
+// ─── EXPORT ──────────────────────────────────────────────────
+async function exporterInfos() {
+  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
+  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  try {
+    const res = await fetch(url + '/admin/list?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) return showExportErr(data.message);
+    let csv = 'Catégorie,Titre,Contenu,Instruction,Date\n';
+    data.rawInfos.forEach(row => {
+      const date = new Date(row.created_at).toLocaleDateString('fr-FR');
+      csv += `"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`;
+    });
+    telecharger(csv, 'shliah-bot-infos-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    showExportOk('✓ ' + data.rawInfos.length + ' infos exportées !');
+  } catch(e) { showExportErr("Erreur de connexion"); }
+}
+
+async function exporterQuestions() {
+  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
+  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  try {
+    const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) return showExportErr(data.message);
+    let csv = 'Téléphone,Question,Réponse,Date\n';
+    data.conversations.forEach(row => {
+      const date = new Date(row.created_at).toLocaleString('fr-FR');
+      const phone = row.phone.slice(0,5) + '••••' + row.phone.slice(-2);
+      csv += `"${phone}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`;
+    });
+    telecharger(csv, 'shliah-bot-questions-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    showExportOk('✓ ' + data.conversations.length + ' questions exportées !');
+  } catch(e) { showExportErr("Erreur de connexion"); }
+}
+
+async function analyserQuestions() {
+  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
+  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  try {
+    const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) return showExportErr(data.message);
+    if (data.conversations.length === 0) return showExportErr("Pas encore de questions enregistrées");
+
+    // Analyser les sujets par mots-clés
+    const sujets = [
+      { nom: '🕐 Horaires des offices', mots: ['horaire', 'heure', 'chaharit', 'minha', 'arvit', 'prière', 'office', 'chabbat', 'shabbat'] },
+      { nom: '📚 Cours de Torah', mots: ['cours', 'guémara', 'tanya', 'paracha', 'hassidout', 'leçon', 'shiour'] },
+      { nom: '🔧 Téfilines & Mezouzot', mots: ['téfiline', 'tefiline', 'mezouza', 'vérification', 'poser', 'mettre'] },
+      { nom: '🏊 Mikve', mots: ['mikve', 'mikvé', 'bain', 'immersion', 'purification'] },
+      { nom: '🙏 Prières', mots: ['prière', 'tefila', 'téfilat', 'haderech', 'voyage', 'bénédiction', 'bracha'] },
+      { nom: '🎂 Location de salle', mots: ['salle', 'louer', 'location', 'anniversaire', 'événement', 'fête', 'bar mitsva'] },
+      { nom: '☀️ Fêtes juives', mots: ['roch hachana', 'yom kippour', 'souccot', 'hanoucca', 'pourim', 'pessah', 'chavouot', 'fête'] },
+      { nom: '📞 Contact Rav', mots: ['rav', 'rabbi', 'contact', 'appeler', 'téléphone', 'question', 'hala'] },
+    ];
+
+    const comptages = sujets.map(s => {
+      const count = data.conversations.filter(conv =>
+        s.mots.some(m => conv.question.toLowerCase().includes(m))
+      ).length;
+      return { ...s, count };
+    }).filter(s => s.count > 0).sort((a, b) => b.count - a.count);
+
+    const max = comptages[0]?.count || 1;
+    const container = document.getElementById('analyse-container');
+    container.innerHTML = '';
+    comptages.forEach(s => {
+      const pct = Math.round((s.count / max) * 100);
+      container.innerHTML += `<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${pct}%"></div></div></div><div class="topic-count">${s.count}</div></div>`;
+    });
+
+    // Suggestions d'infos à créer
+    const suggestContainer = document.getElementById('suggestions-container');
+    suggestContainer.innerHTML = '';
+    comptages.slice(0, 3).forEach(s => {
+      suggestContainer.innerHTML += `<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`;
+    });
+
+    document.getElementById('analyse-card').style.display = 'block';
+    document.getElementById('analyse-card').scrollIntoView({ behavior: 'smooth' });
+    showExportOk('✓ Analyse de ' + data.conversations.length + ' questions terminée !');
+  } catch(e) { showExportErr("Erreur de connexion"); }
+}
+
+function creerInfoDepuisSuggestion(nom) {
+  // Aller sur l'onglet Ajouter avec le titre pré-rempli
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-ajouter').classList.add('active');
+  document.querySelector('.tab[onclick*="ajouter"]').classList.add('active');
+  const titre = nom.replace(/^[^\w]*/, '').trim();
+  document.getElementById('titre').value = titre;
+  document.getElementById('titre').focus();
+  window.scrollTo(0, 0);
+}
+
+function telecharger(contenu, nom, type) {
+  const blob = new Blob(['\uFEFF' + contenu], { type: type + ';charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nom; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function showExportOk(msg) { const el = document.getElementById('alert-export-ok'); el.textContent = msg; el.className = 'alert ok'; el.style.display = 'block'; }
+function showExportErr(msg) { const el = document.getElementById('alert-export-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
 </script>
 </body>
 </html>
