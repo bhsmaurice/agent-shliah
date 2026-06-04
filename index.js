@@ -25,6 +25,15 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id SERIAL PRIMARY KEY,
+      phone TEXT,
+      question TEXT,
+      reponse TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Base de données prête');
 }
 
@@ -34,7 +43,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
 
-const SYSTEM_PROMPT_BASE = `Tu es l'assistant virtuel du Beth Habad S. Maurice, représentant le Rav Levi Basanger, Shliah du Rabbi, et la Rebbetzin Myriam Basanger.
+const SYSTEM_PROMPT_BASE = `Tu t'appelles Shliah Bot, l'assistant virtuel du Beth Habad S. Maurice.
+Tu représentes le Rav Levi Basanger, Shliah du Rabbi, et la Rebbetzin Myriam Basanger.
 Tu réponds au nom du Beth Habad S. Maurice, situé au 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice.
 Tu parles en français ou en hébreu selon la langue du message reçu. Ton ton est chaleureux, accueillant, et authentiquement juif.
 Pour toute question hala'hique ou urgence : oriente vers le Rav Levi directement au 07 70 24 17 46.
@@ -70,12 +80,6 @@ Demande d'abord pour quelle occasion (anniversaire, Bar Mitsva, Yartzeit, autre)
 Lien de paiement : https://habad-s-maurice.kehila.io/don/0f8eb241-2a1e-40fa-8cfc-d81c4bffde63
 Demander de mettre la raison dans les commentaires.
 
-MIKVAOT
-Quand quelqu'un demande un Mikve, demande d'abord : pour homme, femme ou kelim (ustensiles) ?
-Pour les hommes et kelim : orienter vers le Rav Levi au 07 70 24 17 46 pour les adresses.
-Pour les femmes : la liste des Mikvaot femmes est fournie automatiquement.
-Toujours dire d'appeler avant pour confirmer les horaires.
-
 CONTACT
 Beth Habad S. Maurice
 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice
@@ -99,24 +103,15 @@ async function getFullPrompt(extra = null) {
   return prompt;
 }
 
-// ─── RÉCUPÉRER LES MIKVAOT FEMMES ────────────────────────────
 async function getMikvaotFemmes() {
   try {
-    const res = await fetch('https://www.loubavitch.fr/pratique/liste-des-mikves', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const res = await fetch('https://www.loubavitch.fr/pratique/liste-des-mikves', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const html = await res.text();
-    const texte = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    return "LISTE DES MIKVAOT (source: loubavitch.fr) :\n" + texte.substring(0, 3000);
+    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return "LISTE DES MIKVAOT FEMMES :\n" + texte.substring(0, 3000);
   } catch (e) { return null; }
 }
 
-// ─── RÉCUPÉRER LES ÉVÉNEMENTS ────────────────────────────────
 async function getEvenements() {
   try {
     const res = await fetch('https://habad-s-maurice.kehila.io/evenements', { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -127,13 +122,11 @@ async function getEvenements() {
 }
 
 function parleDeMikve(msg) {
-  const mots = ['mikve', 'mikvé', 'mikve femme', 'mikve homme', 'mikve kelim', 'bain rituel', 'purification'];
-  return mots.some(m => msg.toLowerCase().includes(m));
+  return ['mikve', 'mikvé', 'bain rituel'].some(m => msg.toLowerCase().includes(m));
 }
 
 function parleDevenements(msg) {
-  const mots = ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'prochainement', 'prochain', 'cette semaine', 'ce mois', 'soirée', 'soiree'];
-  return mots.some(m => msg.toLowerCase().includes(m));
+  return ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'cette semaine', 'ce mois', 'soirée', 'soiree'].some(m => msg.toLowerCase().includes(m));
 }
 
 // ─── WEBHOOK META ────────────────────────────────────────────
@@ -153,15 +146,14 @@ app.post('/webhook', async (req, res) => {
       const from = message.from;
       const text = message.text.body;
       let extra = null;
-      if (parleDeMikve(text)) {
-        const mikvaot = await getMikvaotFemmes();
-        if (mikvaot) extra = mikvaot;
-      } else if (parleDevenements(text)) {
-        const evenements = await getEvenements();
-        if (evenements) extra = evenements;
-      }
+      if (parleDeMikve(text)) extra = await getMikvaotFemmes();
+      else if (parleDevenements(text)) extra = await getEvenements();
       const reply = await askClaude(text, extra);
       await sendWhatsApp(from, reply);
+      // Sauvegarder la conversation
+      try {
+        await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
+      } catch (e) { console.error('Conv save error:', e.message); }
     }
     res.sendStatus(200);
   } else res.sendStatus(404);
@@ -197,6 +189,14 @@ app.delete('/admin/delete/:id', async (req, res) => {
   res.json({ ok: true, message: "Supprimé" });
 });
 
+// Voir les conversations
+app.get('/admin/conversations', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const result = await pool.query('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 50');
+  res.json({ ok: true, conversations: result.rows });
+});
+
 // ─── CLAUDE ──────────────────────────────────────────────────
 async function askClaude(userMessage, extra = null) {
   try {
@@ -221,4 +221,4 @@ async function sendWhatsApp(to, message) {
 }
 
 const PORT = process.env.PORT || 3000;
-initDB().then(() => app.listen(PORT, () => console.log(`Agent Shliah actif sur port ${PORT}`)));
+initDB().then(() => app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`)));
