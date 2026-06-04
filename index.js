@@ -137,33 +137,41 @@ function parleDevenements(msg) {
 
 async function getHorairesChabbat() {
   try {
-    // API Hebcal pour Paris (geo=Paris)
-    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&m=50&lg=fr', {
+    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
-    const data = await res.json();
-    let allumage = null;
-    let havdalah = null;
-    let parasha = null;
-    if (data.items) {
-      for (const item of data.items) {
-        if (item.category === 'candles') allumage = item.title + ' — ' + new Date(item.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        if (item.category === 'havdalah') havdalah = item.title + ' — ' + new Date(item.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        if (item.category === 'parashat') parasha = item.title;
-      }
-    }
-    if (allumage && havdalah) {
-      return `HORAIRES CHABBAT CETTE SEMAINE (Paris) :
-Allumage des bougies : ${allumage}
-Fin de Chabbat (Havdalah) : ${havdalah}
-${parasha ? 'Paracha : ' + parasha : ''}`;
+    const html = await res.text();
+    const texte = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Chercher allumage
+    const allumage = texte.match(/allumage[^0-9]*(\d+[h:]\d+)/i);
+    // Chercher havdalah / fin de chabbat
+    const havdalah = texte.match(/havdalah[^0-9]*(\d+[h:]\d+)/i) || texte.match(/fin[^0-9]*(\d+[h:]\d+)/i);
+    // Chercher la date du vendredi
+    const dateMatch = texte.match(/vendredi\s+(\d+\s+\w+\s+\d{4})/i) || texte.match(/(\d+\s+\w+\s+\d{4})/i);
+    // Chercher la paracha
+    const parasha = texte.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ\-]+)/i) || texte.match(/portion[^A-Za-z]*([A-Za-zÀ-ÿ\-]+)/i);
+
+    if (allumage) {
+      const date = dateMatch ? dateMatch[1] : '';
+      return `HORAIRES CHABBAT CETTE SEMAINE - PARIS :
+📅 ${date}
+🕯️ Entrée de Chabbat (allumage des bougies) : ${allumage[1]}
+✨ Sortie de Chabbat (Havdalah) : ${havdalah ? havdalah[1] : 'voir site Chabad'}
+📖 ${parasha ? 'Paracha ' + parasha[1] : ''}`;
     }
     return null;
-  } catch (e) { return null; }
+  } catch (e) { console.error('Chabad error:', e.message); return null; }
 }
 
 function parleDeChabbat(msg) {
-  return ['chabbat', 'shabbat', 'horaire chabbat', 'heure chabbat', 'allumage', 'entrée chabbat', 'fin chabbat', 'havdalah'].some(m => msg.toLowerCase().includes(m));
+  const lower = msg.toLowerCase();
+  return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
 }
 
 // ─── WEBHOOK META ────────────────────────────────────────────
