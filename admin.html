@@ -42,9 +42,10 @@
   .alert.success { background: var(--success-bg); color: var(--success); border: 1px solid #A8D5B8; }
   .alert.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #F5B7B1; }
   .server-url { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; font-size: 12px; color: var(--text-muted); font-family: monospace; word-break: break-all; margin-top: 8px; }
-  .info-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 36px 12px 12px; margin-bottom: 10px; position: relative; }
-  .info-item .cat-tag { font-size: 10px; font-weight: 500; color: var(--gold-dark); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  .info-item .info-content { font-size: 12px; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap; max-height: 60px; overflow: hidden; }
+  .info-item { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 40px 14px 14px; margin-bottom: 10px; position: relative; }
+  .info-item .cat-tag { font-size: 10px; font-weight: 700; color: var(--white); background: var(--gold); text-transform: uppercase; letter-spacing: 1.2px; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 8px; }
+  .info-item .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .info-item .info-content { font-size: 12px; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; max-height: 70px; overflow: hidden; }
   .btn-delete { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px; }
   .conv-item { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
   .conv-phone { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
@@ -202,9 +203,15 @@
       container.innerHTML = '';
       data.infos.forEach((info, i) => {
         const lines = info.split('\n');
+        const firstLine = lines[0] || '';
+        // Parse "--- CATÉGORIE : TITRE ---"
+        const match = firstLine.match(/---\s*([^:]+?)\s*:\s*(.+?)\s*---/);
+        const catLabel = match ? match[1].trim() : '';
+        const titleLabel = match ? match[2].trim() : firstLine;
+        const content = lines.slice(1).join('\n').trim();
         const el = document.createElement('div');
         el.className = 'info-item';
-        el.innerHTML = '<div class="cat-tag">' + lines[0] + '</div><div class="info-content">' + lines.slice(1).join('\n').trim() + '</div><button class="btn-delete" onclick="supprimer(' + data.ids[i] + ')">✕</button>';
+        el.innerHTML = '<span class="cat-tag">' + catLabel + '</span><div class="info-title">' + titleLabel + '</div><div class="info-content">' + content + '</div><button class="btn-delete" onclick="supprimer(' + data.ids[i] + ')">✕</button>';
         container.appendChild(el);
       });
     } catch (e) { container.innerHTML = '<div class="card"><p style="color:var(--danger)">Erreur de connexion</p></div>'; }
