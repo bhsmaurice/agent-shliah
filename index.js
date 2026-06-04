@@ -5,7 +5,7 @@ app.use(express.json());
 // CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -131,13 +131,28 @@ function parleDevenements(msg) {
 
 async function getHorairesChabbat() {
   try {
-    const res = await fetch('https://www.calj.net/', { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    const html = await res.text();
-    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    // Extraire la partie Shabbat
-    const match = texte.match(/allumage avant[\s\S]{0,200}fin de Shabbat[\s\S]{0,100}/i);
-    if (match) return "HORAIRES CHABBAT (Paris, source calj.net) :\n" + match[0].substring(0, 300);
-    return "HORAIRES CHABBAT (source calj.net) :\n" + texte.substring(texte.indexOf('allumage'), texte.indexOf('allumage') + 200);
+    // API Hebcal pour Paris (geo=Paris)
+    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&m=50&lg=fr', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const data = await res.json();
+    let allumage = null;
+    let havdalah = null;
+    let parasha = null;
+    if (data.items) {
+      for (const item of data.items) {
+        if (item.category === 'candles') allumage = item.title + ' — ' + new Date(item.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        if (item.category === 'havdalah') havdalah = item.title + ' — ' + new Date(item.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        if (item.category === 'parashat') parasha = item.title;
+      }
+    }
+    if (allumage && havdalah) {
+      return `HORAIRES CHABBAT CETTE SEMAINE (Paris) :
+Allumage des bougies : ${allumage}
+Fin de Chabbat (Havdalah) : ${havdalah}
+${parasha ? 'Paracha : ' + parasha : ''}`;
+    }
+    return null;
   } catch (e) { return null; }
 }
 
@@ -196,7 +211,15 @@ app.get('/admin/list', async (req, res) => {
     if (row.instruction) bloc += `\nInstruction : ${row.instruction}`;
     return bloc;
   });
-  res.json({ ok: true, infos, ids: result.rows.map(r => r.id), total: result.rows.length });
+  res.json({ ok: true, infos, rawInfos: result.rows, ids: result.rows.map(r => r.id), total: result.rows.length });
+});
+
+app.put('/admin/update/:id', async (req, res) => {
+  const { password, categorie, titre, contenu, instruction } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!titre || !contenu) return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
+  await pool.query('UPDATE infos SET categorie=$1, titre=$2, contenu=$3, instruction=$4 WHERE id=$5', [categorie, titre, contenu, instruction || null, req.params.id]);
+  res.json({ ok: true, message: "Information mise à jour !" });
 });
 
 app.delete('/admin/delete/:id', async (req, res) => {
