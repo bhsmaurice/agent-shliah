@@ -11,6 +11,24 @@ app.use((req, res, next) => {
   next();
 });
 
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+
+// Créer la table au démarrage si elle n'existe pas
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS infos (
+      id SERIAL PRIMARY KEY,
+      categorie TEXT,
+      titre TEXT,
+      contenu TEXT,
+      instruction TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  console.log('Base de données prête');
+}
+
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "shliah_beth_habad";
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -21,9 +39,11 @@ const SYSTEM_PROMPT_BASE = `Tu es l'assistant virtuel du Beth Habad S. Maurice, 
 Tu réponds au nom du Beth Habad S. Maurice, situé au 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice.
 Tu parles en français ou en hébreu selon la langue du message reçu. Ton ton est chaleureux, accueillant, et authentiquement juif.
 Pour toute question hala'hique ou urgence : oriente vers le Rav Levi directement au 07 70 24 17 46.
-Termine chaque message par une note positive : Chabbat Chalom, Bonne semaine, A bientôt au Beth Habad S. Maurice !
-Réponds toujours court et direct, comme un SMS. Maximum 3-4 lignes. Va à l'essentiel.
 Écris toujours "Beth Habad S. Maurice" — jamais "Saint-Maurice" ni "Saint Maurice".
+Réponds toujours court et direct, comme un SMS. Maximum 3-4 lignes. Va à l'essentiel.
+N'utilise jamais d'astérisques * pour mettre en gras. Écris normalement sans formatage spécial.
+Laisse toujours une ligne vide entre chaque information dans le message.
+Pour la signature de fin : le vendredi uniquement écris "Chabbat Chalom !", tous les autres jours écris "Kol Touv !". Aucune autre formule.
 
 PRIERES - HORAIRES FIXES
 En semaine (Lundi-Vendredi) : Chaharit 1er office 7h30, 2e office 9h00, Minha & Arvit 19h30
@@ -38,54 +58,55 @@ Mercredi 21h00 : Paracha avec Myriam Basanger (femmes)
 Jeudi 21h00 : Hassidout mensuel (tous)
 
 VERIFICATION TEFILINES & MEZOUZOT
-Vérification Téfilines : 50 euros/paire, délai 3 semaines
+Vérification Téfilines : 75 euros/paire, délai 2 semaines. On peut prêter une paire pendant la vérification si disponible.
 Téfilines neuves : 480 euros/paire, sur commande
 Mezouza neuve : 55 euros/pièce, immédiat
 Vérification Mezouza : 9 euros/pièce, délai 5 jours
 Pose à domicile possible sur demande
+
+PETIT DEJEUNER DU MATIN
+Le Beth Habad S. Maurice propose des petits déjeuners le matin dans une ambiance chaleureuse.
+Formules : 50 euros, 150 euros, 250 euros
+Quand quelqu'un demande, demande d'abord pour quelle occasion (anniversaire, Bar Mitsva, Yartzeit, autre).
+Lien de paiement : https://habad-s-maurice.kehila.io/don/0f8eb241-2a1e-40fa-8cfc-d81c4bffde63
+Demander de mettre la raison dans les commentaires du paiement.
 
 CONTACT
 Beth Habad S. Maurice
 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice
 Téléphone : 07 70 24 17 46`;
 
-let extraInfos = [];
-
-function getFullPrompt(evenements = null) {
+async function getFullPrompt(evenements = null) {
   let prompt = SYSTEM_PROMPT_BASE;
-  if (extraInfos.length > 0) prompt += "\n\n" + extraInfos.join("\n\n");
-  if (evenements) prompt += "\n\nÉVÉNEMENTS ACTUELS DU SITE (récupérés en temps réel) :\n" + evenements;
+  try {
+    const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
+    if (result.rows.length > 0) {
+      const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
+      const extras = result.rows.map(row => {
+        let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} ---\n${row.contenu}`;
+        if (row.instruction) bloc += `\nInstruction : ${row.instruction}`;
+        return bloc;
+      });
+      prompt += "\n\n" + extras.join("\n\n");
+    }
+  } catch (e) { console.error('DB error:', e.message); }
+  if (evenements) prompt += "\n\nÉVÉNEMENTS ACTUELS DU SITE :\n" + evenements;
   return prompt;
 }
 
-// ─── RÉCUPÉRER LES ÉVÉNEMENTS DU SITE ────────────────────────
+// ─── RÉCUPÉRER LES ÉVÉNEMENTS ────────────────────────────────
 async function getEvenements() {
   try {
-    const res = await fetch('https://habad-s-maurice.kehila.io/evenements', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const res = await fetch('https://habad-s-maurice.kehila.io/evenements', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const html = await res.text();
-
-    // Extraire le texte brut des événements
-    const texte = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Garder seulement les 2000 premiers caractères pour ne pas surcharger
+    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     return texte.substring(0, 2000);
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
-// Détecter si le message parle d'événements
 function parleDevenements(msg) {
-  const mots = ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'prochainement', 'prochain', 'quoi de prévu', 'quoi de prevu', 'cette semaine', 'ce mois', 'soirée', 'soiree', 'fete', 'fête'];
-  const lower = msg.toLowerCase();
-  return mots.some(m => lower.includes(m));
+  const mots = ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'prochainement', 'prochain', 'cette semaine', 'ce mois', 'soirée', 'soiree'];
+  return mots.some(m => msg.toLowerCase().includes(m));
 }
 
 // ─── WEBHOOK META ────────────────────────────────────────────
@@ -93,77 +114,64 @@ app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
-  }
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
+  else res.sendStatus(403);
 });
 
 app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'whatsapp_business_account') {
-    const entry = body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const message = changes?.value?.messages?.[0];
+    const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (message && message.type === 'text') {
       const from = message.from;
       const text = message.text.body;
-
-      // Si la personne demande les événements, on scrape le site
       let evenements = null;
-      if (parleDevenements(text)) {
-        evenements = await getEvenements();
-      }
-
+      if (parleDevenements(text)) evenements = await getEvenements();
       const reply = await askClaude(text, evenements);
       await sendWhatsApp(from, reply);
     }
     res.sendStatus(200);
-  } else {
-    res.sendStatus(404);
-  }
+  } else res.sendStatus(404);
 });
 
 // ─── API ADMIN ───────────────────────────────────────────────
-app.post('/admin/add', (req, res) => {
+app.post('/admin/add', async (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   if (!titre || !contenu) return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
-  const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
-  let bloc = `--- ${labels[categorie] || 'INFO'} : ${titre.toUpperCase()} ---\n${contenu}`;
-  if (instruction) bloc += `\nInstruction : ${instruction}`;
-  extraInfos.push(bloc);
-  res.json({ ok: true, message: "Information ajoutée avec succès !", total: extraInfos.length });
+  await pool.query('INSERT INTO infos (categorie, titre, contenu, instruction) VALUES ($1, $2, $3, $4)', [categorie, titre, contenu, instruction || null]);
+  const count = await pool.query('SELECT COUNT(*) FROM infos');
+  res.json({ ok: true, message: "Information ajoutée avec succès !", total: parseInt(count.rows[0].count) });
 });
 
-app.get('/admin/list', (req, res) => {
+app.get('/admin/list', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  res.json({ ok: true, infos: extraInfos, total: extraInfos.length });
+  const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
+  const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
+  const infos = result.rows.map(row => {
+    let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} ---\n${row.contenu}`;
+    if (row.instruction) bloc += `\nInstruction : ${row.instruction}`;
+    return bloc;
+  });
+  res.json({ ok: true, infos, ids: result.rows.map(r => r.id), total: result.rows.length });
 });
 
-app.delete('/admin/delete/:index', (req, res) => {
+app.delete('/admin/delete/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  const i = parseInt(req.params.index);
-  if (i < 0 || i >= extraInfos.length) return res.status(400).json({ ok: false, message: "Index invalide" });
-  extraInfos.splice(i, 1);
-  res.json({ ok: true, message: "Supprimé", total: extraInfos.length });
+  await pool.query('DELETE FROM infos WHERE id = $1', [req.params.id]);
+  res.json({ ok: true, message: "Supprimé" });
 });
 
 // ─── CLAUDE ──────────────────────────────────────────────────
 async function askClaude(userMessage, evenements = null) {
   try {
+    const systemPrompt = await getFullPrompt(evenements);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        system: getFullPrompt(evenements),
-        messages: [{ role: 'user', content: userMessage }]
-      })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, system: systemPrompt, messages: [{ role: 'user', content: userMessage }] })
     });
     const data = await response.json();
     if (data.content && data.content[0]) return data.content[0].text;
@@ -175,9 +183,9 @@ async function sendWhatsApp(to, message) {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', to: to, type: 'text', text: { body: message } })
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } })
   });
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Agent Shliah actif sur port ${PORT}`));
+initDB().then(() => app.listen(PORT, () => console.log(`Agent Shliah actif sur port ${PORT}`)));
