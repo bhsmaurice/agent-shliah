@@ -94,7 +94,7 @@ async function getFullPrompt(extra = null) {
   
   let prompt = `[AUJOURD'HUI : ${dateStr}]\n\n` + SYSTEM_PROMPT_BASE;
   try {
-    const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
+    const result = await pool.query('SELECT * FROM infos ORDER BY created_at DESC');
     if (result.rows.length > 0) {
       const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
       const extras = result.rows.map(row => {
@@ -223,7 +223,7 @@ app.post('/admin/add', async (req, res) => {
 app.get('/admin/list', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
+  const result = await pool.query('SELECT * FROM infos ORDER BY created_at DESC');
   const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
   const infos = result.rows.map(row => {
     let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} ---\n${row.contenu}`;
