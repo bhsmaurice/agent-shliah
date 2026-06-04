@@ -86,7 +86,13 @@ Beth Habad S. Maurice
 Téléphone : 07 70 24 17 46`;
 
 async function getFullPrompt(extra = null) {
-  let prompt = SYSTEM_PROMPT_BASE;
+  // Date et jour actuels en français
+  const now = new Date();
+  const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const dateStr = `${jours[now.getDay()]} ${now.getDate()} ${mois[now.getMonth()]} ${now.getFullYear()}`;
+  
+  let prompt = `[AUJOURD'HUI : ${dateStr}]\n\n` + SYSTEM_PROMPT_BASE;
   try {
     const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
     if (result.rows.length > 0) {
