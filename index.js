@@ -180,8 +180,21 @@ app.post('/webhook', async (req, res) => {
       if (parleDeMikve(text)) extra = await getMikvaotFemmes();
       else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
       else if (parleDevenements(text)) extra = await getEvenements();
-      const reply = await askClaude(text, extra);
+
+      // Récupérer l'historique de la conversation
+      let historique = [];
+      try {
+        const hist = await pool.query(
+          'SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5',
+          [from]
+        );
+        // Inverser pour avoir l'ordre chronologique
+        historique = hist.rows.reverse();
+      } catch(e) { console.error('Hist error:', e.message); }
+
+      const reply = await askClaude(text, extra, historique);
       await sendWhatsApp(from, reply);
+
       // Sauvegarder la conversation
       try {
         await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
@@ -238,13 +251,22 @@ app.get('/admin/conversations', async (req, res) => {
 });
 
 // ─── CLAUDE ──────────────────────────────────────────────────
-async function askClaude(userMessage, extra = null) {
+async function askClaude(userMessage, extra = null, historique = []) {
   try {
     const systemPrompt = await getFullPrompt(extra);
+
+    // Construire les messages avec l'historique
+    const messages = [];
+    historique.forEach(h => {
+      messages.push({ role: 'user', content: h.question });
+      messages.push({ role: 'assistant', content: h.reponse });
+    });
+    messages.push({ role: 'user', content: userMessage });
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, system: systemPrompt, messages: [{ role: 'user', content: userMessage }] })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, system: systemPrompt, messages })
     });
     const data = await response.json();
     if (data.content && data.content[0]) return data.content[0].text;
