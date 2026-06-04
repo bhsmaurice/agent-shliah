@@ -241,6 +241,22 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="alert err" id="alert-export-err"></div>
     </div>
 
+    <div class="card">
+      <div class="card-title">📥 Importer des infos</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Importez un fichier CSV exporté précédemment pour restaurer vos informations.</p>
+      <div class="field">
+        <label>Fichier CSV</label>
+        <input type="file" id="import-file" accept=".csv" style="padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;width:100%;font-size:13px;color:var(--muted);">
+      </div>
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-import" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="importerInfos()">📥 Importer</button>
+      <div class="alert ok" id="alert-import-ok"></div>
+      <div class="alert err" id="alert-import-err"></div>
+    </div>
+
     <div class="card" id="analyse-card" style="display:none">
       <div class="card-title">🧠 Questions fréquentes</div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Les sujets les plus demandés par vos fidèles :</p>
@@ -615,6 +631,57 @@ function telecharger(contenu, nom, type) {
 
 function showExportOk(msg) { const el = document.getElementById('alert-export-ok'); el.textContent = msg; el.className = 'alert ok'; el.style.display = 'block'; }
 function showExportErr(msg) { const el = document.getElementById('alert-export-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
+
+async function importerInfos() {
+  const url = getUrl();
+  const pw = document.getElementById('pw-import').value.trim();
+  const file = document.getElementById('import-file').files[0];
+  const okEl = document.getElementById('alert-import-ok');
+  const errEl = document.getElementById('alert-import-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!url) { errEl.textContent = "Configurez l'adresse dans ⚙️ Config"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!pw) { errEl.textContent = "Entrez le mot de passe admin"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!file) { errEl.textContent = "Sélectionnez un fichier CSV"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+
+  const text = await file.text();
+  const lines = text.split('\n').slice(1).filter(l => l.trim()); // Skip header
+  let imported = 0; let errors = 0;
+
+  for (const line of lines) {
+    // Parse CSV line (handle quoted fields)
+    const fields = [];
+    let current = ''; let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQuote = !inQuote; }
+      else if (line[i] === ',' && !inQuote) { fields.push(current.replace(/""/g, '"')); current = ''; }
+      else { current += line[i]; }
+    }
+    fields.push(current.replace(/""/g, '"'));
+
+    if (fields.length < 3) continue;
+    const [categorie, titre, contenu, instruction] = fields;
+    if (!titre || !contenu) continue;
+
+    try {
+      const res = await fetch(url + '/admin/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw, categorie: categorie || 'autre', titre, contenu, instruction: instruction || '' })
+      });
+      const data = await res.json();
+      if (data.ok) imported++; else errors++;
+    } catch(e) { errors++; }
+  }
+
+  if (imported > 0) {
+    okEl.textContent = '✓ ' + imported + ' info(s) importée(s) avec succès !' + (errors > 0 ? ' (' + errors + ' erreurs)' : '');
+    okEl.className = 'alert ok'; okEl.style.display = 'block';
+  } else {
+    errEl.textContent = 'Aucune info importée. Vérifiez le fichier CSV.';
+    errEl.className = 'alert err'; errEl.style.display = 'block';
+  }
+}
 </script>
 </body>
 </html>
