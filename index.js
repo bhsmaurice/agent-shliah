@@ -14,7 +14,6 @@ app.use((req, res, next) => {
 const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// Créer la table au démarrage si elle n'existe pas
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS infos (
@@ -44,6 +43,7 @@ Réponds toujours court et direct, comme un SMS. Maximum 3-4 lignes. Va à l'ess
 N'utilise jamais d'astérisques * pour mettre en gras. Écris normalement sans formatage spécial.
 Laisse toujours une ligne vide entre chaque information dans le message.
 Pour la signature de fin : le vendredi uniquement écris "Chabbat Chalom !", tous les autres jours écris "Kol Touv !". Aucune autre formule.
+Si tu ne connais pas la réponse, dis : "Je n'ai pas cette information. Contacte le Rav Levi au 07 70 24 17 46." Ne jamais inventer.
 
 PRIERES - HORAIRES FIXES
 En semaine (Lundi-Vendredi) : Chaharit 1er office 7h30, 2e office 9h00, Minha & Arvit 19h30
@@ -65,18 +65,23 @@ Vérification Mezouza : 9 euros/pièce, délai 5 jours
 Pose à domicile possible sur demande
 
 PETIT DEJEUNER DU MATIN
-Le Beth Habad S. Maurice propose des petits déjeuners le matin dans une ambiance chaleureuse.
 Formules : 50 euros, 150 euros, 250 euros
-Quand quelqu'un demande, demande d'abord pour quelle occasion (anniversaire, Bar Mitsva, Yartzeit, autre).
+Demande d'abord pour quelle occasion (anniversaire, Bar Mitsva, Yartzeit, autre).
 Lien de paiement : https://habad-s-maurice.kehila.io/don/0f8eb241-2a1e-40fa-8cfc-d81c4bffde63
-Demander de mettre la raison dans les commentaires du paiement.
+Demander de mettre la raison dans les commentaires.
+
+MIKVAOT
+Quand quelqu'un demande un Mikve, demande d'abord : pour homme, femme ou kelim (ustensiles) ?
+Pour les hommes et kelim : orienter vers le Rav Levi au 07 70 24 17 46 pour les adresses.
+Pour les femmes : la liste des Mikvaot femmes est fournie automatiquement.
+Toujours dire d'appeler avant pour confirmer les horaires.
 
 CONTACT
 Beth Habad S. Maurice
 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice
 Téléphone : 07 70 24 17 46`;
 
-async function getFullPrompt(evenements = null) {
+async function getFullPrompt(extra = null) {
   let prompt = SYSTEM_PROMPT_BASE;
   try {
     const result = await pool.query('SELECT * FROM infos ORDER BY created_at ASC');
@@ -90,8 +95,25 @@ async function getFullPrompt(evenements = null) {
       prompt += "\n\n" + extras.join("\n\n");
     }
   } catch (e) { console.error('DB error:', e.message); }
-  if (evenements) prompt += "\n\nÉVÉNEMENTS ACTUELS DU SITE :\n" + evenements;
+  if (extra) prompt += "\n\n" + extra;
   return prompt;
+}
+
+// ─── RÉCUPÉRER LES MIKVAOT FEMMES ────────────────────────────
+async function getMikvaotFemmes() {
+  try {
+    const res = await fetch('https://www.loubavitch.fr/pratique/liste-des-mikves', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const html = await res.text();
+    const texte = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return "LISTE DES MIKVAOT (source: loubavitch.fr) :\n" + texte.substring(0, 3000);
+  } catch (e) { return null; }
 }
 
 // ─── RÉCUPÉRER LES ÉVÉNEMENTS ────────────────────────────────
@@ -100,8 +122,13 @@ async function getEvenements() {
     const res = await fetch('https://habad-s-maurice.kehila.io/evenements', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const html = await res.text();
     const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    return texte.substring(0, 2000);
+    return "ÉVÉNEMENTS ACTUELS :\n" + texte.substring(0, 2000);
   } catch (e) { return null; }
+}
+
+function parleDeMikve(msg) {
+  const mots = ['mikve', 'mikvé', 'mikve femme', 'mikve homme', 'mikve kelim', 'bain rituel', 'purification'];
+  return mots.some(m => msg.toLowerCase().includes(m));
 }
 
 function parleDevenements(msg) {
@@ -125,9 +152,15 @@ app.post('/webhook', async (req, res) => {
     if (message && message.type === 'text') {
       const from = message.from;
       const text = message.text.body;
-      let evenements = null;
-      if (parleDevenements(text)) evenements = await getEvenements();
-      const reply = await askClaude(text, evenements);
+      let extra = null;
+      if (parleDeMikve(text)) {
+        const mikvaot = await getMikvaotFemmes();
+        if (mikvaot) extra = mikvaot;
+      } else if (parleDevenements(text)) {
+        const evenements = await getEvenements();
+        if (evenements) extra = evenements;
+      }
+      const reply = await askClaude(text, extra);
       await sendWhatsApp(from, reply);
     }
     res.sendStatus(200);
@@ -165,9 +198,9 @@ app.delete('/admin/delete/:id', async (req, res) => {
 });
 
 // ─── CLAUDE ──────────────────────────────────────────────────
-async function askClaude(userMessage, evenements = null) {
+async function askClaude(userMessage, extra = null) {
   try {
-    const systemPrompt = await getFullPrompt(evenements);
+    const systemPrompt = await getFullPrompt(extra);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
