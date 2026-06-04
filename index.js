@@ -129,6 +129,22 @@ function parleDevenements(msg) {
   return ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'cette semaine', 'ce mois', 'soirée', 'soiree'].some(m => msg.toLowerCase().includes(m));
 }
 
+async function getHorairesChabbat() {
+  try {
+    const res = await fetch('https://www.calj.net/', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const html = await res.text();
+    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    // Extraire la partie Shabbat
+    const match = texte.match(/allumage avant[\s\S]{0,200}fin de Shabbat[\s\S]{0,100}/i);
+    if (match) return "HORAIRES CHABBAT (Paris, source calj.net) :\n" + match[0].substring(0, 300);
+    return "HORAIRES CHABBAT (source calj.net) :\n" + texte.substring(texte.indexOf('allumage'), texte.indexOf('allumage') + 200);
+  } catch (e) { return null; }
+}
+
+function parleDeChabbat(msg) {
+  return ['chabbat', 'shabbat', 'horaire chabbat', 'heure chabbat', 'allumage', 'entrée chabbat', 'fin chabbat', 'havdalah'].some(m => msg.toLowerCase().includes(m));
+}
+
 // ─── WEBHOOK META ────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -147,6 +163,7 @@ app.post('/webhook', async (req, res) => {
       const text = message.text.body;
       let extra = null;
       if (parleDeMikve(text)) extra = await getMikvaotFemmes();
+      else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
       else if (parleDevenements(text)) extra = await getEvenements();
       const reply = await askClaude(text, extra);
       await sendWhatsApp(from, reply);
