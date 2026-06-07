@@ -392,8 +392,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="inner">
     <div class="card">
       <div class="card-title">Configuration serveur</div>
-      <div class="config-note">⚠️ Entrez l'adresse Railway une seule fois.</div>
+      <div class="config-note">⚠️ Entrez l'adresse Railway et le mot de passe admin une seule fois — ils seront mémorisés.</div>
       <div class="field"><label>Adresse du serveur Railway</label><input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app"></div>
+      <div class="field"><label>Mot de passe admin Railway</label><input type="password" id="admin-pw-config" placeholder="••••••••"></div>
       <button class="btn-main" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
       <div class="alert ok" id="alert-config"></div>
       <div style="margin-top:18px">
@@ -488,6 +489,8 @@ function checkPin() {
     document.getElementById('app').style.display = 'block';
     const saved = localStorage.getItem('railway_url');
     if (saved) { document.getElementById('server-url').value = saved; document.getElementById('current-url').textContent = saved; }
+  const savedPw = localStorage.getItem('railway_admin_pw');
+  if (savedPw) document.getElementById('admin-pw-config').value = savedPw;
   } else {
     loginAttempts++;
     updateDots('error');
@@ -532,7 +535,7 @@ let corbeilleSelectMode = false;
 let corbeilleSelectedIds = new Set();
 
 function getUrl() { return (localStorage.getItem('railway_url') || '').replace(/\/$/, ''); }
-function getAdminPw() { return getPin(); }
+function getAdminPw() { return localStorage.getItem('railway_admin_pw') || ''; }
 
 function showTab(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -953,6 +956,8 @@ async function chargerConvs() {
 }
 
 function sauvegarderConfig() {
+  const pw = document.getElementById('admin-pw-config').value.trim();
+  if (pw) localStorage.setItem('railway_admin_pw', pw);
   const url = document.getElementById('server-url').value.trim().replace(/\/$/,'');
   if (!url) return;
   localStorage.setItem('railway_url', url);
