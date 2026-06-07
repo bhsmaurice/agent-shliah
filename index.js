@@ -44,6 +44,14 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS attente_demande (
+      id SERIAL PRIMARY KEY,
+      phone TEXT UNIQUE,
+      type TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Base de données prête');
 }
 
@@ -308,44 +316,46 @@ app.post('/webhook', async (req, res) => {
       const from = message.from;
       const text = message.text.body;
 
-      // Détecter si c'est une demande spéciale
-      const typeDemande = detecterTypeDemande(text);
-
       let reply;
 
-      if (typeDemande) {
-        const config = TYPES_DEMANDES[typeDemande];
-        reply = config.messageBot();
-      } else {
-        // Vérifier si le message précédent était une demande (réponse avec infos)
-        try {
-          const dernierMsg = await pool.query(
-            'SELECT reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 1',
-            [from]
-          );
-          if (dernierMsg.rows.length > 0) {
-            const derniereReponse = dernierMsg.rows[0].reponse;
-            // Chercher quel type de demande correspond à la dernière réponse du bot
-            for (const [type, config] of Object.entries(TYPES_DEMANDES)) {
-              const msgAttendu = config.messageBot();
-              // Si la dernière réponse du bot était un message de demande d'infos
-              if (derniereReponse && derniereReponse.includes(msgAttendu.substring(0, 40))) {
-                // C'est la réponse à une demande — on enregistre
-                await sauvegarderDemande(type, from, text);
-                await envoyerEmailDemande(type, from, text);
-                reply = `Merci, votre demande a bien été reçue !
+      // 1. Vérifier si ce numéro est en attente de réponse à une demande
+      let enAttente = null;
+      try {
+        const res2 = await pool.query('SELECT type FROM attente_demande WHERE phone=$1', [from]);
+        if (res2.rows.length > 0) enAttente = res2.rows[0].type;
+      } catch (e) { console.error('Attente check error:', e.message); }
 
-Le Rav Levi vous contactera dans les meilleurs délais.
+      if (enAttente) {
+        // C'est la réponse avec les infos — on enregistre et on confirme
+        await sauvegarderDemande(enAttente, from, text);
+        await envoyerEmailDemande(enAttente, from, text);
+        // Supprimer l'attente
+        try { await pool.query('DELETE FROM attente_demande WHERE phone=$1', [from]); } catch(e) {}
+
+        reply = `Merci, votre demande a bien été reçue !
+
+Si c'est urgent, contactez-le directement au 07 70 24 17 46.
 
 ${getSignature()}`;
-                break;
-              }
-            }
-          }
-        } catch (e) { console.error('Check demande error:', e.message); }
 
-        if (!reply) {
-          // Mode normal : Claude répond
+      } else {
+        // 2. Détecter si c'est une nouvelle demande
+        const typeDemande = detecterTypeDemande(text);
+
+        if (typeDemande) {
+          // Envoyer le message d'instructions et mettre en attente
+          const config = TYPES_DEMANDES[typeDemande];
+          reply = config.messageBot();
+          // Sauvegarder qu'on attend la réponse de ce numéro
+          try {
+            await pool.query(
+              'INSERT INTO attente_demande (phone, type) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET type=$2, created_at=NOW()',
+              [from, typeDemande]
+            );
+          } catch (e) { console.error('Attente save error:', e.message); }
+
+        } else {
+          // 3. Mode normal : Claude répond
           let extra = null;
           if (parleDeMikve(text)) extra = await getMikvaotFemmes();
           else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
