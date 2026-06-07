@@ -332,9 +332,10 @@ app.post('/webhook', async (req, res) => {
         // On est dans une conversation guidée
         estUneDemande = true;
         const config = TYPES_DEMANDES[session.type];
-        const reponses = session.reponses || {};
+        let reponses = session.reponses || {};
+        if (typeof reponses === 'string') { try { reponses = JSON.parse(reponses); } catch(e) { reponses = {}; } }
         const questions = config.questions;
-        const etapeActuelle = session.etape;
+        const etapeActuelle = parseInt(session.etape) || 0;
 
         // Sauvegarder la réponse à la question actuelle
         if (etapeActuelle < questions.length) {
