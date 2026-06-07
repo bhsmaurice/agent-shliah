@@ -317,6 +317,15 @@ app.post('/webhook', async (req, res) => {
     if (message && message.type === 'text') {
       const from = message.from;
       const text = message.text.body;
+      const msgId = message.id;
+
+      // Dédupliquer — ignorer si déjà traité
+      try {
+        const already = await pool.query("SELECT 1 FROM conversations WHERE question=$1 AND phone=$2 AND created_at > NOW() - INTERVAL '10 seconds'", [text, from]);
+        if (already.rows.length > 0 && !['cerfa','recu fiscal','sefer','salle'].some(k => text.toLowerCase().includes(k))) {
+          res.sendStatus(200); return;
+        }
+      } catch(e) {}
 
       let reply;
       let estUneDemande = false;
