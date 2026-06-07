@@ -13,19 +13,46 @@
   --bg: #F4F2ED; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
   --border: #E0D8C8; --green: #2D7A4F; --green-bg: #E8F5EE;
   --red: #C0392B; --red-bg: #FDECEA; --r: 14px;
-  --purple: #6B21A8; --purple-bg: #F3E8FF;
   --orange: #C05621; --orange-bg: #FFF3E0;
 }
 html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); }
 
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--navy);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 999; padding: 30px;
+}
+.login-logo { font-family: 'Frank Ruhl Libre', serif; font-size: 28px; color: var(--gold); margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 40px; }
+.pin-display { display: flex; gap: 14px; margin-bottom: 32px; }
+.pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: transparent; transition: all 0.2s; }
+.pin-dot.filled { background: var(--gold); border-color: var(--gold); }
+.pin-dot.error { background: var(--red); border-color: var(--red); }
+.pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+.pin-btn {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.12);
+  color: #fff; font-family: 'Heebo', sans-serif; font-size: 22px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.pin-btn:active { background: rgba(184,151,42,0.3); border-color: var(--gold); transform: scale(0.93); }
+.pin-btn.delete { font-size: 18px; background: transparent; border-color: transparent; }
+.pin-btn.zero { grid-column: 2; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
+
+/* ── MAIN APP ── */
+#app { display: none; }
 .header { background: var(--navy); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
-.header-right { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
+.btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 
 .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { flex: 1; min-width: 70px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+.tab { flex: 1; min-width: 60px; padding: 12px 4px; text-align: center; font-size: 11px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
 .tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
 
 .page { display: none; min-height: calc(100vh - 120px); }
@@ -49,7 +76,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .btn-main:active { background: var(--navy2); transform: scale(0.98); }
 .btn-main:disabled { background: var(--muted); cursor: not-allowed; }
 .btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--navy); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-.btn-secondary:active { background: var(--bg); }
+.btn-danger { width: 100%; padding: 12px; background: var(--red-bg); color: var(--red); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid #F5B7B1; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 
 .alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
 .alert.ok { background: var(--green-bg); color: var(--green); border: 1px solid #A8D5B8; }
@@ -89,7 +116,11 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .conv-r { font-size: 12px; color: var(--muted); padding: 8px 10px; background: var(--bg); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
 
 /* DEMANDES */
-.demande-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.demande-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.demande-card.selected { border-color: var(--gold); background: #FFFDF5; }
+.demande-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
+.demande-card.select-mode .demande-checkbox { display: block; }
+.demande-card.select-mode { padding-left: 42px; }
 .demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; }
 .type-cerfa { background: #FEF3C7; color: #92400E; }
@@ -100,19 +131,33 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .demande-phone { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .demande-texte { font-size: 13px; color: var(--text); background: var(--bg); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-.statut-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
-.statut-nouveau { background: #FFF3E0; color: var(--orange); }
-.statut-en_cours { background: #FEF3C7; color: #92400E; }
-.statut-urgent { background: #FDECEA; color: var(--red); }
-.statut-termine { background: var(--green-bg); color: var(--green); }
-.btn-statut { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; white-space: nowrap; }
-.btn-statut:hover { border-color: var(--navy); color: var(--navy); background: var(--bg); }
 .statut-select { font-size: 12px; padding: 4px 8px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--text); font-family: 'Heebo', sans-serif; cursor: pointer; outline: none; }
 .btn-trash { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 6px; color: var(--muted); transition: color 0.15s; }
 .btn-trash:hover { color: var(--red); }
-.corbeille-card { background: #FFF5F5; border-radius: var(--r); border: 1px dashed #F5B7B1; padding: 14px; margin-bottom: 10px; opacity: 0.8; }
-.btn-restore { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--green); background: var(--green-bg); color: var(--green); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
-.btn-delete-perm { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--red); background: var(--red-bg); color: var(--red); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
+
+/* SELECTION MULTIPLE */
+.select-bar { display: none; background: var(--navy); padding: 10px 16px; border-radius: var(--r); margin-bottom: 12px; align-items: center; justify-content: space-between; }
+.select-bar.active { display: flex; }
+.select-bar-left { color: #fff; font-size: 13px; font-weight: 500; }
+.select-bar-right { display: flex; gap: 8px; }
+.btn-select-action { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-weight: 500; }
+.btn-sel-trash { background: var(--red-bg); color: var(--red); }
+.btn-sel-cancel { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* STATUTS */
+.statut-nouveau { background: #FFF3E0; color: var(--orange); }
+.statut-en_cours { background: #FEF3C7; color: #92400E; }
+.statut-urgent { background: var(--red-bg); color: var(--red); }
+.statut-termine { background: var(--green-bg); color: var(--green); }
+
+/* CORBEILLE */
+.corbeille-card { background: #FFF5F5; border-radius: var(--r); border: 1px dashed #F5B7B1; padding: 14px; margin-bottom: 10px; position: relative; }
+.corbeille-card.selected { border-color: var(--red); background: #FFF0F0; }
+.corbeille-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
+.corbeille-card.select-mode .corbeille-checkbox { display: block; }
+.corbeille-card.select-mode { padding-left: 42px; }
+.btn-restore { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--green); background: var(--green-bg); color: var(--green); cursor: pointer; font-family: 'Heebo', sans-serif; }
+.btn-delete-perm { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--red); background: var(--red-bg); color: var(--red); cursor: pointer; font-family: 'Heebo', sans-serif; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
 .modal-overlay.active { display: flex; }
@@ -130,10 +175,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .topic-bar-wrap { flex: 1; }
 .topic-name { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
 .topic-bar { height: 6px; background: var(--gold-light); border-radius: 4px; overflow: hidden; }
-.topic-bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.5s; }
+.topic-bar-fill { height: 100%; background: var(--gold); border-radius: 4px; }
 .topic-count { font-size: 13px; font-weight: 700; color: var(--gold-dark); min-width: 30px; text-align: right; }
-.suggest-btn { width: 100%; padding: 10px 14px; background: var(--gold-light); color: var(--gold-dark); font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--gold); border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; transition: all 0.15s; }
-.suggest-btn:hover { background: var(--gold); color: var(--white); }
+.suggest-btn { width: 100%; padding: 10px 14px; background: var(--gold-light); color: var(--gold-dark); font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--gold); border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; }
 
 .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
 .empty .icon { font-size: 40px; margin-bottom: 12px; }
@@ -147,25 +191,58 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </head>
 <body>
 
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-logo">Shliah Bot 🤖</div>
+  <div class="login-sub">Panneau d'administration</div>
+  <div class="pin-display">
+    <div class="pin-dot" id="dot-0"></div>
+    <div class="pin-dot" id="dot-1"></div>
+    <div class="pin-dot" id="dot-2"></div>
+    <div class="pin-dot" id="dot-3"></div>
+    <div class="pin-dot" id="dot-4"></div>
+    <div class="pin-dot" id="dot-5"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn zero" onclick="pinPress('0')">0</button>
+    <button class="pin-btn delete" onclick="pinDelete()">⌫</button>
+  </div>
+  <div class="login-error" id="login-error"></div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
 <div class="header">
   <div class="header-left">
     <div class="site-name">Shliah Bot 🤖</div>
     <div class="site-sub">Panneau d'administration</div>
   </div>
-  <div class="header-right">בית חב"ד</div>
+  <div class="header-right">
+    <span class="header-hebrew">בית חב"ד</span>
+    <button class="btn-logout" onclick="logout()">🔒 Verrouiller</button>
+  </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('ajouter',this)">➕ Ajouter</div>
-  <div class="tab" onclick="showTab('infos',this)">📋 Infos</div>
-  <div class="tab" onclick="showTab('demandes',this)">📩 Demandes</div>
-  <div class="tab" onclick="showTab('corbeille',this)">🗑️ Corbeille</div>
-  <div class="tab" onclick="showTab('questions',this)">💬 Questions</div>
-  <div class="tab" onclick="showTab('export',this)">📤 Export</div>
-  <div class="tab" onclick="showTab('config',this)">⚙️ Config</div>
+  <div class="tab active" onclick="showTab('ajouter',this)">➕</div>
+  <div class="tab" onclick="showTab('infos',this)">📋</div>
+  <div class="tab" onclick="showTab('demandes',this)">📩</div>
+  <div class="tab" onclick="showTab('corbeille',this)">🗑️</div>
+  <div class="tab" onclick="showTab('questions',this)">💬</div>
+  <div class="tab" onclick="showTab('export',this)">📤</div>
+  <div class="tab" onclick="showTab('config',this)">⚙️</div>
 </div>
 
-<!-- ─── AJOUTER ─── -->
+<!-- AJOUTER -->
 <div class="page active" id="tab-ajouter">
   <div class="inner">
     <div class="card">
@@ -181,22 +258,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
           <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
         </div>
       </div>
-      <div class="field">
-        <label>Titre</label>
-        <input type="text" id="titre" placeholder="Ex: Téfilat HaDerech">
-      </div>
-      <div class="field">
-        <label>Contenu</label>
-        <textarea id="contenu" placeholder="Écrivez ici l'information à ajouter..."></textarea>
-      </div>
-      <div class="field">
-        <label>Instruction pour l'agent (facultatif)</label>
-        <input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer">
-      </div>
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-add" placeholder="••••••••">
-      </div>
+      <div class="field"><label>Titre</label><input type="text" id="titre" placeholder="Ex: Téfilat HaDerech"></div>
+      <div class="field"><label>Contenu</label><textarea id="contenu" placeholder="Écrivez ici l'information..."></textarea></div>
+      <div class="field"><label>Instruction pour l'agent (facultatif)</label><input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer"></div>
       <button class="btn-main" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
       <div class="alert ok" id="alert-ok"></div>
       <div class="alert err" id="alert-err"></div>
@@ -204,14 +268,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
 </div>
 
-<!-- ─── INFOS ─── -->
+<!-- INFOS -->
 <div class="page" id="tab-infos">
   <div class="inner">
     <div class="card">
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-list" placeholder="••••••••">
-      </div>
       <button class="btn-main" onclick="chargerListe()">🔄 Charger les infos</button>
     </div>
     <div class="search-box" id="search-wrap" style="display:none">
@@ -231,14 +291,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
 </div>
 
-<!-- ─── DEMANDES ─── -->
+<!-- DEMANDES -->
 <div class="page" id="tab-demandes">
   <div class="inner">
     <div class="card">
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-demandes" placeholder="••••••••">
-      </div>
       <button class="btn-main" onclick="chargerDemandes()">🔄 Charger les demandes</button>
     </div>
     <div id="demandes-stats" style="display:none">
@@ -247,51 +303,56 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="filter-chips" id="demandes-filter-chips" style="display:none">
       <div class="chip active" data-filter="tous" onclick="selectDemandeFilter(this)">Toutes</div>
       <div class="chip" data-filter="cerfa" onclick="selectDemandeFilter(this)">📋 Cerfa</div>
-      <div class="chip" data-filter="sefer_torah" onclick="selectDemandeFilter(this)">📜 Sefer Torah</div>
+      <div class="chip" data-filter="sefer_torah" onclick="selectDemandeFilter(this)">📜 Torah</div>
       <div class="chip" data-filter="location_salle" onclick="selectDemandeFilter(this)">🏠 Salle</div>
       <div class="chip" data-filter="nouveau" onclick="selectDemandeFilter(this)">🔴 Nouveau</div>
       <div class="chip" data-filter="urgent" onclick="selectDemandeFilter(this)">🔥 Urgent</div>
       <div class="chip" data-filter="termine" onclick="selectDemandeFilter(this)">✅ Terminé</div>
     </div>
+    <div class="select-bar" id="demandes-select-bar">
+      <div class="select-bar-left" id="demandes-select-count">0 sélectionnée(s)</div>
+      <div class="select-bar-right">
+        <button class="btn-select-action btn-sel-trash" onclick="corbeilleSelection()">🗑️ Corbeille</button>
+        <button class="btn-select-action btn-sel-cancel" onclick="annulerSelection()">Annuler</button>
+      </div>
+    </div>
     <div id="demandes-container"></div>
   </div>
 </div>
 
-<!-- ─── CORBEILLE ─── -->
+<!-- CORBEILLE -->
 <div class="page" id="tab-corbeille">
   <div class="inner">
     <div class="card">
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-corbeille" placeholder="••••••••">
-      </div>
       <button class="btn-main" onclick="chargerCorbeille()">🔄 Charger la corbeille</button>
+    </div>
+    <div class="select-bar" id="corbeille-select-bar">
+      <div class="select-bar-left" id="corbeille-select-count">0 sélectionnée(s)</div>
+      <div class="select-bar-right">
+        <button class="btn-select-action btn-sel-trash" onclick="supprimerSelectionCorbeille()" style="background:#FDECEA;color:#C0392B;">🗑️ Supprimer</button>
+        <button class="btn-select-action" onclick="restaurerSelectionCorbeille()" style="background:#E8F5EE;color:#2D7A4F;">♻️ Restaurer</button>
+        <button class="btn-select-action btn-sel-cancel" onclick="annulerSelectionCorbeille()">Annuler</button>
+      </div>
     </div>
     <div id="corbeille-container"></div>
   </div>
 </div>
+
+<!-- QUESTIONS -->
 <div class="page" id="tab-questions">
   <div class="inner">
     <div class="card">
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-convs" placeholder="••••••••">
-      </div>
       <button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button>
     </div>
     <div id="convs-container"></div>
   </div>
 </div>
 
-<!-- ─── EXPORT ─── -->
+<!-- EXPORT -->
 <div class="page" id="tab-export">
   <div class="inner">
     <div class="card">
       <div class="card-title">📤 Exporter mes données</div>
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-export" placeholder="••••••••">
-      </div>
       <button class="btn-main" onclick="exporterInfos()">📋 Exporter les infos (CSV)</button>
       <button class="btn-secondary" onclick="exporterQuestions()">💬 Exporter les questions (CSV)</button>
       <button class="btn-secondary" onclick="exporterDemandes()">📩 Exporter les demandes (CSV)</button>
@@ -299,45 +360,35 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="alert ok" id="alert-export-ok"></div>
       <div class="alert err" id="alert-export-err"></div>
     </div>
-
     <div class="card">
       <div class="card-title">📥 Importer des infos</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Importez un fichier CSV exporté précédemment pour restaurer vos informations.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Importez un fichier CSV exporté précédemment.</p>
       <div class="field">
         <label>Fichier CSV</label>
         <input type="file" id="import-file" accept=".csv" style="padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;width:100%;font-size:13px;color:var(--muted);">
-      </div>
-      <div class="field">
-        <label>Mot de passe admin</label>
-        <input type="password" id="pw-import" placeholder="••••••••">
       </div>
       <button class="btn-main" onclick="importerInfos()">📥 Importer</button>
       <div class="alert ok" id="alert-import-ok"></div>
       <div class="alert err" id="alert-import-err"></div>
     </div>
-
     <div class="card" id="analyse-card" style="display:none">
       <div class="card-title">🧠 Questions fréquentes</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Les sujets les plus demandés par vos fidèles :</p>
       <div id="analyse-container"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">💡 Cliquez sur un sujet pour créer une nouvelle info :</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">💡 Cliquez pour créer une info :</p>
         <div id="suggestions-container"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ─── CONFIG ─── -->
+<!-- CONFIG -->
 <div class="page" id="tab-config">
   <div class="inner">
     <div class="card">
       <div class="card-title">Configuration serveur</div>
-      <div class="config-note">⚠️ Entrez l'adresse Railway une seule fois — elle sera mémorisée sur votre téléphone.</div>
-      <div class="field">
-        <label>Adresse du serveur Railway</label>
-        <input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app">
-      </div>
+      <div class="config-note">⚠️ Entrez l'adresse Railway une seule fois.</div>
+      <div class="field"><label>Adresse du serveur Railway</label><input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app"></div>
       <button class="btn-main" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
       <div class="alert ok" id="alert-config"></div>
       <div style="margin-top:18px">
@@ -345,10 +396,19 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
         <div class="url-display" id="current-url">Non configurée</div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">🔒 Code PIN admin</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Changez votre code PIN d'accès (6 chiffres).</p>
+      <div class="field"><label>Nouveau PIN (6 chiffres)</label><input type="password" id="new-pin" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+      <div class="field"><label>Confirmer le PIN</label><input type="password" id="confirm-pin" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+      <button class="btn-main" onclick="changerPin()">🔒 Changer le PIN</button>
+      <div class="alert ok" id="alert-pin-ok"></div>
+      <div class="alert err" id="alert-pin-err"></div>
+    </div>
   </div>
 </div>
 
-<!-- ─── MODAL MODIFIER ─── -->
+<!-- MODAL MODIFIER -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -365,22 +425,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
         <button class="cat-btn" data-cat="autre" onclick="selectEditCat(this)">📝 Autre</button>
       </div>
     </div>
-    <div class="field">
-      <label>Titre</label>
-      <input type="text" id="edit-titre" placeholder="Titre">
-    </div>
-    <div class="field">
-      <label>Contenu</label>
-      <textarea id="edit-contenu" style="min-height:150px"></textarea>
-    </div>
-    <div class="field">
-      <label>Instruction (facultatif)</label>
-      <input type="text" id="edit-instruction" placeholder="Instruction pour l'agent">
-    </div>
-    <div class="field">
-      <label>Mot de passe admin</label>
-      <input type="password" id="edit-pw" placeholder="••••••••">
-    </div>
+    <div class="field"><label>Titre</label><input type="text" id="edit-titre"></div>
+    <div class="field"><label>Contenu</label><textarea id="edit-contenu" style="min-height:150px"></textarea></div>
+    <div class="field"><label>Instruction (facultatif)</label><input type="text" id="edit-instruction"></div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="fermerModal()">Annuler</button>
       <button class="modal-save" onclick="sauvegarderModif()">💾 Sauvegarder</button>
@@ -389,21 +436,98 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert err" id="alert-edit-err"></div>
   </div>
 </div>
+</div><!-- fin #app -->
 
 <script>
+// ── PIN LOGIN ──────────────────────────────────────────────
+const PIN_KEY = 'shliah_admin_pin';
+const DEFAULT_PIN = '194561';
+let pinBuffer = '';
+let loginAttempts = 0;
+let lockUntil = 0;
+
+function getPin() { return localStorage.getItem(PIN_KEY) || DEFAULT_PIN; }
+
+function pinPress(digit) {
+  const now = Date.now();
+  if (now < lockUntil) {
+    const secs = Math.ceil((lockUntil - now) / 1000);
+    document.getElementById('login-error').textContent = `Bloqué — réessayez dans ${secs}s`;
+    return;
+  }
+  if (pinBuffer.length >= 6) return;
+  pinBuffer += digit;
+  updateDots();
+  if (pinBuffer.length === 6) {
+    setTimeout(() => checkPin(), 100);
+  }
+}
+
+function pinDelete() {
+  if (pinBuffer.length > 0) { pinBuffer = pinBuffer.slice(0, -1); updateDots(); }
+}
+
+function updateDots(state) {
+  for (let i = 0; i < 6; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.className = 'pin-dot';
+    if (state === 'error') dot.classList.add('error');
+    else if (i < pinBuffer.length) dot.classList.add('filled');
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === getPin()) {
+    loginAttempts = 0;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const saved = localStorage.getItem('railway_url');
+    if (saved) { document.getElementById('server-url').value = saved; document.getElementById('current-url').textContent = saved; }
+  } else {
+    loginAttempts++;
+    updateDots('error');
+    document.getElementById('login-error').textContent = loginAttempts >= 5 ? 'Trop de tentatives — bloqué 30s' : `Code incorrect (${loginAttempts}/5)`;
+    if (loginAttempts >= 5) { lockUntil = Date.now() + 30000; loginAttempts = 0; }
+    setTimeout(() => { pinBuffer = ''; updateDots(); }, 800);
+  }
+}
+
+function logout() {
+  pinBuffer = '';
+  updateDots();
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function changerPin() {
+  const np = document.getElementById('new-pin').value.trim();
+  const cp = document.getElementById('confirm-pin').value.trim();
+  const ok = document.getElementById('alert-pin-ok');
+  const err = document.getElementById('alert-pin-err');
+  ok.style.display = 'none'; err.style.display = 'none';
+  if (!/^\d{6}$/.test(np)) { err.textContent = 'Le PIN doit contenir exactement 6 chiffres'; err.className = 'alert err'; err.style.display = 'block'; return; }
+  if (np !== cp) { err.textContent = 'Les deux PIN ne correspondent pas'; err.className = 'alert err'; err.style.display = 'block'; return; }
+  localStorage.setItem(PIN_KEY, np);
+  ok.textContent = '✓ PIN changé avec succès !'; ok.className = 'alert ok'; ok.style.display = 'block';
+  document.getElementById('new-pin').value = '';
+  document.getElementById('confirm-pin').value = '';
+}
+
+// ── APP ───────────────────────────────────────────────────
 let catSelected = 'priere';
 let editCatSelected = 'priere';
 let allInfos = [];
 let allDemandes = [];
 let filterCat = 'tous';
 let filterDemande = 'tous';
-
-window.onload = function() {
-  const saved = localStorage.getItem('railway_url');
-  if (saved) { document.getElementById('server-url').value = saved; document.getElementById('current-url').textContent = saved; }
-};
+let selectModeActive = false;
+let selectedIds = new Set();
+let corbeilleSelectMode = false;
+let corbeilleSelectedIds = new Set();
 
 function getUrl() { return (localStorage.getItem('railway_url') || '').replace(/\/$/, ''); }
+function getAdminPw() { return getPin(); }
 
 function showTab(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -423,47 +547,28 @@ function selectEditCat(btn) {
 }
 
 function selectFilter(chip) {
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  chip.classList.add('active'); filterCat = chip.dataset.filter;
-  afficherInfos();
+  document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active'); filterCat = chip.dataset.filter; afficherInfos();
 }
 
 function selectDemandeFilter(chip) {
   document.querySelectorAll('#demandes-filter-chips .chip').forEach(c => c.classList.remove('active'));
-  chip.classList.add('active'); filterDemande = chip.dataset.filter;
-  afficherDemandes();
+  chip.classList.add('active'); filterDemande = chip.dataset.filter; afficherDemandes();
 }
 
 function filtrerInfos() { afficherInfos(); }
 
 function badgeClass(cat) {
-  const map = { priere: 'badge-priere', horaire: 'badge-horaire', cours: 'badge-cours', service: 'badge-service', evenement: 'badge-evenement', autre: 'badge-autre' };
-  return map[cat] || 'badge-autre';
+  return { priere:'badge-priere', horaire:'badge-horaire', cours:'badge-cours', service:'badge-service', evenement:'badge-evenement', autre:'badge-autre' }[cat] || 'badge-autre';
 }
-
 function catLabel(cat) {
-  const map = { priere: '🙏 Prière', horaire: '🕐 Horaire', cours: '📚 Cours', service: '🔧 Service', evenement: '✡️ Événement', autre: '📝 Autre' };
-  return map[cat] || cat;
+  return { priere:'🙏 Prière', horaire:'🕐 Horaire', cours:'📚 Cours', service:'🔧 Service', evenement:'✡️ Événement', autre:'📝 Autre' }[cat] || cat;
 }
-
 function typeLabel(type) {
-  const map = { cerfa: '📋 Cerfa', sefer_torah: '📜 Sefer Torah', location_salle: '🏠 Location Salle' };
-  return map[type] || '📩 ' + type;
+  return { cerfa:'📋 Cerfa', sefer_torah:'📜 Sefer Torah', location_salle:'🏠 Location Salle' }[type] || '📩 ' + type;
 }
-
 function typeBadgeClass(type) {
-  const map = { cerfa: 'type-cerfa', sefer_torah: 'type-sefer_torah', location_salle: 'type-location_salle' };
-  return map[type] || 'type-autre';
-}
-
-function statutLabel(s) {
-  const map = { nouveau: '🔴 Nouveau', en_cours: '🟡 En cours', traite: '✅ Traité' };
-  return map[s] || s;
-}
-
-function statutClass(s) {
-  const map = { nouveau: 'statut-nouveau', en_cours: 'statut-en_cours', traite: 'statut-traite' };
-  return map[s] || 'statut-nouveau';
+  return { cerfa:'type-cerfa', sefer_torah:'type-sefer_torah', location_salle:'type-location_salle' }[type] || 'type-autre';
 }
 
 function afficherInfos() {
@@ -483,7 +588,7 @@ function afficherInfos() {
       <span class="badge ${badgeClass(item.categorie)}">${catLabel(item.categorie)}</span>
       <div class="info-title">${item.titre}</div>
       <div class="info-preview">${item.contenu}</div>
-      <div class="info-date">📅 Ajouté le ${new Date(item.created_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+      <div class="info-date">📅 ${new Date(item.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
       <div class="card-actions">
         <button class="btn-icon edit" onclick="ouvrirModal(${item.id})">✏️</button>
         <button class="btn-icon del" onclick="supprimer(${item.id})">✕</button>
@@ -492,34 +597,67 @@ function afficherInfos() {
   });
 }
 
-function statutLabel(s) {
-  const map = { nouveau: '🔴 Nouveau', en_cours: '🟡 En cours', urgent: '🔥 Urgent', termine: '✅ Terminé' };
-  return map[s] || s;
+// ── SÉLECTION MULTIPLE DEMANDES ──
+function activerSelection() {
+  selectModeActive = true;
+  selectedIds.clear();
+  document.querySelectorAll('.demande-card').forEach(c => c.classList.add('select-mode'));
+  document.getElementById('demandes-select-bar').classList.add('active');
+  updateSelectCount();
 }
 
-function statutClass(s) {
-  const map = { nouveau: 'statut-nouveau', en_cours: 'statut-en_cours', urgent: 'statut-urgent', termine: 'statut-termine' };
-  return map[s] || 'statut-nouveau';
+function annulerSelection() {
+  selectModeActive = false;
+  selectedIds.clear();
+  document.querySelectorAll('.demande-card').forEach(c => { c.classList.remove('select-mode', 'selected'); c.querySelector('.demande-checkbox').checked = false; });
+  document.getElementById('demandes-select-bar').classList.remove('active');
+}
+
+function toggleSelectDemande(id, cb) {
+  if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+  document.getElementById('demande-' + id).classList.toggle('selected', cb.checked);
+  updateSelectCount();
+}
+
+function updateSelectCount() {
+  document.getElementById('demandes-select-count').textContent = selectedIds.size + ' sélectionnée(s)';
+}
+
+async function corbeilleSelection() {
+  if (selectedIds.size === 0) return;
+  if (!confirm(`Mettre ${selectedIds.size} demande(s) à la corbeille ?`)) return;
+  const url = getUrl(); const pw = getAdminPw();
+  for (const id of selectedIds) {
+    try {
+      await fetch(url + '/admin/demandes/' + id + '/statut', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password:pw, statut:'corbeille'}) });
+      const d = allDemandes.find(x => x.id === id);
+      if (d) d.statut = 'corbeille';
+    } catch(e) {}
+  }
+  annulerSelection();
+  afficherDemandes();
 }
 
 function afficherDemandes() {
   const container = document.getElementById('demandes-container');
   let filtered = allDemandes.filter(d => d.statut !== 'corbeille');
-
   if (['nouveau','en_cours','urgent','termine'].includes(filterDemande)) {
     filtered = filtered.filter(d => d.statut === filterDemande);
   } else if (filterDemande !== 'tous') {
     filtered = filtered.filter(d => d.type === filterDemande);
   }
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>';
-    return;
-  }
-
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>'; return; }
   container.innerHTML = '';
+  // Bouton sélection multiple
+  const selBtn = document.createElement('button');
+  selBtn.className = 'btn-secondary';
+  selBtn.style.marginBottom = '10px';
+  selBtn.innerHTML = '☑️ Sélection multiple';
+  selBtn.onclick = activerSelection;
+  container.appendChild(selBtn);
+
   filtered.forEach(d => {
-    const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const date = new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     const data = d.data || {};
     const texte = data.texte_libre || JSON.stringify(data, null, 2);
     const phoneWa = data.phone_whatsapp || ('+' + d.phone);
@@ -527,10 +665,11 @@ function afficherDemandes() {
     el.className = 'demande-card';
     el.id = 'demande-' + d.id;
     el.innerHTML = `
+      <input type="checkbox" class="demande-checkbox" onchange="toggleSelectDemande(${d.id}, this)">
       <div class="demande-header">
         <span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span>
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn-trash" onclick="mettreCorbeille(${d.id})" title="Mettre à la corbeille">🗑️</button>
+          <button class="btn-trash" onclick="mettreCorbeille(${d.id})">🗑️</button>
           <span class="demande-date">${date}</span>
         </div>
       </div>
@@ -549,9 +688,8 @@ function afficherDemandes() {
 }
 
 async function chargerDemandes() {
-  const url = getUrl();
-  const pw = document.getElementById('pw-demandes').value.trim();
-  if (!url || !pw) return alert("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
   const container = document.getElementById('demandes-container');
   container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
   try {
@@ -573,36 +711,27 @@ async function chargerDemandes() {
 }
 
 async function changerStatut(id, statut) {
-  const url = getUrl();
-  const pw = document.getElementById('pw-demandes').value.trim();
+  const url = getUrl(); const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, statut })
-    });
-    const data = await res.json();
-    if (data.ok) { const d = allDemandes.find(x => x.id === id); if (d) d.statut = statut; }
-  } catch (e) { alert('Erreur'); }
+    await fetch(url + '/admin/demandes/' + id + '/statut', { method: 'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, statut}) });
+    const d = allDemandes.find(x => x.id === id); if (d) d.statut = statut;
+  } catch(e) {}
 }
 
 async function mettreCorbeille(id) {
-  if (!confirm('Mettre cette demande à la corbeille ?')) return;
-  const url = getUrl();
-  const pw = document.getElementById('pw-demandes').value.trim();
+  if (!confirm('Mettre à la corbeille ?')) return;
+  const url = getUrl(); const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, statut: 'corbeille' })
-    });
-    const data = await res.json();
-    if (data.ok) { const d = allDemandes.find(x => x.id === id); if (d) d.statut = 'corbeille'; afficherDemandes(); }
-  } catch (e) { alert('Erreur'); }
+    await fetch(url + '/admin/demandes/' + id + '/statut', { method: 'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, statut:'corbeille'}) });
+    const d = allDemandes.find(x => x.id === id); if (d) d.statut = 'corbeille';
+    afficherDemandes();
+  } catch(e) { alert('Erreur'); }
 }
 
+// ── CORBEILLE ──
 async function chargerCorbeille() {
-  const url = getUrl();
-  const pw = document.getElementById('pw-corbeille').value.trim();
-  if (!url || !pw) return alert("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
   const container = document.getElementById('corbeille-container');
   container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
   try {
@@ -610,10 +739,21 @@ async function chargerCorbeille() {
     const data = await res.json();
     if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
     const corbeille = (data.demandes || []).filter(d => d.statut === 'corbeille');
+    allDemandes = data.demandes || [];
     if (corbeille.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>'; return; }
+
     container.innerHTML = '';
+    // Boutons actions globales
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+    actionsDiv.innerHTML = `
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button>
+      <button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider la corbeille</button>`;
+    container.appendChild(actionsDiv);
+
+    const selectBar = document.getElementById('corbeille-select-bar');
     corbeille.forEach(d => {
-      const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const date = new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
       const data2 = d.data || {};
       const texte = data2.texte_libre || JSON.stringify(data2, null, 2);
       const phoneWa = data2.phone_whatsapp || ('+' + d.phone);
@@ -621,6 +761,7 @@ async function chargerCorbeille() {
       el.className = 'corbeille-card';
       el.id = 'corbeille-' + d.id;
       el.innerHTML = `
+        <input type="checkbox" class="corbeille-checkbox" onchange="toggleSelectCorbeille(${d.id}, this)">
         <div class="demande-header">
           <span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span>
           <span class="demande-date">${date}</span>
@@ -629,51 +770,90 @@ async function chargerCorbeille() {
         <div class="demande-texte">${texte}</div>
         <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
           <button class="btn-restore" onclick="restaurerDemande(${d.id})">♻️ Restaurer</button>
-          <button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer définitivement</button>
+          <button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer</button>
         </div>`;
       container.appendChild(el);
     });
-  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+  } catch(e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+async function viderCorbeille() {
+  if (!confirm('Vider toute la corbeille ? Cette action est irréversible.')) return;
+  const url = getUrl(); const pw = getAdminPw();
+  const enCorbeille = allDemandes.filter(d => d.statut === 'corbeille');
+  for (const d of enCorbeille) {
+    try { await fetch(url + '/admin/demandes/' + d.id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) }); } catch(e) {}
+  }
+  chargerCorbeille();
+}
+
+function activerSelectionCorbeille() {
+  corbeilleSelectMode = true;
+  corbeilleSelectedIds.clear();
+  document.querySelectorAll('.corbeille-card').forEach(c => c.classList.add('select-mode'));
+  document.getElementById('corbeille-select-bar').classList.add('active');
+  document.getElementById('corbeille-select-count').textContent = '0 sélectionnée(s)';
+}
+
+function annulerSelectionCorbeille() {
+  corbeilleSelectMode = false;
+  corbeilleSelectedIds.clear();
+  document.querySelectorAll('.corbeille-card').forEach(c => { c.classList.remove('select-mode','selected'); c.querySelector('.corbeille-checkbox').checked = false; });
+  document.getElementById('corbeille-select-bar').classList.remove('active');
+}
+
+function toggleSelectCorbeille(id, cb) {
+  if (cb.checked) corbeilleSelectedIds.add(id); else corbeilleSelectedIds.delete(id);
+  document.getElementById('corbeille-' + id).classList.toggle('selected', cb.checked);
+  document.getElementById('corbeille-select-count').textContent = corbeilleSelectedIds.size + ' sélectionnée(s)';
+}
+
+async function supprimerSelectionCorbeille() {
+  if (corbeilleSelectedIds.size === 0) return;
+  if (!confirm(`Supprimer définitivement ${corbeilleSelectedIds.size} demande(s) ?`)) return;
+  const url = getUrl(); const pw = getAdminPw();
+  for (const id of corbeilleSelectedIds) {
+    try { await fetch(url + '/admin/demandes/' + id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) }); document.getElementById('corbeille-' + id)?.remove(); } catch(e) {}
+  }
+  annulerSelectionCorbeille();
+}
+
+async function restaurerSelectionCorbeille() {
+  if (corbeilleSelectedIds.size === 0) return;
+  const url = getUrl(); const pw = getAdminPw();
+  for (const id of corbeilleSelectedIds) {
+    try { await fetch(url + '/admin/demandes/' + id + '/statut', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, statut:'nouveau'}) }); document.getElementById('corbeille-' + id)?.remove(); } catch(e) {}
+  }
+  annulerSelectionCorbeille();
+  const container = document.getElementById('corbeille-container');
+  if (!container.querySelector('.corbeille-card')) chargerCorbeille();
 }
 
 async function restaurerDemande(id) {
-  const url = getUrl();
-  const pw = document.getElementById('pw-corbeille').value.trim();
+  const url = getUrl(); const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, statut: 'nouveau' })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      document.getElementById('corbeille-' + id)?.remove();
-      const container = document.getElementById('corbeille-container');
-      if (!container.querySelector('.corbeille-card')) container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';
-    }
-  } catch (e) { alert('Erreur'); }
+    await fetch(url + '/admin/demandes/' + id + '/statut', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, statut:'nouveau'}) });
+    document.getElementById('corbeille-' + id)?.remove();
+    const container = document.getElementById('corbeille-container');
+    if (!container.querySelector('.corbeille-card')) chargerCorbeille();
+  } catch(e) { alert('Erreur'); }
 }
 
 async function supprimerDefinitif(id) {
-  if (!confirm('Supprimer définitivement ? Cette action est irréversible.')) return;
-  const url = getUrl();
-  const pw = document.getElementById('pw-corbeille').value.trim();
+  if (!confirm('Supprimer définitivement ? Irréversible.')) return;
+  const url = getUrl(); const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/demandes/' + id, {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      document.getElementById('corbeille-' + id)?.remove();
-      const container = document.getElementById('corbeille-container');
-      if (!container.querySelector('.corbeille-card')) container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';
-    }
-  } catch (e) { alert('Erreur'); }
+    await fetch(url + '/admin/demandes/' + id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
+    document.getElementById('corbeille-' + id)?.remove();
+    const container = document.getElementById('corbeille-container');
+    if (!container.querySelector('.corbeille-card')) chargerCorbeille();
+  } catch(e) { alert('Erreur'); }
 }
 
+// ── INFOS ──
 async function chargerListe() {
-  const url = getUrl(); const pw = document.getElementById('pw-list').value.trim();
-  if (!url || !pw) return alert("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
   const container = document.getElementById('liste-container');
   container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
   try {
@@ -684,18 +864,17 @@ async function chargerListe() {
     document.getElementById('search-wrap').style.display = 'block';
     document.getElementById('filter-chips').style.display = 'flex';
     afficherInfos();
-  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+  } catch(e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
 }
 
 async function supprimer(id) {
   if (!confirm('Supprimer cette information ?')) return;
-  const url = getUrl(); const pw = document.getElementById('pw-list').value.trim();
+  const url = getUrl(); const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/delete/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    const res = await fetch(url + '/admin/delete/' + id, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
     const data = await res.json();
     if (data.ok) { allInfos = allInfos.filter(i => i.id !== id); afficherInfos(); }
-    else alert(data.message);
-  } catch (e) { alert('Erreur'); }
+  } catch(e) {}
 }
 
 function ouvrirModal(id) {
@@ -706,9 +885,7 @@ function ouvrirModal(id) {
   document.getElementById('edit-contenu').value = item.contenu;
   document.getElementById('edit-instruction').value = item.instruction || '';
   editCatSelected = item.categorie;
-  document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.cat === item.categorie);
-  });
+  document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === item.categorie));
   document.getElementById('modal').classList.add('active');
 }
 
@@ -716,68 +893,62 @@ function fermerModal() { document.getElementById('modal').classList.remove('acti
 function closeModal(e) { if (e.target === document.getElementById('modal')) fermerModal(); }
 
 async function sauvegarderModif() {
-  const url = getUrl();
-  const id = document.getElementById('edit-id').value;
+  const url = getUrl(); const id = document.getElementById('edit-id').value;
   const titre = document.getElementById('edit-titre').value.trim();
   const contenu = document.getElementById('edit-contenu').value.trim();
   const instruction = document.getElementById('edit-instruction').value.trim();
-  const pw = document.getElementById('edit-pw').value.trim();
-  if (!pw) { document.getElementById('alert-edit-err').textContent = 'Entrez le mot de passe'; document.getElementById('alert-edit-err').style.display = 'block'; return; }
+  const pw = getAdminPw();
   try {
-    const res = await fetch(url + '/admin/update/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: editCatSelected, titre, contenu, instruction }) });
+    const res = await fetch(url + '/admin/update/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, categorie:editCatSelected, titre, contenu, instruction}) });
     const data = await res.json();
-    if (data.ok) {
-      const idx = allInfos.findIndex(i => i.id == id);
-      if (idx !== -1) allInfos[idx] = { ...allInfos[idx], categorie: editCatSelected, titre, contenu, instruction };
-      afficherInfos(); fermerModal();
-    } else { document.getElementById('alert-edit-err').textContent = data.message; document.getElementById('alert-edit-err').style.display = 'block'; }
-  } catch (e) { document.getElementById('alert-edit-err').textContent = 'Erreur de connexion'; document.getElementById('alert-edit-err').style.display = 'block'; }
+    if (data.ok) { const idx = allInfos.findIndex(i => i.id == id); if (idx !== -1) allInfos[idx] = {...allInfos[idx], categorie:editCatSelected, titre, contenu, instruction}; afficherInfos(); fermerModal(); }
+    else { document.getElementById('alert-edit-err').textContent = data.message; document.getElementById('alert-edit-err').style.display = 'block'; }
+  } catch(e) { document.getElementById('alert-edit-err').textContent = 'Erreur'; document.getElementById('alert-edit-err').style.display = 'block'; }
 }
 
 async function envoyer() {
   const url = getUrl(); const titre = document.getElementById('titre').value.trim();
   const contenu = document.getElementById('contenu').value.trim();
   const instruction = document.getElementById('instruction').value.trim();
-  const pw = document.getElementById('pw-add').value.trim();
-  hideAlerts();
+  const pw = getAdminPw();
+  document.getElementById('alert-ok').style.display = 'none'; document.getElementById('alert-err').style.display = 'none';
   if (!url) return showErr("Configurez l'adresse dans ⚙️ Config");
   if (!titre || !contenu) return showErr("Remplissez le titre et le contenu");
-  if (!pw) return showErr("Entrez le mot de passe admin");
   const btn = document.getElementById('btn-send');
   btn.disabled = true; btn.textContent = '⏳ Envoi...';
   try {
-    const res = await fetch(url + '/admin/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: catSelected, titre, contenu, instruction }) });
+    const res = await fetch(url + '/admin/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, categorie:catSelected, titre, contenu, instruction}) });
     const data = await res.json();
     if (data.ok) { showOk('✓ ' + data.message); document.getElementById('titre').value = ''; document.getElementById('contenu').value = ''; document.getElementById('instruction').value = ''; }
     else showErr(data.message);
-  } catch (e) { showErr("Impossible de contacter le serveur."); }
+  } catch(e) { showErr("Impossible de contacter le serveur."); }
   btn.disabled = false; btn.textContent = '✦ Envoyer à l\'agent';
 }
 
 async function chargerConvs() {
-  const url = getUrl(); const pw = document.getElementById('pw-convs').value.trim();
-  if (!url || !pw) return alert("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
   const container = document.getElementById('convs-container');
   container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
   try {
     const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
-    if (data.conversations.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>'; return; }
+    if (!data.conversations.length) { container.innerHTML = '<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>'; return; }
     container.innerHTML = '';
     data.conversations.forEach(conv => {
-      const date = new Date(conv.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-      const phone = conv.phone.slice(0, 5) + '••••' + conv.phone.slice(-2);
+      const date = new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const phone = conv.phone.slice(0,5) + '••••' + conv.phone.slice(-2);
       const el = document.createElement('div');
       el.className = 'conv-card';
       el.innerHTML = `<div class="conv-meta"><span class="conv-phone">📱 ${phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;
       container.appendChild(el);
     });
-  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+  } catch(e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
 }
 
 function sauvegarderConfig() {
-  const url = document.getElementById('server-url').value.trim().replace(/\/$/, '');
+  const url = document.getElementById('server-url').value.trim().replace(/\/$/,'');
   if (!url) return;
   localStorage.setItem('railway_url', url);
   document.getElementById('current-url').textContent = url;
@@ -788,97 +959,68 @@ function sauvegarderConfig() {
 
 function showOk(msg) { const el = document.getElementById('alert-ok'); el.textContent = msg; el.className = 'alert ok'; el.style.display = 'block'; }
 function showErr(msg) { const el = document.getElementById('alert-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
-function hideAlerts() { document.getElementById('alert-ok').style.display = 'none'; document.getElementById('alert-err').style.display = 'none'; }
 
 async function exporterInfos() {
-  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
-  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
   try {
     const res = await fetch(url + '/admin/list?password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (!data.ok) return showExportErr(data.message);
     let csv = 'Catégorie,Titre,Contenu,Instruction,Date\n';
-    data.rawInfos.forEach(row => {
-      const date = new Date(row.created_at).toLocaleDateString('fr-FR');
-      csv += `"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`;
-    });
-    telecharger(csv, 'shliah-bot-infos-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    data.rawInfos.forEach(row => { const date = new Date(row.created_at).toLocaleDateString('fr-FR'); csv += `"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`; });
+    telecharger(csv, 'shliah-infos-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
     showExportOk('✓ ' + data.rawInfos.length + ' infos exportées !');
   } catch(e) { showExportErr("Erreur de connexion"); }
 }
 
 async function exporterQuestions() {
-  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
-  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
   try {
     const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (!data.ok) return showExportErr(data.message);
     let csv = 'Téléphone,Question,Réponse,Date\n';
-    data.conversations.forEach(row => {
-      const date = new Date(row.created_at).toLocaleString('fr-FR');
-      const phone = row.phone.slice(0,5) + '••••' + row.phone.slice(-2);
-      csv += `"${phone}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`;
-    });
-    telecharger(csv, 'shliah-bot-questions-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    data.conversations.forEach(row => { const date = new Date(row.created_at).toLocaleString('fr-FR'); csv += `"${row.phone.slice(0,5)+'••••'+row.phone.slice(-2)}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`; });
+    telecharger(csv, 'shliah-questions-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
     showExportOk('✓ ' + data.conversations.length + ' questions exportées !');
   } catch(e) { showExportErr("Erreur de connexion"); }
 }
 
 async function exporterDemandes() {
-  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
-  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
   try {
     const res = await fetch(url + '/admin/demandes?password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (!data.ok) return showExportErr(data.message);
     let csv = 'Type,Téléphone,Message,Statut,Date\n';
-    data.demandes.forEach(row => {
-      const date = new Date(row.created_at).toLocaleString('fr-FR');
-      const texte = (row.data?.texte_libre || '').replace(/"/g,'""');
-      csv += `"${row.type}","${row.data?.phone_whatsapp || ''}","${texte}","${row.statut}","${date}"\n`;
-    });
-    telecharger(csv, 'shliah-bot-demandes-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    data.demandes.forEach(row => { const date = new Date(row.created_at).toLocaleString('fr-FR'); csv += `"${row.type}","${row.data?.phone_whatsapp||''}","${(row.data?.texte_libre||'').replace(/"/g,'""')}","${row.statut}","${date}"\n`; });
+    telecharger(csv, 'shliah-demandes-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
     showExportOk('✓ ' + data.demandes.length + ' demandes exportées !');
   } catch(e) { showExportErr("Erreur de connexion"); }
 }
 
 async function analyserQuestions() {
-  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
-  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  const url = getUrl(); const pw = getAdminPw();
   try {
     const res = await fetch(url + '/admin/conversations?password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (!data.ok) return showExportErr(data.message);
-    if (data.conversations.length === 0) return showExportErr("Pas encore de questions enregistrées");
+    if (!data.conversations.length) return showExportErr("Pas encore de questions");
     const sujets = [
-      { nom: '🕐 Horaires des offices', mots: ['horaire', 'heure', 'chaharit', 'minha', 'arvit', 'prière', 'office', 'chabbat', 'shabbat'] },
-      { nom: '📚 Cours de Torah', mots: ['cours', 'guémara', 'tanya', 'paracha', 'hassidout', 'leçon', 'shiour'] },
-      { nom: '🔧 Téfilines & Mezouzot', mots: ['téfiline', 'tefiline', 'mezouza', 'vérification', 'poser', 'mettre'] },
-      { nom: '🏊 Mikve', mots: ['mikve', 'mikvé', 'bain', 'immersion', 'purification'] },
-      { nom: '🙏 Prières', mots: ['prière', 'tefila', 'téfilat', 'haderech', 'voyage', 'bénédiction', 'bracha'] },
-      { nom: '🎂 Location de salle', mots: ['salle', 'louer', 'location', 'anniversaire', 'événement', 'fête', 'bar mitsva'] },
-      { nom: '☀️ Fêtes juives', mots: ['roch hachana', 'yom kippour', 'souccot', 'hanoucca', 'pourim', 'pessah', 'chavouot', 'fête'] },
-      { nom: '📞 Contact Rav', mots: ['rav', 'rabbi', 'contact', 'appeler', 'téléphone', 'question', 'hala'] },
+      { nom: '🕐 Horaires des offices', mots: ['horaire','heure','chaharit','minha','arvit','prière','office','chabbat','shabbat'] },
+      { nom: '📚 Cours de Torah', mots: ['cours','guémara','tanya','paracha','hassidout','leçon','shiour'] },
+      { nom: '🔧 Téfilines & Mezouzot', mots: ['téfiline','tefiline','mezouza','vérification','poser','mettre'] },
+      { nom: '🏊 Mikve', mots: ['mikve','mikvé','bain','immersion'] },
+      { nom: '🙏 Prières', mots: ['prière','tefila','téfilat','haderech','voyage','bénédiction'] },
+      { nom: '🎂 Location de salle', mots: ['salle','louer','location','anniversaire','événement','fête'] },
+      { nom: '☀️ Fêtes juives', mots: ['roch hachana','yom kippour','souccot','hanoucca','pourim','pessah'] },
+      { nom: '📞 Contact Rav', mots: ['rav','rabbi','contact','appeler','téléphone','hala'] },
     ];
-    const comptages = sujets.map(s => {
-      const count = data.conversations.filter(conv => s.mots.some(m => conv.question.toLowerCase().includes(m))).length;
-      return { ...s, count };
-    }).filter(s => s.count > 0).sort((a, b) => b.count - a.count);
+    const comptages = sujets.map(s => ({ ...s, count: data.conversations.filter(c => s.mots.some(m => c.question.toLowerCase().includes(m))).length })).filter(s => s.count > 0).sort((a,b) => b.count - a.count);
     const max = comptages[0]?.count || 1;
-    const container = document.getElementById('analyse-container');
-    container.innerHTML = '';
-    comptages.forEach(s => {
-      const pct = Math.round((s.count / max) * 100);
-      container.innerHTML += `<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${pct}%"></div></div></div><div class="topic-count">${s.count}</div></div>`;
-    });
-    const suggestContainer = document.getElementById('suggestions-container');
-    suggestContainer.innerHTML = '';
-    comptages.slice(0, 3).forEach(s => {
-      suggestContainer.innerHTML += `<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`;
-    });
+    document.getElementById('analyse-container').innerHTML = comptages.map(s => `<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${Math.round(s.count/max*100)}%"></div></div></div><div class="topic-count">${s.count}</div></div>`).join('');
+    document.getElementById('suggestions-container').innerHTML = comptages.slice(0,3).map(s => `<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`).join('');
     document.getElementById('analyse-card').style.display = 'block';
-    document.getElementById('analyse-card').scrollIntoView({ behavior: 'smooth' });
     showExportOk('✓ Analyse de ' + data.conversations.length + ' questions terminée !');
   } catch(e) { showExportErr("Erreur de connexion"); }
 }
@@ -888,9 +1030,8 @@ function creerInfoDepuisSuggestion(nom) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-ajouter').classList.add('active');
   document.querySelector('.tab[onclick*="ajouter"]').classList.add('active');
-  document.getElementById('titre').value = nom.replace(/^[^\w]*/, '').trim();
-  document.getElementById('titre').focus();
-  window.scrollTo(0, 0);
+  document.getElementById('titre').value = nom.replace(/^[^\w]*/,'').trim();
+  window.scrollTo(0,0);
 }
 
 function telecharger(contenu, nom, type) {
@@ -905,43 +1046,34 @@ function showExportOk(msg) { const el = document.getElementById('alert-export-ok
 function showExportErr(msg) { const el = document.getElementById('alert-export-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
 
 async function importerInfos() {
-  const url = getUrl();
-  const pw = document.getElementById('pw-import').value.trim();
+  const url = getUrl(); const pw = getAdminPw();
   const file = document.getElementById('import-file').files[0];
-  const okEl = document.getElementById('alert-import-ok');
-  const errEl = document.getElementById('alert-import-err');
+  const okEl = document.getElementById('alert-import-ok'); const errEl = document.getElementById('alert-import-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
-  if (!url) { errEl.textContent = "Configurez l'adresse dans ⚙️ Config"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
-  if (!pw) { errEl.textContent = "Entrez le mot de passe admin"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!url) { errEl.textContent = "Configurez l'adresse"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!file) { errEl.textContent = "Sélectionnez un fichier CSV"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   const text = await file.text();
   const lines = text.split('\n').slice(1).filter(l => l.trim());
   let imported = 0; let errors = 0;
   for (const line of lines) {
-    const fields = [];
-    let current = ''; let inQuote = false;
+    const fields = []; let current = ''; let inQuote = false;
     for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') { inQuote = !inQuote; }
-      else if (line[i] === ',' && !inQuote) { fields.push(current.replace(/""/g, '"')); current = ''; }
-      else { current += line[i]; }
+      if (line[i] === '"') inQuote = !inQuote;
+      else if (line[i] === ',' && !inQuote) { fields.push(current.replace(/""/g,'"')); current = ''; }
+      else current += line[i];
     }
-    fields.push(current.replace(/""/g, '"'));
+    fields.push(current.replace(/""/g,'"'));
     if (fields.length < 3) continue;
     const [categorie, titre, contenu, instruction] = fields;
     if (!titre || !contenu) continue;
     try {
-      const res = await fetch(url + '/admin/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: categorie || 'autre', titre, contenu, instruction: instruction || '' }) });
+      const res = await fetch(url + '/admin/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw, categorie:categorie||'autre', titre, contenu, instruction:instruction||''}) });
       const data = await res.json();
       if (data.ok) imported++; else errors++;
     } catch(e) { errors++; }
   }
-  if (imported > 0) {
-    okEl.textContent = '✓ ' + imported + ' info(s) importée(s) avec succès !' + (errors > 0 ? ' (' + errors + ' erreurs)' : '');
-    okEl.className = 'alert ok'; okEl.style.display = 'block';
-  } else {
-    errEl.textContent = 'Aucune info importée. Vérifiez le fichier CSV.';
-    errEl.className = 'alert err'; errEl.style.display = 'block';
-  }
+  if (imported > 0) { okEl.textContent = '✓ ' + imported + ' info(s) importée(s)' + (errors ? ' (' + errors + ' erreurs)' : ''); okEl.className = 'alert ok'; okEl.style.display = 'block'; }
+  else { errEl.textContent = 'Aucune info importée.'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
 }
 </script>
 </body>
