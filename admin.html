@@ -762,6 +762,7 @@ async function chargerCorbeille() {
     actionsDiv.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
     actionsDiv.innerHTML = `
       <button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button>
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button>
       <button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider la corbeille</button>`;
     container.appendChild(actionsDiv);
 
@@ -807,6 +808,15 @@ function activerSelectionCorbeille() {
   document.querySelectorAll('.corbeille-card').forEach(c => c.classList.add('select-mode'));
   document.getElementById('corbeille-select-bar').classList.add('active');
   document.getElementById('corbeille-select-count').textContent = '0 sélectionnée(s)';
+}
+
+function toutSelectionnerCorbeille() {
+  if (!corbeilleSelectMode) activerSelectionCorbeille();
+  document.querySelectorAll('.corbeille-card').forEach(c => {
+    const cb = c.querySelector('.corbeille-checkbox');
+    if (cb) { cb.checked = true; const id = parseInt(c.id.replace('corbeille-','')); corbeilleSelectedIds.add(id); c.classList.add('selected'); }
+  });
+  document.getElementById('corbeille-select-count').textContent = corbeilleSelectedIds.size + ' sélectionnée(s)';
 }
 
 function annulerSelectionCorbeille() {
