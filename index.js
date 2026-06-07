@@ -321,7 +321,7 @@ app.post('/webhook', async (req, res) => {
       // 1. Vérifier si ce numéro est en attente de réponse à une demande
       let enAttente = null;
       try {
-        const res2 = await pool.query('SELECT type FROM attente_demande WHERE phone=$1 AND created_at > NOW() - INTERVAL '30 minutes'', [from]);
+        const res2 = await pool.query(`SELECT type FROM attente_demande WHERE phone=$1 AND created_at > NOW() - INTERVAL '30 minutes'`, [from]);
         if (res2.rows.length > 0) enAttente = res2.rows[0].type;
       } catch (e) { console.error('Attente check error:', e.message); }
 
