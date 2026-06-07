@@ -614,6 +614,15 @@ function activerSelection() {
   updateSelectCount();
 }
 
+function toutSelectionner() {
+  if (!selectModeActive) activerSelection();
+  document.querySelectorAll('.demande-card').forEach(c => {
+    const cb = c.querySelector('.demande-checkbox');
+    if (cb) { cb.checked = true; const id = parseInt(c.id.replace('demande-','')); selectedIds.add(id); c.classList.add('selected'); }
+  });
+  updateSelectCount();
+}
+
 function annulerSelection() {
   selectModeActive = false;
   selectedIds.clear();
@@ -656,13 +665,10 @@ function afficherDemandes() {
   }
   if (filtered.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>'; return; }
   container.innerHTML = '';
-  // Bouton sélection multiple
-  const selBtn = document.createElement('button');
-  selBtn.className = 'btn-secondary';
-  selBtn.style.marginBottom = '10px';
-  selBtn.innerHTML = '☑️ Sélection multiple';
-  selBtn.onclick = activerSelection;
-  container.appendChild(selBtn);
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;';
+  btnRow.innerHTML = '<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelection()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionner()">✅ Tout sélectionner</button>';
+  container.appendChild(btnRow);
 
   filtered.forEach(d => {
     const date = new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
