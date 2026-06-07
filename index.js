@@ -191,14 +191,15 @@ Si vous avez payé via Kehila ou AlloDons, téléchargez-le directement :
 👉 https://kehila.io/export-cerfas
 👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr
 
-Pour un virement ou autre paiement, envoyez-moi ces informations en un seul message :
+Pour un virement ou autre paiement, copiez ce message, complétez et envoyez :
 
-- Société ou Particulier
-- Nom complet
-- Adresse complète
-- Email
-- Montant du don
-- Mode de paiement`;
+CERFA
+Société ou Particulier : 
+Nom complet : 
+Adresse complète : 
+Email : 
+Montant du don : 
+Mode de paiement :`;
     },
     champsPossibles: ['type_personne', 'nom', 'adresse', 'email', 'montant', 'mode_paiement']
   },
@@ -210,14 +211,15 @@ Pour un virement ou autre paiement, envoyez-moi ces informations en un seul mess
       return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m));
     },
     messageBot: () => {
-      return `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi ces informations en un seul message :
+      return `Pour inscrire une lettre dans le Sefer Torah, copiez ce message, complétez et envoyez :
 
-- Garçon ou Fille
-- Nom de famille
-- Âge
-- Prénom de la mère
-- Adresse complète
-- Téléphone`;
+TORAH
+Garçon ou Fille : 
+Nom de famille : 
+Âge : 
+Prénom de la mère : 
+Adresse complète : 
+Téléphone :`;
     },
     champsPossibles: ['genre', 'nom', 'age', 'prenom_mere', 'adresse', 'telephone']
   },
@@ -229,14 +231,15 @@ Pour un virement ou autre paiement, envoyez-moi ces informations en un seul mess
       return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m));
     },
     messageBot: () => {
-      return `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi ces informations en un seul message :
+      return `Pour réserver la salle du Beth Habad S. Maurice, copiez ce message, complétez et envoyez :
 
-- Nom
-- Prénom
-- Date souhaitée
-- Heure
-- Type d'événement
-- Téléphone`;
+SALLE
+Nom : 
+Prénom : 
+Date souhaitée : 
+Heure : 
+Type d'événement : 
+Téléphone :`;
     },
     champsPossibles: ['nom', 'prenom', 'date', 'heure', 'evenement', 'telephone']
   }
@@ -317,20 +320,20 @@ app.post('/webhook', async (req, res) => {
       const text = message.text.body;
 
       let reply;
+      let estUneDemande = false;
 
-      // 1. Vérifier si ce numéro est en attente de réponse à une demande
-      let enAttente = null;
-      try {
-        const res2 = await pool.query(`SELECT type FROM attente_demande WHERE phone=$1 AND created_at > NOW() - INTERVAL '30 minutes'`, [from]);
-        if (res2.rows.length > 0) enAttente = res2.rows[0].type;
-      } catch (e) { console.error('Attente check error:', e.message); }
+      // 1. Détecter si le message commence par un mot clé de demande
+      const textUpper = text.trim().toUpperCase();
+      let typeMotCle = null;
+      if (textUpper.startsWith('CERFA')) typeMotCle = 'cerfa';
+      else if (textUpper.startsWith('TORAH')) typeMotCle = 'sefer_torah';
+      else if (textUpper.startsWith('SALLE')) typeMotCle = 'location_salle';
 
-      if (enAttente) {
-        // C'est la réponse avec les infos — on enregistre et on confirme
-        await sauvegarderDemande(enAttente, from, text);
-        await envoyerEmailDemande(enAttente, from, text);
-        // Supprimer l'attente
-        try { await pool.query('DELETE FROM attente_demande WHERE phone=$1', [from]); } catch(e) {}
+      if (typeMotCle) {
+        // C'est une réponse avec infos — on enregistre et on confirme
+        estUneDemande = true;
+        await sauvegarderDemande(typeMotCle, from, text);
+        await envoyerEmailDemande(typeMotCle, from, text);
 
         reply = `Merci, votre demande a bien été reçue !
 
@@ -341,20 +344,12 @@ Si c'est urgent : 07 70 24 17 46.
 ${getSignature()}`;
 
       } else {
-        // 2. Détecter si c'est une nouvelle demande
+        // 2. Détecter si c'est une demande d'infos (envoyer les instructions)
         const typeDemande = detecterTypeDemande(text);
 
         if (typeDemande) {
-          // Envoyer le message d'instructions et mettre en attente
           const config = TYPES_DEMANDES[typeDemande];
           reply = config.messageBot();
-          // Sauvegarder qu'on attend la réponse de ce numéro
-          try {
-            await pool.query(
-              'INSERT INTO attente_demande (phone, type) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET type=$2, created_at=NOW()',
-              [from, typeDemande]
-            );
-          } catch (e) { console.error('Attente save error:', e.message); }
 
         } else {
           // 3. Mode normal : Claude répond
@@ -378,9 +373,12 @@ ${getSignature()}`;
 
       await sendWhatsApp(from, reply);
 
-      try {
-        await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
-      } catch (e) { console.error('Conv save error:', e.message); }
+      // Ne sauvegarder dans conversations que si c'est un échange normal
+      if (!estUneDemande) {
+        try {
+          await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
+        } catch (e) { console.error('Conv save error:', e.message); }
+      }
     }
     res.sendStatus(200);
   } else res.sendStatus(404);
