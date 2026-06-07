@@ -449,6 +449,14 @@ app.put('/admin/demandes/:id/statut', async (req, res) => {
   res.json({ ok: true, message: "Statut mis à jour" });
 });
 
+// Supprimer définitivement une demande
+app.delete('/admin/demandes/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('DELETE FROM demandes WHERE id = $1', [req.params.id]);
+  res.json({ ok: true, message: "Supprimé définitivement" });
+});
+
 // ─── CLAUDE ──────────────────────────────────────────────────
 async function askClaude(userMessage, extra = null, historique = []) {
   try {
