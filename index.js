@@ -351,8 +351,7 @@ app.post('/webhook', async (req, res) => {
         } else {
           // Toutes les questions posées — enregistrer et confirmer
           await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]);
-          const recap = Object.entries(reponses).map(([k,v]) => `${k}: ${v}`).join('
-');
+          const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
           await sauvegarderDemande(session.type, from, recap);
           await envoyerEmailDemande(session.type, from, recap);
           reply = `Merci, votre demande a bien été reçue !
