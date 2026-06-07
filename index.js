@@ -34,6 +34,16 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS demandes (
+      id SERIAL PRIMARY KEY,
+      type TEXT,
+      phone TEXT,
+      data JSONB,
+      statut TEXT DEFAULT 'nouveau',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
   console.log('Base de données prête');
 }
 
@@ -42,6 +52,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 
 const SYSTEM_PROMPT_BASE = `Tu t'appelles Shliah Bot, l'assistant virtuel du Beth Habad S. Maurice.
 Tu représentes le Rav Levi Basanger, Shliah du Rabbi, et la Rebbetzin Myriam Basanger.
@@ -86,12 +97,10 @@ Beth Habad S. Maurice
 Téléphone : 07 70 24 17 46`;
 
 async function getFullPrompt(extra = null) {
-  // Date et jour actuels en français
   const now = new Date();
   const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
   const dateStr = `${jours[now.getDay()]} ${now.getDate()} ${mois[now.getMonth()]} ${now.getFullYear()}`;
-  
   let prompt = `[AUJOURD'HUI : ${dateStr}]\n\n` + SYSTEM_PROMPT_BASE;
   try {
     const result = await pool.query('SELECT * FROM infos ORDER BY created_at DESC');
@@ -137,41 +146,149 @@ function parleDevenements(msg) {
 
 async function getHorairesChabbat() {
   try {
-    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const html = await res.text();
-    const texte = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Chercher allumage
+    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     const allumage = texte.match(/allumage[^0-9]*(\d+[h:]\d+)/i);
-    // Chercher havdalah / fin de chabbat
     const havdalah = texte.match(/havdalah[^0-9]*(\d+[h:]\d+)/i) || texte.match(/fin[^0-9]*(\d+[h:]\d+)/i);
-    // Chercher la date du vendredi
     const dateMatch = texte.match(/vendredi\s+(\d+\s+\w+\s+\d{4})/i) || texte.match(/(\d+\s+\w+\s+\d{4})/i);
-    // Chercher la paracha
     const parasha = texte.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ\-]+)/i) || texte.match(/portion[^A-Za-z]*([A-Za-zÀ-ÿ\-]+)/i);
-
     if (allumage) {
       const date = dateMatch ? dateMatch[1] : '';
-      return `HORAIRES CHABBAT CETTE SEMAINE - PARIS :
-📅 ${date}
-🕯️ Entrée de Chabbat (allumage des bougies) : ${allumage[1]}
-✨ Sortie de Chabbat (Havdalah) : ${havdalah ? havdalah[1] : 'voir site Chabad'}
-📖 ${parasha ? 'Paracha ' + parasha[1] : ''}`;
+      return `HORAIRES CHABBAT CETTE SEMAINE - PARIS :\n📅 ${date}\n🕯️ Entrée de Chabbat (allumage des bougies) : ${allumage[1]}\n✨ Sortie de Chabbat (Havdalah) : ${havdalah ? havdalah[1] : 'voir site Chabad'}\n📖 ${parasha ? 'Paracha ' + parasha[1] : ''}`;
     }
     return null;
-  } catch (e) { console.error('Chabad error:', e.message); return null; }
+  } catch (e) { return null; }
 }
 
 function parleDeChabbat(msg) {
   const lower = msg.toLowerCase();
   return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
+}
+
+// ─── SYSTÈME DE DEMANDES ─────────────────────────────────────
+
+// Définition de toutes les demandes — facile d'en ajouter d'autres ici
+const TYPES_DEMANDES = {
+  cerfa: {
+    label: 'Reçu Fiscal (Cerfa)',
+    detecter: (msg) => {
+      const lower = msg.toLowerCase();
+      return ['cerfa', 'reçu fiscal', 'recu fiscal', 'attestation don', 'déduction impôt', 'deduction impot'].some(m => lower.includes(m));
+    },
+    messageBot: () => {
+      return `Pour votre reçu fiscal (Cerfa) :
+
+Si vous avez payé via Kehila ou AlloDons, téléchargez-le directement :
+👉 https://kehila.io/export-cerfas
+👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr
+
+Pour un virement ou autre paiement, envoyez-moi ces informations en un seul message :
+
+- Société ou Particulier
+- Nom complet
+- Adresse complète
+- Email
+- Montant du don
+- Mode de paiement`;
+    },
+    champsPossibles: ['type_personne', 'nom', 'adresse', 'email', 'montant', 'mode_paiement']
+  },
+
+  sefer_torah: {
+    label: 'Lettre dans le Sefer Torah',
+    detecter: (msg) => {
+      const lower = msg.toLowerCase();
+      return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m));
+    },
+    messageBot: () => {
+      return `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi ces informations en un seul message :
+
+- Garçon ou Fille
+- Nom de famille
+- Âge
+- Prénom de la mère
+- Adresse complète
+- Téléphone`;
+    },
+    champsPossibles: ['genre', 'nom', 'age', 'prenom_mere', 'adresse', 'telephone']
+  },
+
+  location_salle: {
+    label: 'Location de Salle',
+    detecter: (msg) => {
+      const lower = msg.toLowerCase();
+      return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m));
+    },
+    messageBot: () => {
+      return `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi ces informations en un seul message :
+
+- Nom
+- Prénom
+- Date souhaitée
+- Heure
+- Type d'événement
+- Téléphone`;
+    },
+    champsPossibles: ['nom', 'prenom', 'date', 'heure', 'evenement', 'telephone']
+  }
+
+  // ← Ajouter de nouveaux types de demandes ici facilement
+};
+
+function detecterTypeDemande(msg) {
+  for (const [type, config] of Object.entries(TYPES_DEMANDES)) {
+    if (config.detecter(msg)) return type;
+  }
+  return null;
+}
+
+async function sauvegarderDemande(type, phone, texteLibre) {
+  try {
+    const data = { texte_libre: texteLibre, phone_whatsapp: '+' + phone };
+    await pool.query(
+      'INSERT INTO demandes (type, phone, data) VALUES ($1, $2, $3)',
+      [type, phone, JSON.stringify(data)]
+    );
+    console.log(`Demande ${type} enregistrée pour +${phone}`);
+  } catch (e) { console.error('Demande save error:', e.message); }
+}
+
+async function envoyerEmailDemande(type, phone, texteLibre) {
+  if (!GMAIL_APP_PASSWORD) return;
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD }
+    });
+    const config = TYPES_DEMANDES[type];
+    const label = config ? config.label : type;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    await transporter.sendMail({
+      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
+      to: 'bhsmaurice@gmail.com',
+      subject: `📋 Nouvelle demande : ${label}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #1a3a6b;">📋 ${label}</h2>
+          <table style="width:100%; border-collapse: collapse;">
+            <tr><td style="padding:8px; border-bottom:1px solid #eee; color:#666;">Date</td><td style="padding:8px; border-bottom:1px solid #eee;"><strong>${dateStr}</strong></td></tr>
+            <tr><td style="padding:8px; border-bottom:1px solid #eee; color:#666;">WhatsApp</td><td style="padding:8px; border-bottom:1px solid #eee;"><strong>+${phone}</strong></td></tr>
+            <tr><td style="padding:8px; color:#666; vertical-align:top;">Message reçu</td><td style="padding:8px; white-space:pre-wrap;"><strong>${texteLibre}</strong></td></tr>
+          </table>
+          <p style="margin-top:20px; color:#888; font-size:12px;">Demande reçue via Shliah Bot — Beth Habad S. Maurice</p>
+        </div>
+      `
+    });
+  } catch (e) { console.error('Email demande error:', e.message); }
+}
+
+function getSignature() {
+  const now = new Date();
+  return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !";
 }
 
 // ─── WEBHOOK META ────────────────────────────────────────────
@@ -190,26 +307,65 @@ app.post('/webhook', async (req, res) => {
     if (message && message.type === 'text') {
       const from = message.from;
       const text = message.text.body;
-      let extra = null;
-      if (parleDeMikve(text)) extra = await getMikvaotFemmes();
-      else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
-      else if (parleDevenements(text)) extra = await getEvenements();
 
-      // Récupérer l'historique de la conversation
-      let historique = [];
-      try {
-        const hist = await pool.query(
-          'SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5',
-          [from]
-        );
-        // Inverser pour avoir l'ordre chronologique
-        historique = hist.rows.reverse();
-      } catch(e) { console.error('Hist error:', e.message); }
+      // Détecter si c'est une demande spéciale
+      const typeDemande = detecterTypeDemande(text);
 
-      const reply = await askClaude(text, extra, historique);
+      let reply;
+
+      if (typeDemande) {
+        const config = TYPES_DEMANDES[typeDemande];
+        reply = config.messageBot();
+      } else {
+        // Vérifier si le message précédent était une demande (réponse avec infos)
+        try {
+          const dernierMsg = await pool.query(
+            'SELECT reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 1',
+            [from]
+          );
+          if (dernierMsg.rows.length > 0) {
+            const derniereReponse = dernierMsg.rows[0].reponse;
+            // Chercher quel type de demande correspond à la dernière réponse du bot
+            for (const [type, config] of Object.entries(TYPES_DEMANDES)) {
+              const msgAttendu = config.messageBot();
+              // Si la dernière réponse du bot était un message de demande d'infos
+              if (derniereReponse && derniereReponse.includes(msgAttendu.substring(0, 40))) {
+                // C'est la réponse à une demande — on enregistre
+                await sauvegarderDemande(type, from, text);
+                await envoyerEmailDemande(type, from, text);
+                reply = `Merci, votre demande a bien été reçue !
+
+Le Rav Levi vous contactera dans les meilleurs délais.
+
+${getSignature()}`;
+                break;
+              }
+            }
+          }
+        } catch (e) { console.error('Check demande error:', e.message); }
+
+        if (!reply) {
+          // Mode normal : Claude répond
+          let extra = null;
+          if (parleDeMikve(text)) extra = await getMikvaotFemmes();
+          else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
+          else if (parleDevenements(text)) extra = await getEvenements();
+
+          let historique = [];
+          try {
+            const hist = await pool.query(
+              'SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5',
+              [from]
+            );
+            historique = hist.rows.reverse();
+          } catch (e) { console.error('Hist error:', e.message); }
+
+          reply = await askClaude(text, extra, historique);
+        }
+      }
+
       await sendWhatsApp(from, reply);
 
-      // Sauvegarder la conversation
       try {
         await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
       } catch (e) { console.error('Conv save error:', e.message); }
@@ -256,7 +412,6 @@ app.delete('/admin/delete/:id', async (req, res) => {
   res.json({ ok: true, message: "Supprimé" });
 });
 
-// Voir les conversations
 app.get('/admin/conversations', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -264,19 +419,36 @@ app.get('/admin/conversations', async (req, res) => {
   res.json({ ok: true, conversations: result.rows });
 });
 
+// Toutes les demandes (Cerfa, Sefer Torah, Salle, etc.)
+app.get('/admin/demandes', async (req, res) => {
+  const { password, type } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  let query = 'SELECT * FROM demandes';
+  const params = [];
+  if (type) { query += ' WHERE type = $1'; params.push(type); }
+  query += ' ORDER BY created_at DESC';
+  const result = await pool.query(query, params);
+  res.json({ ok: true, demandes: result.rows, types: Object.keys(TYPES_DEMANDES).map(k => ({ key: k, label: TYPES_DEMANDES[k].label })) });
+});
+
+// Mettre à jour le statut d'une demande
+app.put('/admin/demandes/:id/statut', async (req, res) => {
+  const { password, statut } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('UPDATE demandes SET statut = $1 WHERE id = $2', [statut, req.params.id]);
+  res.json({ ok: true, message: "Statut mis à jour" });
+});
+
 // ─── CLAUDE ──────────────────────────────────────────────────
 async function askClaude(userMessage, extra = null, historique = []) {
   try {
     const systemPrompt = await getFullPrompt(extra);
-
-    // Construire les messages avec l'historique
     const messages = [];
     historique.forEach(h => {
       messages.push({ role: 'user', content: h.question });
       messages.push({ role: 'assistant', content: h.reponse });
     });
     messages.push({ role: 'user', content: userMessage });
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
