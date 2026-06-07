@@ -103,9 +103,16 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .statut-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
 .statut-nouveau { background: #FFF3E0; color: var(--orange); }
 .statut-en_cours { background: #FEF3C7; color: #92400E; }
-.statut-traite { background: var(--green-bg); color: var(--green); }
-.btn-statut { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
-.btn-statut:hover { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.statut-urgent { background: #FDECEA; color: var(--red); }
+.statut-termine { background: var(--green-bg); color: var(--green); }
+.btn-statut { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; white-space: nowrap; }
+.btn-statut:hover { border-color: var(--navy); color: var(--navy); background: var(--bg); }
+.statut-select { font-size: 12px; padding: 4px 8px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--text); font-family: 'Heebo', sans-serif; cursor: pointer; outline: none; }
+.btn-trash { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 6px; color: var(--muted); transition: color 0.15s; }
+.btn-trash:hover { color: var(--red); }
+.corbeille-card { background: #FFF5F5; border-radius: var(--r); border: 1px dashed #F5B7B1; padding: 14px; margin-bottom: 10px; opacity: 0.8; }
+.btn-restore { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--green); background: var(--green-bg); color: var(--green); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
+.btn-delete-perm { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--red); background: var(--red-bg); color: var(--red); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
 .modal-overlay.active { display: flex; }
@@ -152,6 +159,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab active" onclick="showTab('ajouter',this)">➕ Ajouter</div>
   <div class="tab" onclick="showTab('infos',this)">📋 Infos</div>
   <div class="tab" onclick="showTab('demandes',this)">📩 Demandes</div>
+  <div class="tab" onclick="showTab('corbeille',this)">🗑️ Corbeille</div>
   <div class="tab" onclick="showTab('questions',this)">💬 Questions</div>
   <div class="tab" onclick="showTab('export',this)">📤 Export</div>
   <div class="tab" onclick="showTab('config',this)">⚙️ Config</div>
@@ -242,13 +250,26 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="chip" data-filter="sefer_torah" onclick="selectDemandeFilter(this)">📜 Sefer Torah</div>
       <div class="chip" data-filter="location_salle" onclick="selectDemandeFilter(this)">🏠 Salle</div>
       <div class="chip" data-filter="nouveau" onclick="selectDemandeFilter(this)">🔴 Nouveau</div>
-      <div class="chip" data-filter="traite" onclick="selectDemandeFilter(this)">✅ Traité</div>
+      <div class="chip" data-filter="urgent" onclick="selectDemandeFilter(this)">🔥 Urgent</div>
+      <div class="chip" data-filter="termine" onclick="selectDemandeFilter(this)">✅ Terminé</div>
     </div>
     <div id="demandes-container"></div>
   </div>
 </div>
 
-<!-- ─── QUESTIONS ─── -->
+<!-- ─── CORBEILLE ─── -->
+<div class="page" id="tab-corbeille">
+  <div class="inner">
+    <div class="card">
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-corbeille" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="chargerCorbeille()">🔄 Charger la corbeille</button>
+    </div>
+    <div id="corbeille-container"></div>
+  </div>
+</div>
 <div class="page" id="tab-questions">
   <div class="inner">
     <div class="card">
@@ -471,14 +492,24 @@ function afficherInfos() {
   });
 }
 
+function statutLabel(s) {
+  const map = { nouveau: '🔴 Nouveau', en_cours: '🟡 En cours', urgent: '🔥 Urgent', termine: '✅ Terminé' };
+  return map[s] || s;
+}
+
+function statutClass(s) {
+  const map = { nouveau: 'statut-nouveau', en_cours: 'statut-en_cours', urgent: 'statut-urgent', termine: 'statut-termine' };
+  return map[s] || 'statut-nouveau';
+}
+
 function afficherDemandes() {
   const container = document.getElementById('demandes-container');
-  let filtered = allDemandes;
+  let filtered = allDemandes.filter(d => d.statut !== 'corbeille');
 
-  if (filterDemande === 'nouveau' || filterDemande === 'traite' || filterDemande === 'en_cours') {
-    filtered = allDemandes.filter(d => d.statut === filterDemande);
+  if (['nouveau','en_cours','urgent','termine'].includes(filterDemande)) {
+    filtered = filtered.filter(d => d.statut === filterDemande);
   } else if (filterDemande !== 'tous') {
-    filtered = allDemandes.filter(d => d.type === filterDemande);
+    filtered = filtered.filter(d => d.type === filterDemande);
   }
 
   if (filtered.length === 0) {
@@ -489,25 +520,29 @@ function afficherDemandes() {
   container.innerHTML = '';
   filtered.forEach(d => {
     const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const phone = d.phone ? (d.phone.slice(0, 5) + '••••' + d.phone.slice(-2)) : '?';
     const data = d.data || {};
     const texte = data.texte_libre || JSON.stringify(data, null, 2);
     const phoneWa = data.phone_whatsapp || ('+' + d.phone);
-
     const el = document.createElement('div');
     el.className = 'demande-card';
     el.id = 'demande-' + d.id;
     el.innerHTML = `
       <div class="demande-header">
         <span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span>
-        <span class="demande-date">${date}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn-trash" onclick="mettreCorbeille(${d.id})" title="Mettre à la corbeille">🗑️</button>
+          <span class="demande-date">${date}</span>
+        </div>
       </div>
       <div class="demande-phone">📱 ${phoneWa}</div>
       <div class="demande-texte">${texte}</div>
       <div class="demande-statut-row">
-        <span class="statut-badge ${statutClass(d.statut)}" id="statut-badge-${d.id}">${statutLabel(d.statut)}</span>
-        ${d.statut !== 'traite' ? `<button class="btn-statut" onclick="marquerTraite(${d.id})">✅ Marquer traité</button>` : ''}
-        ${d.statut === 'nouveau' ? `<button class="btn-statut" onclick="marquerEnCours(${d.id})">🟡 En cours</button>` : ''}
+        <select class="statut-select" onchange="changerStatut(${d.id}, this.value)">
+          <option value="nouveau" ${d.statut==='nouveau'?'selected':''}>🔴 Nouveau</option>
+          <option value="en_cours" ${d.statut==='en_cours'?'selected':''}>🟡 En cours</option>
+          <option value="urgent" ${d.statut==='urgent'?'selected':''}>🔥 Urgent</option>
+          <option value="termine" ${d.statut==='termine'?'selected':''}>✅ Terminé</option>
+        </select>
       </div>`;
     container.appendChild(el);
   });
@@ -524,53 +559,114 @@ async function chargerDemandes() {
     const data = await res.json();
     if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
     allDemandes = data.demandes || [];
-
-    // Stats
-    const total = allDemandes.length;
-    const nouveaux = allDemandes.filter(d => d.statut === 'nouveau').length;
-    const traites = allDemandes.filter(d => d.statut === 'traite').length;
+    const actives = allDemandes.filter(d => d.statut !== 'corbeille');
+    const nouveaux = actives.filter(d => d.statut === 'nouveau').length;
+    const termines = actives.filter(d => d.statut === 'termine').length;
     document.getElementById('stats-row').innerHTML = `
-      <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-num">${actives.length}</div><div class="stat-label">Total</div></div>
       <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${nouveaux}</div><div class="stat-label">Nouveaux</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:var(--green)">${traites}</div><div class="stat-label">Traités</div></div>`;
+      <div class="stat-box"><div class="stat-num" style="color:var(--green)">${termines}</div><div class="stat-label">Terminés</div></div>`;
     document.getElementById('demandes-stats').style.display = 'block';
     document.getElementById('demandes-filter-chips').style.display = 'flex';
     afficherDemandes();
   } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
 }
 
-async function marquerTraite(id) {
+async function changerStatut(id, statut) {
   const url = getUrl();
   const pw = document.getElementById('pw-demandes').value.trim();
   try {
     const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, statut: 'traite' })
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, statut })
+    });
+    const data = await res.json();
+    if (data.ok) { const d = allDemandes.find(x => x.id === id); if (d) d.statut = statut; }
+  } catch (e) { alert('Erreur'); }
+}
+
+async function mettreCorbeille(id) {
+  if (!confirm('Mettre cette demande à la corbeille ?')) return;
+  const url = getUrl();
+  const pw = document.getElementById('pw-demandes').value.trim();
+  try {
+    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, statut: 'corbeille' })
+    });
+    const data = await res.json();
+    if (data.ok) { const d = allDemandes.find(x => x.id === id); if (d) d.statut = 'corbeille'; afficherDemandes(); }
+  } catch (e) { alert('Erreur'); }
+}
+
+async function chargerCorbeille() {
+  const url = getUrl();
+  const pw = document.getElementById('pw-corbeille').value.trim();
+  if (!url || !pw) return alert("URL et mot de passe requis");
+  const container = document.getElementById('corbeille-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const res = await fetch(url + '/admin/demandes?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
+    const corbeille = (data.demandes || []).filter(d => d.statut === 'corbeille');
+    if (corbeille.length === 0) { container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>'; return; }
+    container.innerHTML = '';
+    corbeille.forEach(d => {
+      const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const data2 = d.data || {};
+      const texte = data2.texte_libre || JSON.stringify(data2, null, 2);
+      const phoneWa = data2.phone_whatsapp || ('+' + d.phone);
+      const el = document.createElement('div');
+      el.className = 'corbeille-card';
+      el.id = 'corbeille-' + d.id;
+      el.innerHTML = `
+        <div class="demande-header">
+          <span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span>
+          <span class="demande-date">${date}</span>
+        </div>
+        <div class="demande-phone">📱 ${phoneWa}</div>
+        <div class="demande-texte">${texte}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <button class="btn-restore" onclick="restaurerDemande(${d.id})">♻️ Restaurer</button>
+          <button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer définitivement</button>
+        </div>`;
+      container.appendChild(el);
+    });
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+async function restaurerDemande(id) {
+  const url = getUrl();
+  const pw = document.getElementById('pw-corbeille').value.trim();
+  try {
+    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, statut: 'nouveau' })
     });
     const data = await res.json();
     if (data.ok) {
-      const d = allDemandes.find(x => x.id === id);
-      if (d) d.statut = 'traite';
-      afficherDemandes();
+      document.getElementById('corbeille-' + id)?.remove();
+      const container = document.getElementById('corbeille-container');
+      if (!container.querySelector('.corbeille-card')) container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';
     }
   } catch (e) { alert('Erreur'); }
 }
 
-async function marquerEnCours(id) {
+async function supprimerDefinitif(id) {
+  if (!confirm('Supprimer définitivement ? Cette action est irréversible.')) return;
   const url = getUrl();
-  const pw = document.getElementById('pw-demandes').value.trim();
+  const pw = document.getElementById('pw-corbeille').value.trim();
   try {
-    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, statut: 'en_cours' })
+    const res = await fetch(url + '/admin/demandes/' + id, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
     });
     const data = await res.json();
     if (data.ok) {
-      const d = allDemandes.find(x => x.id === id);
-      if (d) d.statut = 'en_cours';
-      afficherDemandes();
+      document.getElementById('corbeille-' + id)?.remove();
+      const container = document.getElementById('corbeille-container');
+      if (!container.querySelector('.corbeille-card')) container.innerHTML = '<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';
     }
   } catch (e) { alert('Erreur'); }
 }
