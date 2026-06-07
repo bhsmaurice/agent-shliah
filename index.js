@@ -334,7 +334,9 @@ app.post('/webhook', async (req, res) => {
 
         reply = `Merci, votre demande a bien été reçue !
 
-Si c'est urgent, contactez-le directement au 07 70 24 17 46.
+Nous vous contacterons très rapidement.
+
+Si c'est urgent : 07 70 24 17 46.
 
 ${getSignature()}`;
 
