@@ -235,7 +235,7 @@ Garçon ou fille ?`
       { cle: 'prenom', question: 'Quel est votre prénom ?' },
       { cle: 'date', question: 'Quelle est la date souhaitée ?' },
       { cle: 'heure', question: 'À quelle heure ?' },
-      { cle: 'evenement', question: 'Quel type d'événement ? (Bar Mitsva, anniversaire, autre...)' },
+      { cle: "evenement", question: "Quel type evenement ? (Bar Mitsva, anniversaire, autre...)" },
       { cle: 'telephone', question: 'Quel est votre numéro de téléphone ?' },
     ],
     messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, j'ai besoin de quelques informations.
