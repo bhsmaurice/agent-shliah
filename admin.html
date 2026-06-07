@@ -52,7 +52,12 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { flex: 1; min-width: 60px; padding: 12px 4px; text-align: center; font-size: 11px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+.tab { flex: 1; min-width: 50px; padding: 12px 4px; text-align: center; font-size: 20px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+.tab-label { display: none; }
+@media (min-width: 640px) {
+  .tab { font-size: 13px; font-weight: 500; padding: 12px 8px; }
+  .tab-label { display: inline; margin-left: 4px; }
+}
 .tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
 
 .page { display: none; min-height: calc(100vh - 120px); }
@@ -233,13 +238,13 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('ajouter',this)">➕</div>
-  <div class="tab" onclick="showTab('infos',this)">📋</div>
-  <div class="tab" onclick="showTab('demandes',this)">📩</div>
-  <div class="tab" onclick="showTab('corbeille',this)">🗑️</div>
-  <div class="tab" onclick="showTab('questions',this)">💬</div>
-  <div class="tab" onclick="showTab('export',this)">📤</div>
-  <div class="tab" onclick="showTab('config',this)">⚙️</div>
+  <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
+  <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
+  <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
+  <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
+  <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
+  <div class="tab" onclick="showTab('export',this)">📤<span class="tab-label">Export</span></div>
+  <div class="tab" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
 </div>
 
 <!-- AJOUTER -->
