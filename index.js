@@ -45,10 +45,12 @@ async function initDB() {
     )
   `);
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS attente_demande (
+    CREATE TABLE IF NOT EXISTS sessions_demande (
       id SERIAL PRIMARY KEY,
       phone TEXT UNIQUE,
       type TEXT,
+      etape INTEGER DEFAULT 0,
+      reponses JSONB DEFAULT '{}',
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
@@ -184,24 +186,23 @@ const TYPES_DEMANDES = {
       const lower = msg.toLowerCase();
       return ['cerfa', 'reçu fiscal', 'recu fiscal', 'attestation don', 'déduction impôt', 'deduction impot'].some(m => lower.includes(m));
     },
-    messageBot: () => {
-      return `Pour votre reçu fiscal (Cerfa) :
+    questions: [
+      { cle: 'type_personne', question: 'Société ou particulier ?' },
+      { cle: 'nom', question: 'Quel est votre nom complet ?' },
+      { cle: 'adresse', question: 'Quelle est votre adresse complète ?' },
+      { cle: 'email', question: 'Quelle est votre adresse email ?' },
+      { cle: 'montant', question: 'Quel est le montant du don (en euros) ?' },
+      { cle: 'mode_paiement', question: 'Quel est le mode de paiement ? (virement, chèque, espèces...)' },
+    ],
+    messageDebut: () => `Pour votre reçu fiscal (Cerfa) :
 
 Si vous avez payé via Kehila ou AlloDons, téléchargez-le directement :
 👉 https://kehila.io/export-cerfas
 👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr
 
-Pour un virement ou autre paiement, copiez ce message, complétez et envoyez :
+Pour un virement ou autre paiement, j'ai besoin de quelques informations.
 
-CERFA
-Société ou Particulier : 
-Nom complet : 
-Adresse complète : 
-Email : 
-Montant du don : 
-Mode de paiement :`;
-    },
-    champsPossibles: ['type_personne', 'nom', 'adresse', 'email', 'montant', 'mode_paiement']
+Société ou particulier ?`
   },
 
   sefer_torah: {
@@ -210,18 +211,17 @@ Mode de paiement :`;
       const lower = msg.toLowerCase();
       return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m));
     },
-    messageBot: () => {
-      return `Pour inscrire une lettre dans le Sefer Torah, copiez ce message, complétez et envoyez :
+    questions: [
+      { cle: 'genre', question: 'Garçon ou fille ?' },
+      { cle: 'nom', question: 'Quel est le nom de famille ?' },
+      { cle: 'age', question: 'Quel est son âge ?' },
+      { cle: 'prenom_mere', question: 'Quel est le prénom de la mère ?' },
+      { cle: 'adresse', question: 'Quelle est votre adresse complète ?' },
+      { cle: 'telephone', question: 'Quel est votre numéro de téléphone ?' },
+    ],
+    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, j'ai besoin de quelques informations.
 
-TORAH
-Garçon ou Fille : 
-Nom de famille : 
-Âge : 
-Prénom de la mère : 
-Adresse complète : 
-Téléphone :`;
-    },
-    champsPossibles: ['genre', 'nom', 'age', 'prenom_mere', 'adresse', 'telephone']
+Garçon ou fille ?`
   },
 
   location_salle: {
@@ -230,18 +230,17 @@ Téléphone :`;
       const lower = msg.toLowerCase();
       return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m));
     },
-    messageBot: () => {
-      return `Pour réserver la salle du Beth Habad S. Maurice, copiez ce message, complétez et envoyez :
+    questions: [
+      { cle: 'nom', question: 'Quel est votre nom ?' },
+      { cle: 'prenom', question: 'Quel est votre prénom ?' },
+      { cle: 'date', question: 'Quelle est la date souhaitée ?' },
+      { cle: 'heure', question: 'À quelle heure ?' },
+      { cle: 'evenement', question: 'Quel type d'événement ? (Bar Mitsva, anniversaire, autre...)' },
+      { cle: 'telephone', question: 'Quel est votre numéro de téléphone ?' },
+    ],
+    messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, j'ai besoin de quelques informations.
 
-SALLE
-Nom : 
-Prénom : 
-Date souhaitée : 
-Heure : 
-Type d'événement : 
-Téléphone :`;
-    },
-    champsPossibles: ['nom', 'prenom', 'date', 'heure', 'evenement', 'telephone']
+Quel est votre nom ?`
   }
 
   // ← Ajouter de nouveaux types de demandes ici facilement
@@ -322,34 +321,64 @@ app.post('/webhook', async (req, res) => {
       let reply;
       let estUneDemande = false;
 
-      // 1. Détecter si le message commence par un mot clé de demande
-      const textUpper = text.trim().toUpperCase();
-      let typeMotCle = null;
-      if (textUpper.startsWith('CERFA')) typeMotCle = 'cerfa';
-      else if (textUpper.startsWith('TORAH')) typeMotCle = 'sefer_torah';
-      else if (textUpper.startsWith('SALLE')) typeMotCle = 'location_salle';
+      // 1. Vérifier si une session de demande guidée est en cours
+      let session = null;
+      try {
+        const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]);
+        if (sr.rows.length > 0) session = sr.rows[0];
+      } catch(e) {}
 
-      if (typeMotCle) {
-        // C'est une réponse avec infos — on enregistre et on confirme
+      if (session) {
+        // On est dans une conversation guidée
         estUneDemande = true;
-        await sauvegarderDemande(typeMotCle, from, text);
-        await envoyerEmailDemande(typeMotCle, from, text);
+        const config = TYPES_DEMANDES[session.type];
+        const reponses = session.reponses || {};
+        const questions = config.questions;
+        const etapeActuelle = session.etape;
 
-        reply = `Merci, votre demande a bien été reçue !
+        // Sauvegarder la réponse à la question actuelle
+        if (etapeActuelle < questions.length) {
+          reponses[questions[etapeActuelle].cle] = text;
+        }
+
+        const prochaineEtape = etapeActuelle + 1;
+
+        if (prochaineEtape < questions.length) {
+          // Poser la prochaine question
+          await pool.query('UPDATE sessions_demande SET etape=$1, reponses=$2 WHERE phone=$3',
+            [prochaineEtape, JSON.stringify(reponses), from]);
+          reply = questions[prochaineEtape].question;
+        } else {
+          // Toutes les questions posées — enregistrer et confirmer
+          await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]);
+          const recap = Object.entries(reponses).map(([k,v]) => `${k}: ${v}`).join('
+');
+          await sauvegarderDemande(session.type, from, recap);
+          await envoyerEmailDemande(session.type, from, recap);
+          reply = `Merci, votre demande a bien été reçue !
 
 Nous vous contacterons très rapidement.
 
 Si c'est urgent : 07 70 24 17 46.
 
 ${getSignature()}`;
+        }
 
       } else {
-        // 2. Détecter si c'est une demande d'infos (envoyer les instructions)
+        // 2. Détecter si c'est une nouvelle demande
         const typeDemande = detecterTypeDemande(text);
 
         if (typeDemande) {
+          estUneDemande = true;
           const config = TYPES_DEMANDES[typeDemande];
-          reply = config.messageBot();
+          // Démarrer la session guidée
+          try {
+            await pool.query(
+              'INSERT INTO sessions_demande (phone, type, etape, reponses) VALUES ($1,$2,0,$3) ON CONFLICT (phone) DO UPDATE SET type=$2, etape=0, reponses=$3, created_at=NOW()',
+              [from, typeDemande, '{}']
+            );
+          } catch(e) { console.error('Session start error:', e.message); }
+          reply = config.messageDebut();
 
         } else {
           // 3. Mode normal : Claude répond
@@ -373,7 +402,6 @@ ${getSignature()}`;
 
       await sendWhatsApp(from, reply);
 
-      // Ne sauvegarder dans conversations que si c'est un échange normal
       if (!estUneDemande) {
         try {
           await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]);
