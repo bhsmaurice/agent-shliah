@@ -13,67 +13,58 @@
   --bg: #F4F2ED; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
   --border: #E0D8C8; --green: #2D7A4F; --green-bg: #E8F5EE;
   --red: #C0392B; --red-bg: #FDECEA; --r: 14px;
+  --purple: #6B21A8; --purple-bg: #F3E8FF;
+  --orange: #C05621; --orange-bg: #FFF3E0;
 }
 html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); }
 
-/* HEADER */
 .header { background: var(--navy); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 .header-right { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 
-/* TABS */
 .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: 1; min-width: 70px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
 .tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
 
-/* PAGES */
 .page { display: none; min-height: calc(100vh - 120px); }
 .page.active { display: block; }
 .inner { padding: 16px; max-width: 600px; margin: 0 auto; }
 
-/* CARDS */
 .card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
 .card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
 
-/* FORM */
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
-.field input, .field textarea { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
-.field input:focus, .field textarea:focus { border-color: var(--gold); background: #fff; }
+.field input, .field textarea, .field select { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); background: #fff; }
 .field textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
 
-/* CATEGORY GRID */
 .cat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .cat-btn { padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); font-family: 'Heebo', sans-serif; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
 .cat-btn.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 600; }
 
-/* BUTTONS */
 .btn-main { width: 100%; padding: 14px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
 .btn-main:active { background: var(--navy2); transform: scale(0.98); }
 .btn-main:disabled { background: var(--muted); cursor: not-allowed; }
 .btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--navy); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 .btn-secondary:active { background: var(--bg); }
 
-/* ALERTS */
 .alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
 .alert.ok { background: var(--green-bg); color: var(--green); border: 1px solid #A8D5B8; }
 .alert.err { background: var(--red-bg); color: var(--red); border: 1px solid #F5B7B1; }
 
-/* SEARCH */
 .search-box { position: relative; margin-bottom: 14px; }
 .search-box input { width: 100%; padding: 12px 14px 12px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-family: 'Heebo', sans-serif; font-size: 14px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; }
 .search-box input:focus { border-color: var(--gold); }
 .search-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
 
-/* FILTER CHIPS */
 .filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 14px; }
 .filter-chips::-webkit-scrollbar { display: none; }
 .chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
 .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 
-/* INFO CARDS */
 .info-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
 .badge-priere { background: #EEF2FF; color: #4338CA; }
@@ -84,13 +75,12 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .badge-autre { background: #F1F5F9; color: #334155; }
 .info-card .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 60px; }
 .info-card .info-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; white-space: pre-wrap; }
-  .info-card .info-date { font-size: 11px; color: var(--muted); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
+.info-card .info-date { font-size: 11px; color: var(--muted); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
 .info-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
 .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; color: var(--muted); transition: color 0.15s; }
 .btn-icon.edit:hover { color: var(--gold); }
 .btn-icon.del:hover { color: var(--red); }
 
-/* CONV CARDS */
 .conv-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; }
 .conv-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .conv-phone { font-size: 12px; font-weight: 600; color: var(--navy); background: var(--bg); padding: 3px 10px; border-radius: 20px; }
@@ -98,7 +88,25 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .conv-q { font-size: 13px; color: var(--navy); font-weight: 500; padding: 8px 10px; background: #EEF2FF; border-radius: 8px; margin-bottom: 6px; }
 .conv-r { font-size: 12px; color: var(--muted); padding: 8px 10px; background: var(--bg); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
 
-/* MODAL */
+/* DEMANDES */
+.demande-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; }
+.type-cerfa { background: #FEF3C7; color: #92400E; }
+.type-sefer_torah { background: #ECFDF5; color: #065F46; }
+.type-location_salle { background: #EEF2FF; color: #4338CA; }
+.type-autre { background: #F1F5F9; color: #334155; }
+.demande-date { font-size: 11px; color: var(--muted); }
+.demande-phone { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.demande-texte { font-size: 13px; color: var(--text); background: var(--bg); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.statut-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.statut-nouveau { background: #FFF3E0; color: var(--orange); }
+.statut-en_cours { background: #FEF3C7; color: #92400E; }
+.statut-traite { background: var(--green-bg); color: var(--green); }
+.btn-statut { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.15s; }
+.btn-statut:hover { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
 .modal-overlay.active { display: flex; }
 .modal { background: var(--white); border-radius: 20px 20px 0 0; padding: 24px 20px 36px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
@@ -108,11 +116,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .modal-cancel { flex: 1; padding: 13px; background: var(--bg); color: var(--muted); font-family: 'Heebo', sans-serif; font-size: 14px; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; }
 .modal-save { flex: 2; padding: 13px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; }
 
-/* CONFIG */
 .config-note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400E; line-height: 1.6; margin-bottom: 14px; }
 .url-display { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 12px; font-family: monospace; color: var(--muted); word-break: break-all; margin-top: 10px; }
 
-/* ANALYSE */
 .topic-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
 .topic-bar-wrap { flex: 1; }
 .topic-name { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
@@ -125,6 +131,11 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
 .empty .icon { font-size: 40px; margin-bottom: 12px; }
 .empty p { font-size: 14px; }
+
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-box { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+.stat-num { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; font-weight: 700; color: var(--navy); }
+.stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -140,6 +151,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="tabs">
   <div class="tab active" onclick="showTab('ajouter',this)">➕ Ajouter</div>
   <div class="tab" onclick="showTab('infos',this)">📋 Infos</div>
+  <div class="tab" onclick="showTab('demandes',this)">📩 Demandes</div>
   <div class="tab" onclick="showTab('questions',this)">💬 Questions</div>
   <div class="tab" onclick="showTab('export',this)">📤 Export</div>
   <div class="tab" onclick="showTab('config',this)">⚙️ Config</div>
@@ -211,6 +223,31 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
 </div>
 
+<!-- ─── DEMANDES ─── -->
+<div class="page" id="tab-demandes">
+  <div class="inner">
+    <div class="card">
+      <div class="field">
+        <label>Mot de passe admin</label>
+        <input type="password" id="pw-demandes" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="chargerDemandes()">🔄 Charger les demandes</button>
+    </div>
+    <div id="demandes-stats" style="display:none">
+      <div class="stats-row" id="stats-row"></div>
+    </div>
+    <div class="filter-chips" id="demandes-filter-chips" style="display:none">
+      <div class="chip active" data-filter="tous" onclick="selectDemandeFilter(this)">Toutes</div>
+      <div class="chip" data-filter="cerfa" onclick="selectDemandeFilter(this)">📋 Cerfa</div>
+      <div class="chip" data-filter="sefer_torah" onclick="selectDemandeFilter(this)">📜 Sefer Torah</div>
+      <div class="chip" data-filter="location_salle" onclick="selectDemandeFilter(this)">🏠 Salle</div>
+      <div class="chip" data-filter="nouveau" onclick="selectDemandeFilter(this)">🔴 Nouveau</div>
+      <div class="chip" data-filter="traite" onclick="selectDemandeFilter(this)">✅ Traité</div>
+    </div>
+    <div id="demandes-container"></div>
+  </div>
+</div>
+
 <!-- ─── QUESTIONS ─── -->
 <div class="page" id="tab-questions">
   <div class="inner">
@@ -228,7 +265,6 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <!-- ─── EXPORT ─── -->
 <div class="page" id="tab-export">
   <div class="inner">
-
     <div class="card">
       <div class="card-title">📤 Exporter mes données</div>
       <div class="field">
@@ -237,6 +273,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       </div>
       <button class="btn-main" onclick="exporterInfos()">📋 Exporter les infos (CSV)</button>
       <button class="btn-secondary" onclick="exporterQuestions()">💬 Exporter les questions (CSV)</button>
+      <button class="btn-secondary" onclick="exporterDemandes()">📩 Exporter les demandes (CSV)</button>
       <button class="btn-secondary" onclick="analyserQuestions()">🧠 Analyser les questions fréquentes</button>
       <div class="alert ok" id="alert-export-ok"></div>
       <div class="alert err" id="alert-export-err"></div>
@@ -267,7 +304,6 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
         <div id="suggestions-container"></div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -337,7 +373,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 let catSelected = 'priere';
 let editCatSelected = 'priere';
 let allInfos = [];
+let allDemandes = [];
 let filterCat = 'tous';
+let filterDemande = 'tous';
 
 window.onload = function() {
   const saved = localStorage.getItem('railway_url');
@@ -369,6 +407,12 @@ function selectFilter(chip) {
   afficherInfos();
 }
 
+function selectDemandeFilter(chip) {
+  document.querySelectorAll('#demandes-filter-chips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active'); filterDemande = chip.dataset.filter;
+  afficherDemandes();
+}
+
 function filtrerInfos() { afficherInfos(); }
 
 function badgeClass(cat) {
@@ -379,6 +423,26 @@ function badgeClass(cat) {
 function catLabel(cat) {
   const map = { priere: '🙏 Prière', horaire: '🕐 Horaire', cours: '📚 Cours', service: '🔧 Service', evenement: '✡️ Événement', autre: '📝 Autre' };
   return map[cat] || cat;
+}
+
+function typeLabel(type) {
+  const map = { cerfa: '📋 Cerfa', sefer_torah: '📜 Sefer Torah', location_salle: '🏠 Location Salle' };
+  return map[type] || '📩 ' + type;
+}
+
+function typeBadgeClass(type) {
+  const map = { cerfa: 'type-cerfa', sefer_torah: 'type-sefer_torah', location_salle: 'type-location_salle' };
+  return map[type] || 'type-autre';
+}
+
+function statutLabel(s) {
+  const map = { nouveau: '🔴 Nouveau', en_cours: '🟡 En cours', traite: '✅ Traité' };
+  return map[s] || s;
+}
+
+function statutClass(s) {
+  const map = { nouveau: 'statut-nouveau', en_cours: 'statut-en_cours', traite: 'statut-traite' };
+  return map[s] || 'statut-nouveau';
 }
 
 function afficherInfos() {
@@ -405,6 +469,110 @@ function afficherInfos() {
       </div>`;
     container.appendChild(el);
   });
+}
+
+function afficherDemandes() {
+  const container = document.getElementById('demandes-container');
+  let filtered = allDemandes;
+
+  if (filterDemande === 'nouveau' || filterDemande === 'traite' || filterDemande === 'en_cours') {
+    filtered = allDemandes.filter(d => d.statut === filterDemande);
+  } else if (filterDemande !== 'tous') {
+    filtered = allDemandes.filter(d => d.type === filterDemande);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  filtered.forEach(d => {
+    const date = new Date(d.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const phone = d.phone ? (d.phone.slice(0, 5) + '••••' + d.phone.slice(-2)) : '?';
+    const data = d.data || {};
+    const texte = data.texte_libre || JSON.stringify(data, null, 2);
+    const phoneWa = data.phone_whatsapp || ('+' + d.phone);
+
+    const el = document.createElement('div');
+    el.className = 'demande-card';
+    el.id = 'demande-' + d.id;
+    el.innerHTML = `
+      <div class="demande-header">
+        <span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span>
+        <span class="demande-date">${date}</span>
+      </div>
+      <div class="demande-phone">📱 ${phoneWa}</div>
+      <div class="demande-texte">${texte}</div>
+      <div class="demande-statut-row">
+        <span class="statut-badge ${statutClass(d.statut)}" id="statut-badge-${d.id}">${statutLabel(d.statut)}</span>
+        ${d.statut !== 'traite' ? `<button class="btn-statut" onclick="marquerTraite(${d.id})">✅ Marquer traité</button>` : ''}
+        ${d.statut === 'nouveau' ? `<button class="btn-statut" onclick="marquerEnCours(${d.id})">🟡 En cours</button>` : ''}
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+async function chargerDemandes() {
+  const url = getUrl();
+  const pw = document.getElementById('pw-demandes').value.trim();
+  if (!url || !pw) return alert("URL et mot de passe requis");
+  const container = document.getElementById('demandes-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const res = await fetch(url + '/admin/demandes?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + data.message + '</p></div>'; return; }
+    allDemandes = data.demandes || [];
+
+    // Stats
+    const total = allDemandes.length;
+    const nouveaux = allDemandes.filter(d => d.statut === 'nouveau').length;
+    const traites = allDemandes.filter(d => d.statut === 'traite').length;
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--orange)">${nouveaux}</div><div class="stat-label">Nouveaux</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--green)">${traites}</div><div class="stat-label">Traités</div></div>`;
+    document.getElementById('demandes-stats').style.display = 'block';
+    document.getElementById('demandes-filter-chips').style.display = 'flex';
+    afficherDemandes();
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+async function marquerTraite(id) {
+  const url = getUrl();
+  const pw = document.getElementById('pw-demandes').value.trim();
+  try {
+    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, statut: 'traite' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const d = allDemandes.find(x => x.id === id);
+      if (d) d.statut = 'traite';
+      afficherDemandes();
+    }
+  } catch (e) { alert('Erreur'); }
+}
+
+async function marquerEnCours(id) {
+  const url = getUrl();
+  const pw = document.getElementById('pw-demandes').value.trim();
+  try {
+    const res = await fetch(url + '/admin/demandes/' + id + '/statut', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, statut: 'en_cours' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const d = allDemandes.find(x => x.id === id);
+      if (d) d.statut = 'en_cours';
+      afficherDemandes();
+    }
+  } catch (e) { alert('Erreur'); }
 }
 
 async function chargerListe() {
@@ -526,7 +694,6 @@ function showOk(msg) { const el = document.getElementById('alert-ok'); el.textCo
 function showErr(msg) { const el = document.getElementById('alert-err'); el.textContent = msg; el.className = 'alert err'; el.style.display = 'block'; }
 function hideAlerts() { document.getElementById('alert-ok').style.display = 'none'; document.getElementById('alert-err').style.display = 'none'; }
 
-// ─── EXPORT ──────────────────────────────────────────────────
 async function exporterInfos() {
   const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
   if (!url || !pw) return showExportErr("URL et mot de passe requis");
@@ -562,6 +729,24 @@ async function exporterQuestions() {
   } catch(e) { showExportErr("Erreur de connexion"); }
 }
 
+async function exporterDemandes() {
+  const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
+  if (!url || !pw) return showExportErr("URL et mot de passe requis");
+  try {
+    const res = await fetch(url + '/admin/demandes?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) return showExportErr(data.message);
+    let csv = 'Type,Téléphone,Message,Statut,Date\n';
+    data.demandes.forEach(row => {
+      const date = new Date(row.created_at).toLocaleString('fr-FR');
+      const texte = (row.data?.texte_libre || '').replace(/"/g,'""');
+      csv += `"${row.type}","${row.data?.phone_whatsapp || ''}","${texte}","${row.statut}","${date}"\n`;
+    });
+    telecharger(csv, 'shliah-bot-demandes-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv');
+    showExportOk('✓ ' + data.demandes.length + ' demandes exportées !');
+  } catch(e) { showExportErr("Erreur de connexion"); }
+}
+
 async function analyserQuestions() {
   const url = getUrl(); const pw = document.getElementById('pw-export').value.trim();
   if (!url || !pw) return showExportErr("URL et mot de passe requis");
@@ -570,8 +755,6 @@ async function analyserQuestions() {
     const data = await res.json();
     if (!data.ok) return showExportErr(data.message);
     if (data.conversations.length === 0) return showExportErr("Pas encore de questions enregistrées");
-
-    // Analyser les sujets par mots-clés
     const sujets = [
       { nom: '🕐 Horaires des offices', mots: ['horaire', 'heure', 'chaharit', 'minha', 'arvit', 'prière', 'office', 'chabbat', 'shabbat'] },
       { nom: '📚 Cours de Torah', mots: ['cours', 'guémara', 'tanya', 'paracha', 'hassidout', 'leçon', 'shiour'] },
@@ -582,14 +765,10 @@ async function analyserQuestions() {
       { nom: '☀️ Fêtes juives', mots: ['roch hachana', 'yom kippour', 'souccot', 'hanoucca', 'pourim', 'pessah', 'chavouot', 'fête'] },
       { nom: '📞 Contact Rav', mots: ['rav', 'rabbi', 'contact', 'appeler', 'téléphone', 'question', 'hala'] },
     ];
-
     const comptages = sujets.map(s => {
-      const count = data.conversations.filter(conv =>
-        s.mots.some(m => conv.question.toLowerCase().includes(m))
-      ).length;
+      const count = data.conversations.filter(conv => s.mots.some(m => conv.question.toLowerCase().includes(m))).length;
       return { ...s, count };
     }).filter(s => s.count > 0).sort((a, b) => b.count - a.count);
-
     const max = comptages[0]?.count || 1;
     const container = document.getElementById('analyse-container');
     container.innerHTML = '';
@@ -597,14 +776,11 @@ async function analyserQuestions() {
       const pct = Math.round((s.count / max) * 100);
       container.innerHTML += `<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${pct}%"></div></div></div><div class="topic-count">${s.count}</div></div>`;
     });
-
-    // Suggestions d'infos à créer
     const suggestContainer = document.getElementById('suggestions-container');
     suggestContainer.innerHTML = '';
     comptages.slice(0, 3).forEach(s => {
       suggestContainer.innerHTML += `<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`;
     });
-
     document.getElementById('analyse-card').style.display = 'block';
     document.getElementById('analyse-card').scrollIntoView({ behavior: 'smooth' });
     showExportOk('✓ Analyse de ' + data.conversations.length + ' questions terminée !');
@@ -612,13 +788,11 @@ async function analyserQuestions() {
 }
 
 function creerInfoDepuisSuggestion(nom) {
-  // Aller sur l'onglet Ajouter avec le titre pré-rempli
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-ajouter').classList.add('active');
   document.querySelector('.tab[onclick*="ajouter"]').classList.add('active');
-  const titre = nom.replace(/^[^\w]*/, '').trim();
-  document.getElementById('titre').value = titre;
+  document.getElementById('titre').value = nom.replace(/^[^\w]*/, '').trim();
   document.getElementById('titre').focus();
   window.scrollTo(0, 0);
 }
@@ -641,17 +815,13 @@ async function importerInfos() {
   const okEl = document.getElementById('alert-import-ok');
   const errEl = document.getElementById('alert-import-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
-
   if (!url) { errEl.textContent = "Configurez l'adresse dans ⚙️ Config"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!pw) { errEl.textContent = "Entrez le mot de passe admin"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!file) { errEl.textContent = "Sélectionnez un fichier CSV"; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
-
   const text = await file.text();
-  const lines = text.split('\n').slice(1).filter(l => l.trim()); // Skip header
+  const lines = text.split('\n').slice(1).filter(l => l.trim());
   let imported = 0; let errors = 0;
-
   for (const line of lines) {
-    // Parse CSV line (handle quoted fields)
     const fields = [];
     let current = ''; let inQuote = false;
     for (let i = 0; i < line.length; i++) {
@@ -660,22 +830,15 @@ async function importerInfos() {
       else { current += line[i]; }
     }
     fields.push(current.replace(/""/g, '"'));
-
     if (fields.length < 3) continue;
     const [categorie, titre, contenu, instruction] = fields;
     if (!titre || !contenu) continue;
-
     try {
-      const res = await fetch(url + '/admin/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw, categorie: categorie || 'autre', titre, contenu, instruction: instruction || '' })
-      });
+      const res = await fetch(url + '/admin/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, categorie: categorie || 'autre', titre, contenu, instruction: instruction || '' }) });
       const data = await res.json();
       if (data.ok) imported++; else errors++;
     } catch(e) { errors++; }
   }
-
   if (imported > 0) {
     okEl.textContent = '✓ ' + imported + ' info(s) importée(s) avec succès !' + (errors > 0 ? ' (' + errors + ' erreurs)' : '');
     okEl.className = 'alert ok'; okEl.style.display = 'block';
