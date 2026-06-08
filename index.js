@@ -379,7 +379,7 @@ app.post('/webhook', async (req, res) => {
           await pool.query('UPDATE sessions_demande SET terminee=TRUE WHERE phone=$1', [from]);
           const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
           await sauvegarderDemande(session.type, from, recap);
-          await envoyerEmailDemande(session.type, from, recap);
+          envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
           reply = `Merci, votre demande a bien été reçue !
 
 Nous vous contacterons très rapidement.
