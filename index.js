@@ -51,6 +51,13 @@ async function initDB() {
       type TEXT,
       etape INTEGER DEFAULT 0,
       reponses JSONB DEFAULT '{}',
+      terminee BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages_traites (
+      msg_id TEXT PRIMARY KEY,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
@@ -319,13 +326,12 @@ app.post('/webhook', async (req, res) => {
       const text = message.text.body;
       const msgId = message.id;
 
-      // Dédupliquer — ignorer si déjà traité
+      // Dédupliquer par ID message WhatsApp — ignorer si déjà traité
       try {
-        const already = await pool.query("SELECT 1 FROM conversations WHERE question=$1 AND phone=$2 AND created_at > NOW() - INTERVAL '10 seconds'", [text, from]);
-        if (already.rows.length > 0 && !['cerfa','recu fiscal','sefer','salle'].some(k => text.toLowerCase().includes(k))) {
-          res.sendStatus(200); return;
-        }
-      } catch(e) {}
+        const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
+        if (already.rows.length > 0) { res.sendStatus(200); return; }
+        await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
+      } catch(e) { console.error('Dedup error:', e.message); }
 
       let reply;
       let estUneDemande = false;
@@ -333,13 +339,18 @@ app.post('/webhook', async (req, res) => {
       // 1. Vérifier si une session de demande guidée est en cours
       let session = null;
       try {
-        const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]);
+        const sr = await pool.query("SELECT * FROM sessions_demande WHERE phone=$1 AND (terminee=FALSE OR created_at > NOW() - INTERVAL '2 minutes')", [from]);
         if (sr.rows.length > 0) session = sr.rows[0];
       } catch(e) {}
 
       if (session) {
-        // On est dans une conversation guidée
         estUneDemande = true;
+
+        // Si session déjà terminée — juste ignorer silencieusement
+        if (session.terminee) {
+          res.sendStatus(200); return;
+        }
+
         const config = TYPES_DEMANDES[session.type];
         let reponses = session.reponses || {};
         if (typeof reponses === 'string') { try { reponses = JSON.parse(reponses); } catch(e) { reponses = {}; } }
@@ -360,7 +371,7 @@ app.post('/webhook', async (req, res) => {
           reply = questions[prochaineEtape].question;
         } else {
           // Toutes les questions posées — enregistrer et confirmer
-          await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]);
+          await pool.query('UPDATE sessions_demande SET terminee=TRUE WHERE phone=$1', [from]);
           const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
           await sauvegarderDemande(session.type, from, recap);
           await envoyerEmailDemande(session.type, from, recap);
