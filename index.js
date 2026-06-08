@@ -348,13 +348,14 @@ app.post('/webhook', async (req, res) => {
         if (sr.rows.length > 0) session = sr.rows[0];
       } catch(e) {}
 
+      // Si session terminée — la supprimer pour reprendre normalement
+      if (session && session.terminee) {
+        await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{});
+        session = null;
+      }
+
       if (session) {
         estUneDemande = true;
-
-        // Si session déjà terminée — juste ignorer silencieusement
-        if (session.terminee) {
-          res.sendStatus(200); return;
-        }
 
         const config = TYPES_DEMANDES[session.type];
         let reponses = session.reponses || {};
