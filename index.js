@@ -203,6 +203,7 @@ const TYPES_DEMANDES = {
 
 Si vous avez payé via Kehila ou AlloDons, téléchargez-le directement :
 👉 https://kehila.io/export-cerfas
+
 👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr
 
 Pour un virement ou autre paiement, envoyez-moi en un seul message :
