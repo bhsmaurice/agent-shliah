@@ -197,12 +197,7 @@ const TYPES_DEMANDES = {
       return ['cerfa', 'reçu fiscal', 'recu fiscal', 'attestation don', 'déduction impôt', 'deduction impot'].some(m => lower.includes(m));
     },
     questions: [
-      { cle: 'type_personne', question: 'Société ou particulier ?' },
-      { cle: 'nom', question: 'Quel est votre nom complet ?' },
-      { cle: 'adresse', question: 'Quelle est votre adresse complète ?' },
-      { cle: 'email', question: 'Quelle est votre adresse email ?' },
-      { cle: 'montant', question: 'Quel est le montant du don (en euros) ?' },
-      { cle: 'mode_paiement', question: 'Quel est le mode de paiement ? (virement, chèque, espèces...)' },
+      { cle: 'infos', question: '' }
     ],
     messageDebut: () => `Pour votre reçu fiscal (Cerfa) :
 
@@ -210,9 +205,14 @@ Si vous avez payé via Kehila ou AlloDons, téléchargez-le directement :
 👉 https://kehila.io/export-cerfas
 👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr
 
-Pour un virement ou autre paiement, j'ai besoin de quelques informations.
+Pour un virement ou autre paiement, envoyez-moi en un seul message :
 
-Société ou particulier ?`
+1. Société ou particulier ?
+2. Nom complet
+3. Adresse complète
+4. Email
+5. Montant du don
+6. Mode de paiement`
   },
 
   sefer_torah: {
@@ -222,16 +222,16 @@ Société ou particulier ?`
       return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m));
     },
     questions: [
-      { cle: 'genre', question: 'Garçon ou fille ?' },
-      { cle: 'nom', question: 'Quel est le nom de famille ?' },
-      { cle: 'age', question: 'Quel est son âge ?' },
-      { cle: 'prenom_mere', question: 'Quel est le prénom de la mère ?' },
-      { cle: 'adresse', question: 'Quelle est votre adresse complète ?' },
-      { cle: 'telephone', question: 'Quel est votre numéro de téléphone ?' },
+      { cle: 'infos', question: '' }
     ],
-    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, j'ai besoin de quelques informations.
+    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi en un seul message :
 
-Garçon ou fille ?`
+1. Garçon ou fille
+2. Nom de famille
+3. Âge
+4. Prénom de la mère
+5. Adresse complète
+6. Téléphone`
   },
 
   location_salle: {
@@ -241,16 +241,15 @@ Garçon ou fille ?`
       return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m));
     },
     questions: [
-      { cle: 'nom', question: 'Quel est votre nom ?' },
-      { cle: 'prenom', question: 'Quel est votre prénom ?' },
-      { cle: 'date', question: 'Quelle est la date souhaitée ?' },
-      { cle: 'heure', question: 'À quelle heure ?' },
-      { cle: "evenement", question: "Quel type evenement ? (Bar Mitsva, anniversaire, autre...)" },
-      { cle: 'telephone', question: 'Quel est votre numéro de téléphone ?' },
+      { cle: 'infos', question: '' }
     ],
-    messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, j'ai besoin de quelques informations.
+    messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :
 
-Quel est votre nom ?`
+1. Nom et prénom
+2. Date souhaitée
+3. Heure
+4. Type d'événement
+5. Téléphone`
   }
 
   // ← Ajouter de nouveaux types de demandes ici facilement
