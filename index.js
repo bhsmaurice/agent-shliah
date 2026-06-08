@@ -341,7 +341,7 @@ app.post('/webhook', async (req, res) => {
       // 1. Vérifier si une session de demande guidée est en cours
       let session = null;
       try {
-        const sr = await pool.query("SELECT * FROM sessions_demande WHERE phone=$1 AND (terminee=FALSE OR created_at > NOW() - INTERVAL '30 seconds')", [from]);
+        const sr = await pool.query("SELECT * FROM sessions_demande WHERE phone=$1 AND (terminee=FALSE OR created_at > NOW() - INTERVAL '10 seconds')", [from]);
         if (sr.rows.length > 0) session = sr.rows[0];
       } catch(e) {}
 
