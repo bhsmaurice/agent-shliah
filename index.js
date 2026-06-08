@@ -61,6 +61,9 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  // Migration automatique
+  await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
+  await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
 
