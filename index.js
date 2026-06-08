@@ -320,6 +320,9 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+  // Répondre IMMÉDIATEMENT à WhatsApp pour éviter les renvois
+  res.sendStatus(200);
+
   const body = req.body;
   if (body.object === 'whatsapp_business_account') {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
@@ -331,7 +334,7 @@ app.post('/webhook', async (req, res) => {
       // Dédupliquer par ID message WhatsApp — ignorer si déjà traité
       try {
         const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
-        if (already.rows.length > 0) { res.sendStatus(200); return; }
+        if (already.rows.length > 0) { return; }
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
@@ -341,7 +344,7 @@ app.post('/webhook', async (req, res) => {
       // 1. Vérifier si une session de demande guidée est en cours
       let session = null;
       try {
-        const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1 AND terminee=FALSE', [from]);
+        const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]);
         if (sr.rows.length > 0) session = sr.rows[0];
       } catch(e) {}
 
@@ -393,10 +396,11 @@ ${getSignature()}`;
         if (typeDemande) {
           estUneDemande = true;
           const config = TYPES_DEMANDES[typeDemande];
-          // Démarrer la session guidée
+          // Démarrer une nouvelle session (supprime l'ancienne)
           try {
+            await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]);
             await pool.query(
-              'INSERT INTO sessions_demande (phone, type, etape, reponses) VALUES ($1,$2,0,$3) ON CONFLICT (phone) DO UPDATE SET type=$2, etape=0, reponses=$3, created_at=NOW()',
+              'INSERT INTO sessions_demande (phone, type, etape, reponses) VALUES ($1,$2,0,$3)',
               [from, typeDemande, '{}']
             );
           } catch(e) { console.error('Session start error:', e.message); }
@@ -430,8 +434,9 @@ ${getSignature()}`;
         } catch (e) { console.error('Conv save error:', e.message); }
       }
     }
-    res.sendStatus(200);
-  } else res.sendStatus(404);
+  } else {
+    // déjà répondu 200 au début
+  }
 });
 
 // ─── API ADMIN ───────────────────────────────────────────────
