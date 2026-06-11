@@ -188,7 +188,6 @@ function parleDeChabbat(msg) {
 
 // ─── SYSTÈME DE DEMANDES ─────────────────────────────────────
 
-// Définition de toutes les demandes — facile d'en ajouter d'autres ici
 const TYPES_DEMANDES = {
   cerfa: {
     label: 'Reçu Fiscal (Cerfa)',
@@ -252,8 +251,6 @@ Pour un virement ou autre paiement, envoyez-moi en un seul message :
 4. Type d'événement
 5. Téléphone`
   }
-
-  // ← Ajouter de nouveaux types de demandes ici facilement
 };
 
 function detecterTypeDemande(msg) {
@@ -321,7 +318,6 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  // Répondre IMMÉDIATEMENT à WhatsApp pour éviter les renvois
   res.sendStatus(200);
 
   const body = req.body;
@@ -332,7 +328,6 @@ app.post('/webhook', async (req, res) => {
       const text = message.text.body;
       const msgId = message.id;
 
-      // Dédupliquer par ID message WhatsApp — ignorer si déjà traité
       try {
         const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
         if (already.rows.length > 0) { return; }
@@ -342,14 +337,12 @@ app.post('/webhook', async (req, res) => {
       let reply;
       let estUneDemande = false;
 
-      // 1. Vérifier si une session de demande guidée est en cours
       let session = null;
       try {
         const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]);
         if (sr.rows.length > 0) session = sr.rows[0];
       } catch(e) {}
 
-      // Si session terminée — la supprimer pour reprendre normalement
       if (session && session.terminee) {
         await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{});
         session = null;
@@ -357,14 +350,12 @@ app.post('/webhook', async (req, res) => {
 
       if (session) {
         estUneDemande = true;
-
         const config = TYPES_DEMANDES[session.type];
         let reponses = session.reponses || {};
         if (typeof reponses === 'string') { try { reponses = JSON.parse(reponses); } catch(e) { reponses = {}; } }
         const questions = config.questions;
         const etapeActuelle = parseInt(session.etape) || 0;
 
-        // Sauvegarder la réponse à la question actuelle
         if (etapeActuelle < questions.length) {
           reponses[questions[etapeActuelle].cle] = text;
         }
@@ -372,12 +363,10 @@ app.post('/webhook', async (req, res) => {
         const prochaineEtape = etapeActuelle + 1;
 
         if (prochaineEtape < questions.length) {
-          // Poser la prochaine question
           await pool.query('UPDATE sessions_demande SET etape=$1, reponses=$2 WHERE phone=$3',
             [prochaineEtape, JSON.stringify(reponses), from]);
           reply = questions[prochaineEtape].question;
         } else {
-          // Toutes les questions posées — enregistrer et confirmer
           await pool.query('UPDATE sessions_demande SET terminee=TRUE WHERE phone=$1', [from]);
           const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
           await sauvegarderDemande(session.type, from, recap);
@@ -392,13 +381,11 @@ ${getSignature()}`;
         }
 
       } else {
-        // 2. Détecter si c'est une nouvelle demande
         const typeDemande = detecterTypeDemande(text);
 
         if (typeDemande) {
           estUneDemande = true;
           const config = TYPES_DEMANDES[typeDemande];
-          // Démarrer une nouvelle session (supprime l'ancienne)
           try {
             await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]);
             await pool.query(
@@ -409,7 +396,6 @@ ${getSignature()}`;
           reply = config.messageDebut();
 
         } else {
-          // 3. Mode normal : Claude répond
           let extra = null;
           if (parleDeMikve(text)) extra = await getMikvaotFemmes();
           else if (parleDeChabbat(text)) extra = await getHorairesChabbat();
@@ -436,8 +422,6 @@ ${getSignature()}`;
         } catch (e) { console.error('Conv save error:', e.message); }
       }
     }
-  } else {
-    // déjà répondu 200 au début
   }
 });
 
@@ -486,7 +470,6 @@ app.get('/admin/conversations', async (req, res) => {
   res.json({ ok: true, conversations: result.rows });
 });
 
-// Toutes les demandes (Cerfa, Sefer Torah, Salle, etc.)
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -498,7 +481,6 @@ app.get('/admin/demandes', async (req, res) => {
   res.json({ ok: true, demandes: result.rows, types: Object.keys(TYPES_DEMANDES).map(k => ({ key: k, label: TYPES_DEMANDES[k].label })) });
 });
 
-// Mettre à jour le statut d'une demande
 app.put('/admin/demandes/:id/statut', async (req, res) => {
   const { password, statut } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -506,12 +488,99 @@ app.put('/admin/demandes/:id/statut', async (req, res) => {
   res.json({ ok: true, message: "Statut mis à jour" });
 });
 
-// Supprimer définitivement une demande
 app.delete('/admin/demandes/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   await pool.query('DELETE FROM demandes WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé définitivement" });
+});
+
+// ─── BROADCAST ───────────────────────────────────────────────
+
+// Récupérer tous les numéros uniques + aperçu du broadcast
+app.get('/admin/broadcast/contacts', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query('SELECT DISTINCT phone FROM conversations ORDER BY phone');
+    res.json({ ok: true, count: result.rows.length, phones: result.rows.map(r => r.phone) });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+// Envoyer le broadcast (template Chabbat ou texte libre)
+app.post('/admin/broadcast/send', async (req, res) => {
+  const { password, mode, paracha, date, entree, sortie, texte_libre } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+
+  try {
+    const result = await pool.query('SELECT DISTINCT phone FROM conversations ORDER BY phone');
+    const phones = result.rows.map(r => r.phone);
+
+    if (phones.length === 0) return res.json({ ok: false, message: "Aucun contact trouvé" });
+
+    let envoyes = 0;
+    let erreurs = 0;
+
+    for (const phone of phones) {
+      try {
+        let body;
+
+        if (mode === 'chabbat') {
+          // Template Chabbat avec variables
+          body = JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'template',
+            template: {
+              name: 'broadcast_chabbat',
+              language: { code: 'fr' },
+              components: [{
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: paracha || '' },
+                  { type: 'text', text: date || '' },
+                  { type: 'text', text: entree || '' },
+                  { type: 'text', text: sortie || '' }
+                ]
+              }]
+            }
+          });
+        } else {
+          // Texte libre (fonctionne uniquement dans la fenêtre 24h)
+          body = JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'text',
+            text: { body: texte_libre || '' }
+          });
+        }
+
+        const response = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+          body
+        });
+
+        const data = await response.json();
+        if (data.messages) envoyes++;
+        else { erreurs++; console.error(`Broadcast erreur pour ${phone}:`, JSON.stringify(data)); }
+
+        // Pause 200ms entre chaque envoi pour ne pas dépasser les limites Meta
+        await new Promise(r => setTimeout(r, 200));
+
+      } catch (e) {
+        erreurs++;
+        console.error(`Broadcast exception pour ${phone}:`, e.message);
+      }
+    }
+
+    res.json({ ok: true, total: phones.length, envoyes, erreurs, message: `${envoyes} messages envoyés, ${erreurs} erreurs` });
+
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
 });
 
 // ─── CLAUDE ──────────────────────────────────────────────────
