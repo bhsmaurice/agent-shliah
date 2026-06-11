@@ -69,7 +69,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .search-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
 .filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 14px; }
 .filter-chips::-webkit-scrollbar { display: none; }
-.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15px; }
 .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 .info-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
@@ -148,6 +148,12 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .stat-box { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
 .stat-num { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; font-weight: 700; color: var(--navy); }
 .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+/* BROADCAST */
+.bc-mode-btn { flex: 1; padding: 12px; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 15px; cursor: pointer; transition: all 0.2s; border: 2px solid var(--border); background: var(--white); color: var(--muted); }
+.bc-mode-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.bc-apercu { background: #e8f5e9; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 14px; color: #2e7d32; white-space: pre-line; line-height: 1.7; border: 1px solid #c8e6c9; }
+.bc-warning { background: #fff3cd; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #856404; border: 1px solid #ffc107; }
+.bc-contacts-box { background: #f0f4ff; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 15px; color: var(--navy); border: 1px solid #c5cae9; }
 </style>
 </head>
 <body>
@@ -192,6 +198,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
+  <div class="tab" onclick="showTab('broadcast',this)">📢<span class="tab-label">Broadcast</span></div>
   <div class="tab" onclick="showTab('export',this)">📤<span class="tab-label">Export</span></div>
   <div class="tab" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
 </div>
@@ -272,6 +279,68 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="card"><button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button></div>
   <div id="convs-container"></div>
 </div></div>
+
+<!-- ══════════════ BROADCAST ══════════════ -->
+<div class="page" id="tab-broadcast"><div class="inner">
+  <div class="card-title" style="padding:4px 0 16px;">📢 Broadcast — Message à tous</div>
+
+  <div class="bc-contacts-box" id="broadcast-contacts">
+    👥 Chargement des contacts...
+  </div>
+
+  <!-- Sélecteur de mode -->
+  <div style="display:flex;gap:10px;margin-bottom:20px;">
+    <button class="bc-mode-btn active" id="btn-mode-chabbat" onclick="setBroadcastMode('chabbat')">🕯️ Chabbat</button>
+    <button class="bc-mode-btn" id="btn-mode-libre" onclick="setBroadcastMode('libre')">✏️ Texte libre</button>
+  </div>
+
+  <!-- Formulaire Chabbat -->
+  <div id="form-chabbat">
+    <div class="card" style="padding:16px;">
+      <div class="field">
+        <label>📖 Paracha</label>
+        <input id="bc-paracha" type="text" placeholder="ex: Kora'h" oninput="updateApercu()">
+      </div>
+      <div class="field">
+        <label>📅 Date</label>
+        <input id="bc-date" type="text" placeholder="ex: 13 juin 2026" oninput="updateApercu()">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <label>🕯️ Entrée Chabbat</label>
+          <input id="bc-entree" type="text" placeholder="ex: 21h14" oninput="updateApercu()">
+        </div>
+        <div class="field">
+          <label>✨ Sortie Chabbat</label>
+          <input id="bc-sortie" type="text" placeholder="ex: 22h31" oninput="updateApercu()">
+        </div>
+      </div>
+    </div>
+    <div class="bc-apercu" id="apercu-chabbat">🕯️ Chabbat Chalom !
+
+Paracha de la semaine : [Paracha]
+Date : [Date]
+
+Entrée de Chabbat : [Heure entrée]
+Sortie de Chabbat : [Heure sortie]
+
+Chabbat Chalom à toute la communauté ! 🌟
+✡️ Beth Habad Saint-Maurice</div>
+  </div>
+
+  <!-- Formulaire texte libre -->
+  <div id="form-libre" style="display:none;">
+    <div class="bc-warning">⚠️ Le texte libre ne fonctionne que si la personne a écrit au bot dans les dernières 24h. Pour un envoi garanti à tous, utilise le template Chabbat.</div>
+    <div class="field">
+      <textarea id="bc-texte-libre" rows="6" placeholder="Écris ton message ici..." style="min-height:140px;"></textarea>
+    </div>
+  </div>
+
+  <button class="btn-main" onclick="envoyerBroadcast()" id="btn-broadcast">📤 Envoyer à tous</button>
+  <div class="alert ok" id="broadcast-result-ok" style="display:none;"></div>
+  <div class="alert err" id="broadcast-result-err" style="display:none;"></div>
+</div></div>
+<!-- ══════════════ FIN BROADCAST ══════════════ -->
 
 <div class="page" id="tab-export"><div class="inner">
   <div class="card">
@@ -395,7 +464,13 @@ let catSelected='priere', editCatSelected='priere', allInfos=[], allDemandes=[],
 let selectModeActive=false, selectedIds=new Set(), corbeilleSelectMode=false, corbeilleSelectedIds=new Set();
 function getUrl() { return (localStorage.getItem('railway_url')||'').replace(/\/$/,''); }
 function getAdminPw() { return localStorage.getItem('railway_admin_pw')||''; }
-function showTab(name,el) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.getElementById('tab-'+name).classList.add('active'); el.classList.add('active'); }
+function showTab(name,el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'broadcast') loadBroadcastContacts();
+}
 function selectCat(btn) { document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); catSelected=btn.dataset.cat; }
 function selectEditCat(btn) { document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); editCatSelected=btn.dataset.cat; }
 function selectFilter(chip) { document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); filterCat=chip.dataset.filter; afficherInfos(); }
@@ -580,6 +655,64 @@ async function importerInfos(){
   for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}
   if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}
   else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}
+}
+
+// ══════════════ BROADCAST ══════════════
+let broadcastMode = 'chabbat';
+
+async function loadBroadcastContacts() {
+  const url=getUrl(),pw=getAdminPw();
+  if(!url){document.getElementById('broadcast-contacts').innerHTML='⚠️ Configurez l\'adresse dans ⚙️ Config';return;}
+  try{
+    const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));
+    const d=await r.json();
+    if(d.ok) document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot — ils recevront le message.`;
+    else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;
+  }catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}
+}
+
+function setBroadcastMode(mode) {
+  broadcastMode=mode;
+  document.getElementById('form-chabbat').style.display=mode==='chabbat'?'block':'none';
+  document.getElementById('form-libre').style.display=mode==='libre'?'block':'none';
+  document.getElementById('btn-mode-chabbat').className='bc-mode-btn'+(mode==='chabbat'?' active':'');
+  document.getElementById('btn-mode-libre').className='bc-mode-btn'+(mode==='libre'?' active':'');
+}
+
+function updateApercu() {
+  const p=document.getElementById('bc-paracha').value||'[Paracha]';
+  const d=document.getElementById('bc-date').value||'[Date]';
+  const e=document.getElementById('bc-entree').value||'[Heure entrée]';
+  const s=document.getElementById('bc-sortie').value||'[Heure sortie]';
+  document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;
+}
+
+async function envoyerBroadcast() {
+  const url=getUrl(),pw=getAdminPw();
+  const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');
+  const btn=document.getElementById('btn-broadcast');
+  okEl.style.display='none'; errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.style.display='block';return;}
+  if(!confirm('Envoyer ce message à TOUS les contacts du bot ?'))return;
+  btn.disabled=true; btn.textContent='⏳ Envoi en cours...';
+  const payload={password:pw,mode:broadcastMode};
+  if(broadcastMode==='chabbat'){
+    payload.paracha=document.getElementById('bc-paracha').value;
+    payload.date=document.getElementById('bc-date').value;
+    payload.entree=document.getElementById('bc-entree').value;
+    payload.sortie=document.getElementById('bc-sortie').value;
+    if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs avant d\'envoyer !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
+  } else {
+    payload.texte_libre=document.getElementById('bc-texte-libre').value;
+    if(!payload.texte_libre.trim()){errEl.textContent='Écris un message avant d\'envoyer !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
+  }
+  try{
+    const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok){okEl.textContent=`✅ ${d.envoyes} messages envoyés sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}
+    else{errEl.textContent='❌ '+d.message;errEl.style.display='block';}
+  }catch(e){errEl.textContent='❌ Erreur réseau : '+e.message;errEl.style.display='block';}
+  btn.disabled=false; btn.textContent='📤 Envoyer à tous';
 }
 </script>
 </body>
