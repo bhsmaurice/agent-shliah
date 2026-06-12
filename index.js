@@ -113,37 +113,85 @@ async function getEvenements() {
   } catch (e) { return null; }
 }
 
-// ─── SCRAPING CHABBAT AMÉLIORÉ (fr.chabad.org + chabad.fr) ──
+// ─── SCRAPING CHABBAT — Torah-Box Paris ──────────────────────
 async function getHorairesChabbat() {
-  // Tentative 1 : fr.chabad.org
   try {
-    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
+    });
     const html = await res.text();
-    const texte = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const allumage = texte.match(/allumage[^0-9]*(\d+[h:]\d+)/i) || texte.match(/bougie[^0-9]*(\d+[h:]\d+)/i) || texte.match(/(\d{1,2}[h:]\d{2})/);
-    const havdalah = texte.match(/havdalah[^0-9]*(\d+[h:]\d+)/i) || texte.match(/fin[^0-9]*(\d+[h:]\d+)/i);
-    const dateMatch = texte.match(/vendredi\s+(\d+\s+\w+\s+\d{4})/i) || texte.match(/(\d+\s+\w+\s+\d{4})/i);
-    const parasha = texte.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ'\-]+(?:\s+[A-Za-zÀ-ÿ'\-]+)?)/i) || texte.match(/portion\s+([A-Za-zÀ-ÿ'\-]+)/i);
-    if (allumage) {
-      const date = dateMatch ? dateMatch[1] : '';
-      const parashaText = parasha ? 'Paracha ' + parasha[1] : '';
-      return `HORAIRES CHABBAT - PARIS :\n📅 ${date}\n📖 ${parashaText}\n🕯️ Allumage des bougies : ${allumage[1]}\n✨ Sortie de Chabbat (Havdalah) : ${havdalah ? havdalah[1] : 'voir fr.chabad.org'}`;
-    }
-  } catch (e) { console.error('fr.chabad.org error:', e.message); }
 
-  // Tentative 2 : chabad.fr
-  try {
-    const res2 = await fetch('https://www.chabad.fr/holidays/shabbat-times/Paris_France_p5.htm', { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    const html2 = await res2.text();
-    const texte2 = html2.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const allumage2 = texte2.match(/(\d{1,2}[h:]\d{2})/);
-    const parasha2 = texte2.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ'\-]+(?:\s+[A-Za-zÀ-ÿ'\-]+)?)/i);
-    if (allumage2) {
-      return `HORAIRES CHABBAT - PARIS :\n📖 ${parasha2 ? 'Paracha ' + parasha2[1] : ''}\n🕯️ Allumage des bougies : ${allumage2[1]}\n✨ Pour la sortie : voir chabad.fr`;
-    }
-  } catch (e) { console.error('chabad.fr error:', e.message); }
+    // Extraire le tableau des Chabbatot à venir
+    // Format dans la page : "Vendredi 12 Juin 2026 | Chéla'h Lekha | 21:36 | 23:01"
+    const tableMatch = html.match(/Les Chabbaths à venir[\s\S]*?<\/table>/i);
+    if (!tableMatch) throw new Error('Tableau non trouvé');
 
-  return null;
+    const lignes = tableMatch[0].match(/<tr[\s\S]*?<\/tr>/gi) || [];
+
+    // Date d'aujourd'hui pour trouver le prochain Chabbat
+    const now = new Date();
+    const today = now.getDay(); // 0=dim, 5=ven, 6=sam
+    
+    let prochainChabbat = null;
+
+    for (const ligne of lignes) {
+      // Extraire texte brut de la ligne
+      const texte = ligne.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Chercher une ligne avec date + horaires (format: "Vendredi DD Mois YYYY Paracha HH:MM HH:MM")
+      const match = texte.match(/Vendredi\s+(\d+\w*\s+\w+\s+\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
+      if (match) {
+        const dateStr = match[1].trim();
+        const paracha = match[2].trim().replace(/[-\s]+/g, ' ');
+        const entree = match[3];
+        const sortie = match[4];
+
+        // Parser la date
+        const mois = { 'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11 };
+        const dateParts = dateStr.match(/(\d+)\w*\s+(\w+)\s+(\d{4})/);
+        if (dateParts) {
+          const jour = parseInt(dateParts[1]);
+          const moisIdx = mois[dateParts[2]];
+          const annee = parseInt(dateParts[3]);
+          if (moisIdx !== undefined) {
+            const dateChabbat = new Date(annee, moisIdx, jour);
+            // Prendre le premier Chabbat à venir (vendredi prochain ou ce vendredi)
+            if (dateChabbat >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - (today === 6 ? 1 : 0))) {
+              prochainChabbat = { dateStr: `Vendredi ${dateStr}`, paracha, entree, sortie };
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (prochainChabbat) {
+      const { dateStr, paracha, entree, sortie } = prochainChabbat;
+      const entreeFormatted = entree.replace(':', 'h');
+      const sortieFormatted = sortie.replace(':', 'h');
+      return `HORAIRES CHABBAT - PARIS (Torah-Box) :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeFormatted}\n✨ Sortie de Chabbat (Havdalah) : ${sortieFormatted}`;
+    }
+
+    // Fallback : extraire la première entrée/sortie trouvée
+    const firstMatch = html.match(/Entrée à <strong>(\d{1,2}:\d{2})<\/strong>[\s\S]*?Sortie à <strong>(\d{1,2}:\d{2})<\/strong>/i);
+    if (firstMatch) {
+      return `HORAIRES CHABBAT - PARIS :\n🕯️ Entrée : ${firstMatch[1].replace(':','h')}\n✨ Sortie : ${firstMatch[2].replace(':','h')}`;
+    }
+
+    throw new Error('Données non trouvées');
+  } catch (e) {
+    console.error('Torah-Box scraping error:', e.message);
+    // Fallback fr.chabad.org
+    try {
+      const res2 = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const html2 = await res2.text();
+      const texte2 = html2.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const allumage = texte2.match(/(\d{1,2}[h:]\d{2})/);
+      const parasha = texte2.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ'\-]+)/i);
+      if (allumage) return `HORAIRES CHABBAT - PARIS :\n📖 ${parasha ? 'Paracha ' + parasha[1] : ''}\n🕯️ Entrée : ${allumage[1]}\n✨ Sortie : voir fr.chabad.org`;
+    } catch (e2) { console.error('Chabad fallback error:', e2.message); }
+    return null;
+  }
 }
 
 // Cache pour éviter de scraper à chaque message
