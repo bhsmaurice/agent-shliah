@@ -18,7 +18,8 @@
 html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); }
 #login-screen { position: fixed; inset: 0; background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
 .login-logo { font-family: 'Frank Ruhl Libre', serif; font-size: 28px; color: var(--gold); margin-bottom: 6px; }
-.login-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 40px; }
+.login-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
+.login-user-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 24px; background: rgba(255,255,255,0.08); padding: 4px 14px; border-radius: 20px; }
 .pin-display { display: flex; gap: 14px; margin-bottom: 32px; }
 .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: transparent; transition: all 0.2s; }
 .pin-dot.filled { background: var(--gold); border-color: var(--gold); }
@@ -29,6 +30,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .pin-btn.delete { font-size: 18px; background: transparent; border-color: transparent; }
 .pin-btn.zero { grid-column: 2; }
 .login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
+.switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
 .header { background: var(--navy); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
@@ -36,12 +38,14 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .header-right { display: flex; align-items: center; gap: 10px; }
 .header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
+.user-badge { background: rgba(184,151,42,0.2); border: 1px solid rgba(184,151,42,0.4); color: var(--gold); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
 .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: 1; min-width: 50px; padding: 12px 4px; text-align: center; font-size: 20px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
 .tab-label { display: none; }
 @media (min-width: 640px) { .tab { font-size: 13px; font-weight: 500; padding: 12px 8px; } .tab-label { display: inline; margin-left: 4px; } }
 .tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
+.tab.hidden { display: none; }
 .page { display: none; min-height: calc(100vh - 120px); }
 .page.active { display: block; }
 .inner { padding: 16px; max-width: 600px; margin: 0 auto; }
@@ -69,7 +73,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .search-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
 .filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 14px; }
 .filter-chips::-webkit-scrollbar { display: none; }
-.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15px; }
+.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
 .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 .info-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
@@ -148,12 +152,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .stat-box { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
 .stat-num { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; font-weight: 700; color: var(--navy); }
 .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
-/* BROADCAST */
 .bc-mode-btn { flex: 1; padding: 12px; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 15px; cursor: pointer; transition: all 0.2s; border: 2px solid var(--border); background: var(--white); color: var(--muted); }
 .bc-mode-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 .bc-apercu { background: #e8f5e9; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 14px; color: #2e7d32; white-space: pre-line; line-height: 1.7; border: 1px solid #c8e6c9; }
 .bc-warning { background: #fff3cd; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #856404; border: 1px solid #ffc107; }
 .bc-contacts-box { background: #f0f4ff; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 15px; color: var(--navy); border: 1px solid #c5cae9; }
+.chabbat-info-box { background: linear-gradient(135deg, #1A2540, #2C3E66); border-radius: 14px; padding: 18px; margin-bottom: 16px; color: #fff; }
+.chabbat-info-box .chabbat-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; color: var(--gold); margin-bottom: 10px; }
+.chabbat-info-box .chabbat-line { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 6px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 </style>
 </head>
 <body>
@@ -161,6 +168,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div id="login-screen">
   <div class="login-logo">Shliah Bot 🤖</div>
   <div class="login-sub">Panneau d'administration</div>
+  <div class="login-user-label" id="login-user-label">👤 Administrateur</div>
   <div class="pin-display">
     <div class="pin-dot" id="dot-0"></div><div class="pin-dot" id="dot-1"></div><div class="pin-dot" id="dot-2"></div>
     <div class="pin-dot" id="dot-3"></div><div class="pin-dot" id="dot-4"></div><div class="pin-dot" id="dot-5"></div>
@@ -179,6 +187,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <button class="pin-btn delete" onclick="pinDelete()">⌫</button>
   </div>
   <div class="login-error" id="login-error"></div>
+  <button class="switch-user-btn" onclick="switchUser()">🔄 Changer d'utilisateur</button>
 </div>
 
 <div id="app">
@@ -188,19 +197,20 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="site-sub">Panneau d'administration</div>
   </div>
   <div class="header-right">
+    <span class="user-badge" id="header-user-badge">Admin</span>
     <span class="header-hebrew">בית חב"ד</span>
-    <button class="btn-logout" onclick="logout()">🔒 Verrouiller</button>
+    <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
 </div>
-<div class="tabs">
+<div class="tabs" id="main-tabs">
   <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
   <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
-  <div class="tab" onclick="showTab('broadcast',this)">📢<span class="tab-label">Broadcast</span></div>
+  <div class="tab tab-admin-only" onclick="showTab('broadcast',this)">📢<span class="tab-label">Broadcast</span></div>
   <div class="tab" onclick="showTab('export',this)">📤<span class="tab-label">Export</span></div>
-  <div class="tab" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
+  <div class="tab tab-admin-only" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
 </div>
 
 <div class="page active" id="tab-ajouter"><div class="inner">
@@ -282,38 +292,51 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 <!-- ══════════════ BROADCAST ══════════════ -->
 <div class="page" id="tab-broadcast"><div class="inner">
-  <div class="card-title" style="padding:4px 0 16px;">📢 Broadcast — Message à tous</div>
+  <div class="card-title" style="padding:4px 0 16px;">📢 Broadcast</div>
 
-  <div class="bc-contacts-box" id="broadcast-contacts">
-    👥 Chargement des contacts...
+  <!-- Info Chabbat en direct -->
+  <div class="chabbat-info-box" id="chabbat-live-box" style="display:none">
+    <div class="chabbat-title">🕯️ Chabbat cette semaine</div>
+    <div id="chabbat-live-content" class="chabbat-line">Chargement...</div>
+  </div>
+  <button class="btn-secondary" style="margin-bottom:16px;margin-top:0;" onclick="chargerInfoChabbat()">🕯️ Voir les horaires Chabbat du site Chabad</button>
+
+  <hr class="divider">
+
+  <!-- Envoyer à un contact unique -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title" style="font-size:15px;margin-bottom:12px;">📱 Envoyer à un contact</div>
+    <div class="field">
+      <label>Numéro WhatsApp</label>
+      <input id="bc-phone-unique" type="tel" placeholder="ex: 0612345678 ou +33612345678">
+    </div>
+    <div class="field">
+      <label>Message</label>
+      <textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea>
+    </div>
+    <button class="btn-main" onclick="envoyerContactUnique()" id="btn-envoyer-unique">📤 Envoyer</button>
+    <div class="alert ok" id="unique-result-ok" style="display:none;"></div>
+    <div class="alert err" id="unique-result-err" style="display:none;"></div>
   </div>
 
-  <!-- Sélecteur de mode -->
+  <hr class="divider">
+
+  <!-- Broadcast à tous -->
+  <div class="card-title" style="padding:4px 0 12px;font-size:15px;">📢 Envoyer à tous</div>
+  <div class="bc-contacts-box" id="broadcast-contacts">👥 Chargement des contacts...</div>
+
   <div style="display:flex;gap:10px;margin-bottom:20px;">
     <button class="bc-mode-btn active" id="btn-mode-chabbat" onclick="setBroadcastMode('chabbat')">🕯️ Chabbat</button>
     <button class="bc-mode-btn" id="btn-mode-libre" onclick="setBroadcastMode('libre')">✏️ Texte libre</button>
   </div>
 
-  <!-- Formulaire Chabbat -->
   <div id="form-chabbat">
     <div class="card" style="padding:16px;">
-      <div class="field">
-        <label>📖 Paracha</label>
-        <input id="bc-paracha" type="text" placeholder="ex: Kora'h" oninput="updateApercu()">
-      </div>
-      <div class="field">
-        <label>📅 Date</label>
-        <input id="bc-date" type="text" placeholder="ex: 13 juin 2026" oninput="updateApercu()">
-      </div>
+      <div class="field"><label>📖 Paracha</label><input id="bc-paracha" type="text" placeholder="ex: Kora'h" oninput="updateApercu()"></div>
+      <div class="field"><label>📅 Date</label><input id="bc-date" type="text" placeholder="ex: 13 juin 2026" oninput="updateApercu()"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="field">
-          <label>🕯️ Entrée Chabbat</label>
-          <input id="bc-entree" type="text" placeholder="ex: 21h14" oninput="updateApercu()">
-        </div>
-        <div class="field">
-          <label>✨ Sortie Chabbat</label>
-          <input id="bc-sortie" type="text" placeholder="ex: 22h31" oninput="updateApercu()">
-        </div>
+        <div class="field"><label>🕯️ Entrée</label><input id="bc-entree" type="text" placeholder="ex: 21h14" oninput="updateApercu()"></div>
+        <div class="field"><label>✨ Sortie</label><input id="bc-sortie" type="text" placeholder="ex: 22h31" oninput="updateApercu()"></div>
       </div>
     </div>
     <div class="bc-apercu" id="apercu-chabbat">🕯️ Chabbat Chalom !
@@ -328,12 +351,9 @@ Chabbat Chalom à toute la communauté ! 🌟
 ✡️ Beth Habad Saint-Maurice</div>
   </div>
 
-  <!-- Formulaire texte libre -->
   <div id="form-libre" style="display:none;">
-    <div class="bc-warning">⚠️ Le texte libre ne fonctionne que si la personne a écrit au bot dans les dernières 24h. Pour un envoi garanti à tous, utilise le template Chabbat.</div>
-    <div class="field">
-      <textarea id="bc-texte-libre" rows="6" placeholder="Écris ton message ici..." style="min-height:140px;"></textarea>
-    </div>
+    <div class="bc-warning">⚠️ Texte libre : fonctionne uniquement si la personne a écrit dans les 24 dernières heures.</div>
+    <div class="field"><textarea id="bc-texte-libre" rows="6" placeholder="Écris ton message ici..." style="min-height:140px;"></textarea></div>
   </div>
 
   <button class="btn-main" onclick="envoyerBroadcast()" id="btn-broadcast">📤 Envoyer à tous</button>
@@ -381,13 +401,23 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div style="margin-top:18px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">URL actuelle</div><div class="url-display" id="current-url">Non configurée</div></div>
   </div>
   <div class="card">
-    <div class="card-title">🔒 Code PIN admin</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Changez votre code PIN d'accès (6 chiffres).</p>
+    <div class="card-title">🔒 PIN Administrateur</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Code PIN principal (accès complet).</p>
     <div class="field"><label>Nouveau PIN (6 chiffres)</label><input type="password" id="new-pin" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
     <div class="field"><label>Confirmer le PIN</label><input type="password" id="confirm-pin" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
-    <button class="btn-main" onclick="changerPin()">🔒 Changer le PIN</button>
+    <button class="btn-main" onclick="changerPin('admin')">🔒 Changer le PIN admin</button>
     <div class="alert ok" id="alert-pin-ok"></div>
     <div class="alert err" id="alert-pin-err"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">👤 PIN 2ème utilisateur</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Accès limité — voit tout sauf Broadcast et Config.</p>
+    <div class="field"><label>Nom / Prénom</label><input type="text" id="user2-name" placeholder="ex: Myriam"></div>
+    <div class="field"><label>PIN (6 chiffres)</label><input type="password" id="new-pin-2" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+    <div class="field"><label>Confirmer le PIN</label><input type="password" id="confirm-pin-2" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+    <button class="btn-main" onclick="changerPin('user2')">👤 Enregistrer le 2ème utilisateur</button>
+    <div class="alert ok" id="alert-pin2-ok"></div>
+    <div class="alert err" id="alert-pin2-err"></div>
   </div>
 </div></div>
 
@@ -420,10 +450,32 @@ Chabbat Chalom à toute la communauté ! 🌟
 </div>
 
 <script>
+// ══════════════ GESTION UTILISATEURS ══════════════
 const PIN_KEY = 'shliah_admin_pin';
+const PIN2_KEY = 'shliah_user2_pin';
+const PIN2_NAME_KEY = 'shliah_user2_name';
 const DEFAULT_PIN = '194561';
 let pinBuffer = '', loginAttempts = 0, lockUntil = 0;
+let currentUser = 'admin'; // 'admin' ou 'user2'
+let activeLoginUser = 'admin';
+
 function getPin() { return localStorage.getItem(PIN_KEY) || DEFAULT_PIN; }
+function getPin2() { return localStorage.getItem(PIN2_KEY) || ''; }
+function getPin2Name() { return localStorage.getItem(PIN2_NAME_KEY) || '2ème utilisateur'; }
+
+function switchUser() {
+  activeLoginUser = activeLoginUser === 'admin' ? 'user2' : 'admin';
+  pinBuffer = ''; updateDots();
+  document.getElementById('login-error').textContent = '';
+  if (activeLoginUser === 'user2') {
+    const name = getPin2Name();
+    document.getElementById('login-user-label').textContent = `👤 ${name}`;
+    if (!getPin2()) { document.getElementById('login-error').textContent = 'Aucun 2ème utilisateur configuré'; activeLoginUser = 'admin'; document.getElementById('login-user-label').textContent = '👤 Administrateur'; }
+  } else {
+    document.getElementById('login-user-label').textContent = '👤 Administrateur';
+  }
+}
+
 function pinPress(digit) {
   const now = Date.now();
   if (now < lockUntil) { document.getElementById('login-error').textContent = `Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`; return; }
@@ -435,13 +487,22 @@ function pinDelete() { if (pinBuffer.length > 0) { pinBuffer = pinBuffer.slice(0
 function updateDots(state) {
   for (let i=0;i<6;i++) { const d=document.getElementById('dot-'+i); d.className='pin-dot'; if(state==='error') d.classList.add('error'); else if(i<pinBuffer.length) d.classList.add('filled'); }
 }
+
 function checkPin() {
-  if (pinBuffer === getPin()) {
-    loginAttempts = 0;
+  const adminPin = getPin(), user2Pin = getPin2();
+  let matched = false, role = '';
+  if (activeLoginUser === 'admin' && pinBuffer === adminPin) { matched = true; role = 'admin'; }
+  else if (activeLoginUser === 'user2' && user2Pin && pinBuffer === user2Pin) { matched = true; role = 'user2'; }
+  else if (pinBuffer === adminPin) { matched = true; role = 'admin'; }
+  else if (user2Pin && pinBuffer === user2Pin) { matched = true; role = 'user2'; }
+
+  if (matched) {
+    loginAttempts = 0; currentUser = role;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     const s = localStorage.getItem('railway_url'); if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}
     const p = localStorage.getItem('railway_admin_pw'); if(p) document.getElementById('admin-pw-config').value=p;
+    applyUserRole(role);
   } else {
     loginAttempts++;
     updateDots('error');
@@ -450,20 +511,56 @@ function checkPin() {
     setTimeout(() => { pinBuffer=''; updateDots(); }, 800);
   }
 }
-function logout() { pinBuffer=''; updateDots(); document.getElementById('login-error').textContent=''; document.getElementById('app').style.display='none'; document.getElementById('login-screen').style.display='flex'; }
-function changerPin() {
-  const np=document.getElementById('new-pin').value.trim(), cp=document.getElementById('confirm-pin').value.trim();
-  const ok=document.getElementById('alert-pin-ok'), err=document.getElementById('alert-pin-err');
-  ok.style.display='none'; err.style.display='none';
-  if (!/^\d{6}$/.test(np)) { err.textContent='Le PIN doit contenir exactement 6 chiffres'; err.className='alert err'; err.style.display='block'; return; }
-  if (np!==cp) { err.textContent='Les deux PIN ne correspondent pas'; err.className='alert err'; err.style.display='block'; return; }
-  localStorage.setItem(PIN_KEY,np); ok.textContent='✓ PIN changé avec succès !'; ok.className='alert ok'; ok.style.display='block';
-  document.getElementById('new-pin').value=''; document.getElementById('confirm-pin').value='';
+
+function applyUserRole(role) {
+  if (role === 'user2') {
+    document.querySelectorAll('.tab-admin-only').forEach(t => t.classList.add('hidden'));
+    document.getElementById('header-user-badge').textContent = getPin2Name();
+    document.getElementById('header-user-badge').style.background = 'rgba(45,122,79,0.2)';
+    document.getElementById('header-user-badge').style.color = '#2D7A4F';
+  } else {
+    document.querySelectorAll('.tab-admin-only').forEach(t => t.classList.remove('hidden'));
+    document.getElementById('header-user-badge').textContent = 'Admin';
+    document.getElementById('header-user-badge').style.background = '';
+    document.getElementById('header-user-badge').style.color = '';
+  }
 }
+
+function logout() {
+  pinBuffer=''; updateDots(); currentUser='admin'; activeLoginUser='admin';
+  document.getElementById('login-error').textContent='';
+  document.getElementById('login-user-label').textContent='👤 Administrateur';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+function changerPin(type) {
+  if (type === 'admin') {
+    const np=document.getElementById('new-pin').value.trim(), cp=document.getElementById('confirm-pin').value.trim();
+    const ok=document.getElementById('alert-pin-ok'), err=document.getElementById('alert-pin-err');
+    ok.style.display='none'; err.style.display='none';
+    if (!/^\d{6}$/.test(np)) { err.textContent='Le PIN doit contenir exactement 6 chiffres'; err.className='alert err'; err.style.display='block'; return; }
+    if (np!==cp) { err.textContent='Les deux PIN ne correspondent pas'; err.className='alert err'; err.style.display='block'; return; }
+    localStorage.setItem(PIN_KEY,np); ok.textContent='✓ PIN admin changé !'; ok.className='alert ok'; ok.style.display='block';
+    document.getElementById('new-pin').value=''; document.getElementById('confirm-pin').value='';
+  } else {
+    const np=document.getElementById('new-pin-2').value.trim(), cp=document.getElementById('confirm-pin-2').value.trim();
+    const name=document.getElementById('user2-name').value.trim();
+    const ok=document.getElementById('alert-pin2-ok'), err=document.getElementById('alert-pin2-err');
+    ok.style.display='none'; err.style.display='none';
+    if (!/^\d{6}$/.test(np)) { err.textContent='Le PIN doit contenir exactement 6 chiffres'; err.className='alert err'; err.style.display='block'; return; }
+    if (np!==cp) { err.textContent='Les deux PIN ne correspondent pas'; err.className='alert err'; err.style.display='block'; return; }
+    localStorage.setItem(PIN2_KEY,np); if(name) localStorage.setItem(PIN2_NAME_KEY,name);
+    ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`; ok.className='alert ok'; ok.style.display='block';
+    document.getElementById('new-pin-2').value=''; document.getElementById('confirm-pin-2').value='';
+  }
+}
+
 let catSelected='priere', editCatSelected='priere', allInfos=[], allDemandes=[], filterCat='tous', filterDemande='tous';
 let selectModeActive=false, selectedIds=new Set(), corbeilleSelectMode=false, corbeilleSelectedIds=new Set();
 function getUrl() { return (localStorage.getItem('railway_url')||'').replace(/\/$/,''); }
 function getAdminPw() { return localStorage.getItem('railway_admin_pw')||''; }
+
 function showTab(name,el) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -480,6 +577,7 @@ function badgeClass(cat) { return {priere:'badge-priere',horaire:'badge-horaire'
 function catLabel(cat) { return {priere:'🙏 Prière',horaire:'🕐 Horaire',cours:'📚 Cours',service:'🔧 Service',evenement:'✡️ Événement',autre:'📝 Autre'}[cat]||cat; }
 function typeLabel(type) { return {cerfa:'📋 Cerfa',sefer_torah:'📜 Sefer Torah',location_salle:'🏠 Location Salle'}[type]||'📩 '+type; }
 function typeBadgeClass(type) { return {cerfa:'type-cerfa',sefer_torah:'type-sefer_torah',location_salle:'type-location_salle'}[type]||'type-autre'; }
+
 function afficherInfos() {
   const search=(document.getElementById('search-input').value||'').toLowerCase();
   const container=document.getElementById('liste-container');
@@ -541,7 +639,7 @@ async function chargerCorbeille() {
     if(!corbeille.length){container.innerHTML='<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';return;}
     container.innerHTML='';
     const actionsDiv=document.createElement('div'); actionsDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
-    actionsDiv.innerHTML=`<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button><button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider la corbeille</button>`;
+    actionsDiv.innerHTML=`<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button><button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider</button>`;
     container.appendChild(actionsDiv);
     corbeille.forEach(d=>{
       const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -552,7 +650,7 @@ async function chargerCorbeille() {
     });
   } catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
 }
-async function viderCorbeille() { if(!confirm('Vider toute la corbeille ? Cette action est irréversible.'))return; const url=getUrl(),pw=getAdminPw(); for(const d of allDemandes.filter(d=>d.statut==='corbeille')){try{await fetch(url+'/admin/demandes/'+d.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});}catch(e){}} chargerCorbeille(); }
+async function viderCorbeille() { if(!confirm('Vider toute la corbeille ? Irréversible.'))return; const url=getUrl(),pw=getAdminPw(); for(const d of allDemandes.filter(d=>d.statut==='corbeille')){try{await fetch(url+'/admin/demandes/'+d.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});}catch(e){}} chargerCorbeille(); }
 function activerSelectionCorbeille() { corbeilleSelectMode=true; corbeilleSelectedIds.clear(); document.querySelectorAll('.corbeille-card').forEach(c=>c.classList.add('select-mode')); document.getElementById('corbeille-select-bar').classList.add('active'); document.getElementById('corbeille-select-count').textContent='0 sélectionnée(s)'; }
 function toutSelectionnerCorbeille() { if(!corbeilleSelectMode)activerSelectionCorbeille(); document.querySelectorAll('.corbeille-card').forEach(c=>{const cb=c.querySelector('.corbeille-checkbox');if(cb){cb.checked=true;const id=parseInt(c.id.replace('corbeille-',''));corbeilleSelectedIds.add(id);c.classList.add('selected');}}); document.getElementById('corbeille-select-count').textContent=corbeilleSelectedIds.size+' sélectionnée(s)'; }
 function annulerSelectionCorbeille() { corbeilleSelectMode=false; corbeilleSelectedIds.clear(); document.querySelectorAll('.corbeille-card').forEach(c=>{c.classList.remove('select-mode','selected');c.querySelector('.corbeille-checkbox').checked=false;}); document.getElementById('corbeille-select-bar').classList.remove('active'); }
@@ -596,9 +694,8 @@ async function chargerConvs() {
     container.innerHTML='';
     data.conversations.forEach(conv=>{
       const date=new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      const phone='+'+conv.phone;
       const el=document.createElement('div'); el.className='conv-card';
-      el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 ${phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;
+      el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 +${conv.phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;
       container.appendChild(el);
     });
   }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
@@ -666,9 +763,21 @@ async function loadBroadcastContacts() {
   try{
     const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));
     const d=await r.json();
-    if(d.ok) document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot — ils recevront le message.`;
+    if(d.ok) document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot.`;
     else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;
   }catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}
+}
+
+async function chargerInfoChabbat() {
+  const url=getUrl(),pw=getAdminPw();
+  const box=document.getElementById('chabbat-live-box'), content=document.getElementById('chabbat-live-content');
+  box.style.display='block'; content.textContent='Chargement depuis fr.chabad.org...';
+  try{
+    const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));
+    const d=await r.json();
+    if(d.ok && d.data) content.innerHTML=d.data.replace(/\n/g,'<br>');
+    else content.textContent='Impossible de charger les horaires.';
+  }catch(e){content.textContent='Erreur de connexion.';}
 }
 
 function setBroadcastMode(mode) {
@@ -687,6 +796,26 @@ function updateApercu() {
   document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;
 }
 
+async function envoyerContactUnique() {
+  const url=getUrl(),pw=getAdminPw();
+  const phone=document.getElementById('bc-phone-unique').value.trim();
+  const message=document.getElementById('bc-message-unique').value.trim();
+  const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');
+  const btn=document.getElementById('btn-envoyer-unique');
+  okEl.style.display='none'; errEl.style.display='none';
+  if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}
+  if(!message){errEl.textContent='Écris un message';errEl.style.display='block';return;}
+  if(!confirm(`Envoyer ce message à ${phone} ?`))return;
+  btn.disabled=true; btn.textContent='⏳ Envoi...';
+  try{
+    const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,mode:'libre',texte_libre:message,phone_unique:phone})});
+    const d=await r.json();
+    if(d.ok && d.envoyes>0){okEl.textContent='✅ Message envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';}
+    else{errEl.textContent='❌ '+(d.message||'Erreur d\'envoi');errEl.style.display='block';}
+  }catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}
+  btn.disabled=false; btn.textContent='📤 Envoyer';
+}
+
 async function envoyerBroadcast() {
   const url=getUrl(),pw=getAdminPw();
   const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');
@@ -701,10 +830,10 @@ async function envoyerBroadcast() {
     payload.date=document.getElementById('bc-date').value;
     payload.entree=document.getElementById('bc-entree').value;
     payload.sortie=document.getElementById('bc-sortie').value;
-    if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs avant d\'envoyer !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
+    if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
   } else {
     payload.texte_libre=document.getElementById('bc-texte-libre').value;
-    if(!payload.texte_libre.trim()){errEl.textContent='Écris un message avant d\'envoyer !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
+    if(!payload.texte_libre.trim()){errEl.textContent='Écris un message !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
   }
   try{
     const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
