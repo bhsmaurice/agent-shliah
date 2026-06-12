@@ -166,9 +166,9 @@ async function getHorairesChabbat() {
     console.error('Torah-Box error:', e.message);
   }
 
-  // Tentative 2 : Hebcal JSON API (b=18 = 18min avant coucher soleil, td=8.5 = havdalah 8.5 deg)
+  // Tentative 2 : Hebcal JSON API (b=18 = 18min avant coucher soleil, td=8.5 = havdalah standard FR)
   try {
-    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&m=50&b=18&M=on&lg=fr', {
+    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
     const data = await res.json();
