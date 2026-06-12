@@ -187,7 +187,15 @@ async function getHorairesChabbat() {
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateStr = `vendredi ${dateCandle.getDate()} ${moisNoms[dateCandle.getMonth()]} ${dateCandle.getFullYear()}`;
       const entreeH = candle.date.substring(11,16).replace(':','h');
-      const sortieH = havdalah ? havdalah.date.substring(11,16).replace(':','h') : 'voir hebcal.com';
+      // Ajout de 12 minutes pour correspondre au standard communautés françaises (8.5 degrés)
+      let sortieH = 'voir torah-box.com';
+      if (havdalah) {
+        const havDate = new Date(havdalah.date);
+        havDate.setMinutes(havDate.getMinutes() + 12);
+        const hh = String(havDate.getHours()).padStart(2,'0');
+        const mm = String(havDate.getMinutes()).padStart(2,'0');
+        sortieH = `${hh}h${mm}`;
+      }
       const parashaName = parasha ? parasha.title.replace('Paracha ','').replace('Parashat ','') : '';
       console.log(`Hebcal OK: ${dateStr} ${parashaName} ${entreeH} ${sortieH}`);
       return `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
