@@ -120,85 +120,84 @@ async function getEvenements() {
   } catch (e) { return null; }
 }
 
-// ─── SCRAPING CHABBAT — Torah-Box Paris ──────────────────────
+// ─── SCRAPING CHABBAT — Torah-Box + Hebcal fallback ──────────
 async function getHorairesChabbat() {
+  // Tentative 1 : Torah-Box (horaires communauté française, standard 18min)
   try {
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
     });
     const html = await res.text();
 
-    // Extraire le tableau des Chabbatot à venir
-    // Format dans la page : "Vendredi 12 Juin 2026 | Chéla'h Lekha | 21:36 | 23:01"
-    const tableMatch = html.match(/Les Chabbaths à venir[\s\S]*?<\/table>/i);
-    if (!tableMatch) throw new Error('Tableau non trouvé');
-
-    const lignes = tableMatch[0].match(/<tr[\s\S]*?<\/tr>/gi) || [];
-
-    // Date d'aujourd'hui pour trouver le prochain Chabbat
+    // Chercher toutes les lignes du tableau avec horaires
+    // Format Torah-Box : "Vendredi 12 Juin 2026 | Paracha | 21:36 | 23:01"
+    const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
     const now = new Date();
-    const today = now.getDay(); // 0=dim, 5=ven, 6=sam
-    
-    let prochainChabbat = null;
+    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
 
-    for (const ligne of lignes) {
-      // Extraire texte brut de la ligne
-      const texte = ligne.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      
-      // Chercher une ligne avec date + horaires (format: "Vendredi DD Mois YYYY Paracha HH:MM HH:MM")
-      const match = texte.match(/Vendredi\s+(\d+\w*\s+\w+\s+\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
-      if (match) {
-        const dateStr = match[1].trim();
-        const paracha = match[2].trim().replace(/[-\s]+/g, ' ');
-        const entree = match[3];
-        const sortie = match[4];
-
-        // Parser la date
-        const mois = { 'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11 };
-        const dateParts = dateStr.match(/(\d+)\w*\s+(\w+)\s+(\d{4})/);
-        if (dateParts) {
-          const jour = parseInt(dateParts[1]);
-          const moisIdx = mois[dateParts[2]];
-          const annee = parseInt(dateParts[3]);
-          if (moisIdx !== undefined) {
-            const dateChabbat = new Date(annee, moisIdx, jour);
-            // Prendre le premier Chabbat à venir (vendredi prochain ou ce vendredi)
-            if (dateChabbat >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - (today === 6 ? 1 : 0))) {
-              prochainChabbat = { dateStr: `Vendredi ${dateStr}`, paracha, entree, sortie };
-              break;
-            }
-          }
+    for (const row of rows) {
+      const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      // Chercher pattern : "Vendredi DD Mois YYYY ... HH:MM HH:MM"
+      const m = text.match(/Vendredi\s+(\d{1,2})\w*\s+(\w+)\s+(\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
+      if (m) {
+        const jour = parseInt(m[1]);
+        const moisIdx = moisFr[m[2]];
+        const annee = parseInt(m[3]);
+        const paracha = m[4].trim();
+        const entree = m[5];
+        const sortie = m[6];
+        if (moisIdx === undefined) continue;
+        const dateChabbat = new Date(annee, moisIdx, jour);
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        // Prendre ce vendredi ou le prochain
+        if (dateChabbat >= today) {
+          const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+          const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+          const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
+          const entreeH = entree.replace(':', 'h');
+          const sortieH = sortie.replace(':', 'h');
+          console.log(`Torah-Box OK: ${dateStr} ${paracha} ${entreeH} ${sortieH}`);
+          return `HORAIRES CHABBAT - PARIS (Torah-Box) :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
         }
       }
     }
-
-    if (prochainChabbat) {
-      const { dateStr, paracha, entree, sortie } = prochainChabbat;
-      const entreeFormatted = entree.replace(':', 'h');
-      const sortieFormatted = sortie.replace(':', 'h');
-      return `HORAIRES CHABBAT - PARIS (Torah-Box) :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeFormatted}\n✨ Sortie de Chabbat (Havdalah) : ${sortieFormatted}`;
-    }
-
-    // Fallback : extraire la première entrée/sortie trouvée
-    const firstMatch = html.match(/Entrée à <strong>(\d{1,2}:\d{2})<\/strong>[\s\S]*?Sortie à <strong>(\d{1,2}:\d{2})<\/strong>/i);
-    if (firstMatch) {
-      return `HORAIRES CHABBAT - PARIS :\n🕯️ Entrée : ${firstMatch[1].replace(':','h')}\n✨ Sortie : ${firstMatch[2].replace(':','h')}`;
-    }
-
-    throw new Error('Données non trouvées');
+    throw new Error('Aucun Chabbat trouvé dans le tableau');
   } catch (e) {
-    console.error('Torah-Box scraping error:', e.message);
-    // Fallback fr.chabad.org
-    try {
-      const res2 = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const html2 = await res2.text();
-      const texte2 = html2.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      const allumage = texte2.match(/(\d{1,2}[h:]\d{2})/);
-      const parasha = texte2.match(/paracha[ht]?\s+([A-Za-zÀ-ÿ'\-]+)/i);
-      if (allumage) return `HORAIRES CHABBAT - PARIS :\n📖 ${parasha ? 'Paracha ' + parasha[1] : ''}\n🕯️ Entrée : ${allumage[1]}\n✨ Sortie : voir fr.chabad.org`;
-    } catch (e2) { console.error('Chabad fallback error:', e2.message); }
-    return null;
+    console.error('Torah-Box error:', e.message);
   }
+
+  // Tentative 2 : Hebcal JSON API (b=18 = 18min avant coucher soleil, td=8.5 = havdalah 8.5 deg)
+  try {
+    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&m=50&b=18&M=on&lg=fr', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const data = await res.json();
+    const items = data.items || [];
+
+    let candle = null, havdalah = null, parasha = null;
+    for (const item of items) {
+      if (item.category === 'candles') candle = item;
+      if (item.category === 'havdalah') havdalah = item;
+      if (item.category === 'parashat') parasha = item;
+    }
+
+    if (candle) {
+      const dateCandle = new Date(candle.date);
+      const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+      const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      const dateStr = `vendredi ${dateCandle.getDate()} ${moisNoms[dateCandle.getMonth()]} ${dateCandle.getFullYear()}`;
+      const entreeH = candle.date.substring(11,16).replace(':','h');
+      const sortieH = havdalah ? havdalah.date.substring(11,16).replace(':','h') : 'voir hebcal.com';
+      const parashaName = parasha ? parasha.title.replace('Paracha ','').replace('Parashat ','') : '';
+      console.log(`Hebcal OK: ${dateStr} ${parashaName} ${entreeH} ${sortieH}`);
+      return `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
+    }
+    throw new Error('Hebcal: données incomplètes');
+  } catch (e) {
+    console.error('Hebcal error:', e.message);
+  }
+
+  return null;
 }
 
 // Cache pour éviter de scraper à chaque message
