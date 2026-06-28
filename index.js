@@ -19,6 +19,7 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS demandes (id SERIAL PRIMARY KEY, type TEXT, phone TEXT, data JSONB, statut TEXT DEFAULT 'nouveau', created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS sessions_demande (id SERIAL PRIMARY KEY, phone TEXT UNIQUE, type TEXT, etape INTEGER DEFAULT 0, reponses JSONB DEFAULT '{}', terminee BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS messages_traites (msg_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS histoires (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, texte TEXT NOT NULL, image_url TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
@@ -122,22 +123,16 @@ async function getEvenements() {
 
 // ─── SCRAPING CHABBAT — Torah-Box + Hebcal fallback ──────────
 async function getHorairesChabbat() {
-  // Tentative 1 : Torah-Box (horaires communauté française, standard 18min)
   try {
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
     });
     const html = await res.text();
-
-    // Chercher toutes les lignes du tableau avec horaires
-    // Format Torah-Box : "Vendredi 12 Juin 2026 | Paracha | 21:36 | 23:01"
     const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
     const now = new Date();
     const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
-
     for (const row of rows) {
       const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      // Chercher pattern : "Vendredi DD Mois YYYY ... HH:MM HH:MM"
       const m = text.match(/Vendredi\s+(\d{1,2})\w*\s+(\w+)\s+(\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
       if (m) {
         const jour = parseInt(m[1]);
@@ -149,9 +144,7 @@ async function getHorairesChabbat() {
         if (moisIdx === undefined) continue;
         const dateChabbat = new Date(annee, moisIdx, jour);
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        // Prendre ce vendredi ou le prochain
         if (dateChabbat >= today) {
-          const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
           const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
           const entreeH = entree.replace(':', 'h');
@@ -162,32 +155,23 @@ async function getHorairesChabbat() {
       }
     }
     throw new Error('Aucun Chabbat trouvé dans le tableau');
-  } catch (e) {
-    console.error('Torah-Box error:', e.message);
-  }
+  } catch (e) { console.error('Torah-Box error:', e.message); }
 
-  // Tentative 2 : Hebcal JSON API (b=18 = 18min avant coucher soleil, td=8.5 = havdalah standard FR)
   try {
-    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const data = await res.json();
     const items = data.items || [];
-
     let candle = null, havdalah = null, parasha = null;
     for (const item of items) {
       if (item.category === 'candles') candle = item;
       if (item.category === 'havdalah') havdalah = item;
       if (item.category === 'parashat') parasha = item;
     }
-
     if (candle) {
       const dateCandle = new Date(candle.date);
-      const jours = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateStr = `vendredi ${dateCandle.getDate()} ${moisNoms[dateCandle.getMonth()]} ${dateCandle.getFullYear()}`;
       const entreeH = candle.date.substring(11,16).replace(':','h');
-      // Ajout de 12 minutes pour correspondre au standard communautés françaises (8.5 degrés)
       let sortieH = 'voir torah-box.com';
       if (havdalah) {
         const havDate = new Date(havdalah.date);
@@ -201,14 +185,11 @@ async function getHorairesChabbat() {
       return `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
     }
     throw new Error('Hebcal: données incomplètes');
-  } catch (e) {
-    console.error('Hebcal error:', e.message);
-  }
+  } catch (e) { console.error('Hebcal error:', e.message); }
 
   return null;
 }
 
-// Cache pour éviter de scraper à chaque message
 let chabbatCache = { data: null, lastFetch: 0 };
 async function getHorairesChabbatCached() {
   const now = Date.now();
@@ -223,6 +204,65 @@ function parleDevenements(msg) { return ['événement', 'evenement', 'agenda', '
 function parleDeChabbat(msg) {
   const lower = msg.toLowerCase();
   return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
+}
+
+// ─── HISTOIRES DU RABBI ──────────────────────────────────────
+function parleDeHistoire(msg) {
+  const lower = msg.toLowerCase();
+  return ['histoire', 'histoires', 'rabbi', 'rebbie', 'rebbe', 'conte', 'récit', 'recit'].some(m => lower.includes(m));
+}
+
+// Sessions en mémoire pour le choix d'histoire
+let sessionsHistoires = {};
+
+async function gererHistoire(from, text) {
+  const session = sessionsHistoires[from];
+
+  // L'utilisateur répond avec un numéro pour choisir une histoire
+  if (session && session.etape === 'choix') {
+    const num = parseInt(text.trim());
+    if (!isNaN(num) && num >= 1 && num <= session.histoires.length) {
+      const histoire = session.histoires[num - 1];
+      delete sessionsHistoires[from];
+
+      // Si image disponible → envoyer l'image d'abord
+      if (histoire.image_url) {
+        await sendWhatsAppImage(from, histoire.image_url, `📖 ${histoire.titre}`);
+        await new Promise(r => setTimeout(r, 800));
+        return `${histoire.texte}\n\nKol Touv !`;
+      }
+
+      // Sinon → texte seulement
+      return `📖 *${histoire.titre}*\n\n${histoire.texte}\n\nKol Touv !`;
+    } else {
+      return `Réponds avec un numéro entre 1 et ${session.histoires.length}.`;
+    }
+  }
+
+  // Première demande → envoyer la liste des titres
+  const result = await pool.query('SELECT id, titre, texte, image_url FROM histoires ORDER BY created_at DESC');
+  if (result.rows.length === 0) {
+    return "Aucune histoire disponible pour le moment. Reviens bientôt !";
+  }
+
+  sessionsHistoires[from] = { etape: 'choix', histoires: result.rows };
+
+  const liste = result.rows.map((h, i) => `${i + 1}. ${h.titre}`).join('\n');
+  return `📖 *Histoires du Rabbi*\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
+}
+
+// ─── ENVOI IMAGE WHATSAPP ────────────────────────────────────
+async function sendWhatsAppImage(to, imageUrl, caption = '') {
+  await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'image',
+      image: { link: imageUrl, caption }
+    })
+  });
 }
 
 // ─── SYSTÈME DE DEMANDES ─────────────────────────────────────
@@ -304,6 +344,7 @@ app.post('/webhook', async (req, res) => {
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
 
       if (session) {
+        // Session demande en cours (cerfa, sefer torah, salle)
         estUneDemande = true;
         const config = TYPES_DEMANDES[session.type];
         let reponses = session.reponses || {};
@@ -321,7 +362,13 @@ app.post('/webhook', async (req, res) => {
           envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
           reply = `Merci, votre demande a bien été reçue !\n\nNous vous contacterons très rapidement.\n\nSi c'est urgent : 07 70 24 17 46.\n\n${getSignature()}`;
         }
+
+      } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
+        // Session histoire en cours OU nouvelle demande d'histoire
+        reply = await gererHistoire(from, text);
+
       } else {
+        // Réponse Claude classique
         const typeDemande = detecterTypeDemande(text);
         if (typeDemande) {
           estUneDemande = true;
@@ -428,7 +475,6 @@ app.post('/admin/broadcast/send', async (req, res) => {
   const { password, mode, paracha, date, entree, sortie, texte_libre, phone_unique } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   try {
-    // Mode envoi unique ou broadcast
     let phones = [];
     if (phone_unique) {
       const clean = phone_unique.replace(/[\s\+\-\.]/g, '');
@@ -464,6 +510,36 @@ app.get('/admin/chabbat', async (req, res) => {
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const data = await getHorairesChabbat();
   res.json({ ok: true, data });
+});
+
+// ─── API ADMIN HISTOIRES ─────────────────────────────────────
+app.get('/admin/histoires', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  const result = await pool.query('SELECT * FROM histoires ORDER BY created_at DESC');
+  res.json({ ok: true, histoires: result.rows });
+});
+
+app.post('/admin/histoires', async (req, res) => {
+  const { password, titre, texte, image_url } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  if (!titre || !texte) return res.status(400).json({ ok: false, message: 'Titre et texte requis' });
+  await pool.query('INSERT INTO histoires (titre, texte, image_url) VALUES ($1, $2, $3)', [titre, texte, image_url || null]);
+  res.json({ ok: true, message: 'Histoire ajoutée !' });
+});
+
+app.put('/admin/histoires/:id', async (req, res) => {
+  const { password, titre, texte, image_url } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('UPDATE histoires SET titre=$1, texte=$2, image_url=$3 WHERE id=$4', [titre, texte, image_url || null, req.params.id]);
+  res.json({ ok: true, message: 'Histoire mise à jour !' });
+});
+
+app.delete('/admin/histoires/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('DELETE FROM histoires WHERE id=$1', [req.params.id]);
+  res.json({ ok: true, message: 'Supprimée !' });
 });
 
 // ─── CLAUDE ──────────────────────────────────────────────────
