@@ -20,6 +20,7 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS sessions_demande (id SERIAL PRIMARY KEY, phone TEXT UNIQUE, type TEXT, etape INTEGER DEFAULT 0, reponses JSONB DEFAULT '{}', terminee BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS messages_traites (msg_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS histoires (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, texte TEXT NOT NULL, image_url TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, phone TEXT UNIQUE NOT NULL, abonne_chabbat BOOLEAN DEFAULT FALSE, abonne_evenements BOOLEAN DEFAULT FALSE, question_chabbat_posee BOOLEAN DEFAULT FALSE, question_evenements_posee BOOLEAN DEFAULT FALSE, nb_messages INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
@@ -121,7 +122,7 @@ async function getEvenements() {
   } catch (e) { return null; }
 }
 
-// ─── SCRAPING CHABBAT — Torah-Box + Hebcal fallback ──────────
+// ─── SCRAPING CHABBAT ─────────────────────────────────────────
 async function getHorairesChabbat() {
   try {
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
@@ -135,26 +136,20 @@ async function getHorairesChabbat() {
       const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const m = text.match(/Vendredi\s+(\d{1,2})\w*\s+(\w+)\s+(\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
       if (m) {
-        const jour = parseInt(m[1]);
-        const moisIdx = moisFr[m[2]];
-        const annee = parseInt(m[3]);
-        const paracha = m[4].trim();
-        const entree = m[5];
-        const sortie = m[6];
+        const jour = parseInt(m[1]), moisIdx = moisFr[m[2]], annee = parseInt(m[3]);
+        const paracha = m[4].trim(), entree = m[5], sortie = m[6];
         if (moisIdx === undefined) continue;
         const dateChabbat = new Date(annee, moisIdx, jour);
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         if (dateChabbat >= today) {
           const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
-          const entreeH = entree.replace(':', 'h');
-          const sortieH = sortie.replace(':', 'h');
-          console.log(`Torah-Box OK: ${dateStr} ${paracha} ${entreeH} ${sortieH}`);
-          return `HORAIRES CHABBAT - PARIS (Torah-Box) :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
+          const entreeH = entree.replace(':', 'h'), sortieH = sortie.replace(':', 'h');
+          return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha, date: dateStr, entree: entreeH, sortie: sortieH };
         }
       }
     }
-    throw new Error('Aucun Chabbat trouvé dans le tableau');
+    throw new Error('Aucun Chabbat trouvé');
   } catch (e) { console.error('Torah-Box error:', e.message); }
 
   try {
@@ -176,17 +171,12 @@ async function getHorairesChabbat() {
       if (havdalah) {
         const havDate = new Date(havdalah.date);
         havDate.setMinutes(havDate.getMinutes() + 12);
-        const hh = String(havDate.getHours()).padStart(2,'0');
-        const mm = String(havDate.getMinutes()).padStart(2,'0');
-        sortieH = `${hh}h${mm}`;
+        sortieH = `${String(havDate.getHours()).padStart(2,'0')}h${String(havDate.getMinutes()).padStart(2,'0')}`;
       }
       const parashaName = parasha ? parasha.title.replace('Paracha ','').replace('Parashat ','') : '';
-      console.log(`Hebcal OK: ${dateStr} ${parashaName} ${entreeH} ${sortieH}`);
-      return `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`;
+      return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha: parashaName, date: dateStr, entree: entreeH, sortie: sortieH };
     }
-    throw new Error('Hebcal: données incomplètes');
   } catch (e) { console.error('Hebcal error:', e.message); }
-
   return null;
 }
 
@@ -199,6 +189,108 @@ async function getHorairesChabbatCached() {
   return data;
 }
 
+// ─── GESTION CONTACTS & ABONNEMENTS ──────────────────────────
+async function getOuCreerContact(phone) {
+  try {
+    const res = await pool.query('SELECT * FROM contacts WHERE phone=$1', [phone]);
+    if (res.rows.length > 0) return res.rows[0];
+    await pool.query('INSERT INTO contacts (phone) VALUES ($1) ON CONFLICT DO NOTHING', [phone]);
+    const res2 = await pool.query('SELECT * FROM contacts WHERE phone=$1', [phone]);
+    return res2.rows[0];
+  } catch (e) { console.error('Contact error:', e.message); return null; }
+}
+
+async function incrementerMessages(phone) {
+  try {
+    await pool.query('UPDATE contacts SET nb_messages = nb_messages + 1 WHERE phone=$1', [phone]);
+  } catch (e) {}
+}
+
+async function marquerQuestionPosee(phone, type) {
+  try {
+    if (type === 'chabbat') await pool.query('UPDATE contacts SET question_chabbat_posee=TRUE WHERE phone=$1', [phone]);
+    if (type === 'evenements') await pool.query('UPDATE contacts SET question_evenements_posee=TRUE WHERE phone=$1', [phone]);
+  } catch (e) {}
+}
+
+async function mettreAJourAbonnement(phone, type, valeur) {
+  try {
+    if (type === 'chabbat') await pool.query('UPDATE contacts SET abonne_chabbat=$1 WHERE phone=$2', [valeur, phone]);
+    if (type === 'evenements') await pool.query('UPDATE contacts SET abonne_evenements=$1 WHERE phone=$2', [valeur, phone]);
+  } catch (e) {}
+}
+
+// Sessions pour les réponses aux questions d'abonnement
+let sessionsAbonnement = {}; // { phone: 'chabbat' | 'evenements' }
+
+function estReponseOui(text) {
+  const lower = text.toLowerCase().trim();
+  return ['oui', 'yes', 'כן', 'ok', 'ouais', 'bien sûr', 'avec plaisir', 'volontiers', 'pourquoi pas'].some(m => lower.includes(m));
+}
+
+function estReponseNon(text) {
+  const lower = text.toLowerCase().trim();
+  return lower === 'non' || lower === 'no' || lower === 'לא' || lower === 'pas' || lower === 'nope' || lower === 'merci non' || lower === 'non merci';
+}
+
+// Vérifie si on doit poser une question d'abonnement après la réponse
+async function getQuestionAbonnement(phone, contact) {
+  if (!contact) return null;
+  const nb = contact.nb_messages || 0;
+
+  // Au 2ème message → question Chabbat (si pas encore posée)
+  if (nb === 2 && !contact.question_chabbat_posee) {
+    await marquerQuestionPosee(phone, 'chabbat');
+    sessionsAbonnement[phone] = 'chabbat';
+    return `\n\nAu fait, veux-tu recevoir les horaires d'allumage des bougies automatiquement chaque vendredi matin ? 🕯️ (Oui/Non)`;
+  }
+
+  // Au 4ème message → question événements (si pas encore posée)
+  if (nb === 4 && !contact.question_evenements_posee) {
+    await marquerQuestionPosee(phone, 'evenements');
+    sessionsAbonnement[phone] = 'evenements';
+    return `\n\nOn organise régulièrement des événements et activités au Beth Habad. Veux-tu être tenu informé ? 😊 (Oui/Non)`;
+  }
+
+  return null;
+}
+
+// ─── CRON CHABBAT ─────────────────────────────────────────────
+function demarrerCronChabbat() {
+  setInterval(async () => {
+    const now = new Date();
+    const heuresParis = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const jour = heuresParis.getDay();
+    const heure = heuresParis.getHours();
+    const minute = heuresParis.getMinutes();
+    if (jour === 5 && heure === 9 && minute < 5) {
+      const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
+      const cacheKey = `chabbat_envoye_${dateAujourdhui}`;
+      if (global[cacheKey]) return;
+      global[cacheKey] = true;
+      console.log('🕯️ Envoi automatique horaires Chabbat...');
+      await envoyerHorairesChabbatAbonnes();
+    }
+  }, 5 * 60 * 1000);
+  console.log('⏰ Cron Chabbat démarré');
+}
+
+async function envoyerHorairesChabbatAbonnes() {
+  try {
+    const chabbat = await getHorairesChabbat();
+    if (!chabbat) { console.error('Cron: impossible de récupérer les horaires'); return; }
+    const abonnes = await pool.query('SELECT phone FROM contacts WHERE abonne_chabbat=TRUE');
+    if (abonnes.rows.length === 0) { console.log('Cron: aucun abonné'); return; }
+    const message = `🕯️ Chabbat Chalom !\n\n📖 Paracha ${chabbat.paracha}\n📅 ${chabbat.date}\n\n🕯️ Allumage des bougies : ${chabbat.entree}\n✨ Havdalah (sortie) : ${chabbat.sortie}\n\nChabbat Chalom à toute la famille !\n\nBeth Habad S. Maurice`;
+    let envoyes = 0;
+    for (const row of abonnes.rows) {
+      try { await sendWhatsApp(row.phone, message); envoyes++; await new Promise(r => setTimeout(r, 300)); }
+      catch (e) { console.error(`Cron erreur ${row.phone}:`, e.message); }
+    }
+    console.log(`🕯️ Cron: ${envoyes}/${abonnes.rows.length} envoyés`);
+  } catch (e) { console.error('Cron error:', e.message); }
+}
+
 function parleDeMikve(msg) { return ['mikve', 'mikvé', 'bain rituel'].some(m => msg.toLowerCase().includes(m)); }
 function parleDevenements(msg) { return ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'cette semaine', 'ce mois', 'soirée', 'soiree'].some(m => msg.toLowerCase().includes(m)); }
 function parleDeChabbat(msg) {
@@ -206,66 +298,47 @@ function parleDeChabbat(msg) {
   return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
 }
 
-// ─── HISTOIRES DU RABBI ──────────────────────────────────────
+// ─── HISTOIRES DU RABBI ───────────────────────────────────────
 function parleDeHistoire(msg) {
   const lower = msg.toLowerCase();
   return ['histoire', 'histoires', 'rabbi', 'rebbie', 'rebbe', 'conte', 'récit', 'recit'].some(m => lower.includes(m));
 }
 
-// Sessions en mémoire pour le choix d'histoire
 let sessionsHistoires = {};
 
 async function gererHistoire(from, text) {
   const session = sessionsHistoires[from];
-
-  // L'utilisateur répond avec un numéro pour choisir une histoire
   if (session && session.etape === 'choix') {
     const num = parseInt(text.trim());
     if (!isNaN(num) && num >= 1 && num <= session.histoires.length) {
       const histoire = session.histoires[num - 1];
       delete sessionsHistoires[from];
-
-      // Si image disponible → envoyer l'image d'abord
       if (histoire.image_url) {
         await sendWhatsAppImage(from, histoire.image_url, `📖 ${histoire.titre}`);
         await new Promise(r => setTimeout(r, 800));
         return `${histoire.texte}\n\nKol Touv !`;
       }
-
-      // Sinon → texte seulement
-      return `📖 *${histoire.titre}*\n\n${histoire.texte}\n\nKol Touv !`;
+      return `📖 ${histoire.titre}\n\n${histoire.texte}\n\nKol Touv !`;
     } else {
       return `Réponds avec un numéro entre 1 et ${session.histoires.length}.`;
     }
   }
-
-  // Première demande → envoyer la liste des titres
   const result = await pool.query('SELECT id, titre, texte, image_url FROM histoires ORDER BY created_at DESC');
-  if (result.rows.length === 0) {
-    return "Aucune histoire disponible pour le moment. Reviens bientôt !";
-  }
-
+  if (result.rows.length === 0) return "Aucune histoire disponible pour le moment. Reviens bientôt !";
   sessionsHistoires[from] = { etape: 'choix', histoires: result.rows };
-
   const liste = result.rows.map((h, i) => `${i + 1}. ${h.titre}`).join('\n');
-  return `📖 *Histoires du Rabbi*\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
+  return `📖 Histoires du Rabbi\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
 }
 
-// ─── ENVOI IMAGE WHATSAPP ────────────────────────────────────
 async function sendWhatsAppImage(to, imageUrl, caption = '') {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'image',
-      image: { link: imageUrl, caption }
-    })
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
   });
 }
 
-// ─── SYSTÈME DE DEMANDES ─────────────────────────────────────
+// ─── SYSTÈME DE DEMANDES ──────────────────────────────────────
 const TYPES_DEMANDES = {
   cerfa: {
     label: 'Reçu Fiscal (Cerfa)',
@@ -304,8 +377,7 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
   try {
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
-    const config = TYPES_DEMANDES[type];
-    const label = config ? config.label : type;
+    const config = TYPES_DEMANDES[type]; const label = config ? config.label : type;
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     await transporter.sendMail({
@@ -318,7 +390,7 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
 
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
 
-// ─── WEBHOOK META ────────────────────────────────────────────
+// ─── WEBHOOK META ─────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'], token = req.query['hub.verify_token'], challenge = req.query['hub.challenge'];
   if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
@@ -332,19 +404,52 @@ app.post('/webhook', async (req, res) => {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
+
+      // Anti-doublon
       try {
         const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
         if (already.rows.length > 0) return;
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
+      // ── Réponse à une question d'abonnement en cours ──
+      if (sessionsAbonnement[from]) {
+        const typeAbonnement = sessionsAbonnement[from];
+        delete sessionsAbonnement[from];
+        if (estReponseOui(text)) {
+          await mettreAJourAbonnement(from, typeAbonnement, true);
+          const msg = typeAbonnement === 'chabbat'
+            ? `Super ! Tu recevras les horaires d'allumage des bougies chaque vendredi matin. 🕯️\n\nKol Touv !`
+            : `Parfait ! Tu recevras les infos et événements du Beth Habad. 😊\n\nKol Touv !`;
+          await sendWhatsApp(from, msg);
+        } else if (estReponseNon(text)) {
+          await mettreAJourAbonnement(from, typeAbonnement, false);
+          await sendWhatsApp(from, `Pas de souci ! Tu peux toujours me demander à tout moment.\n\nKol Touv !`);
+        } else {
+          // Réponse pas claire → reposer
+          sessionsAbonnement[from] = typeAbonnement;
+          const question = typeAbonnement === 'chabbat'
+            ? `Réponds simplement Oui ou Non 😊\n\nVeux-tu recevoir les horaires d'allumage des bougies chaque vendredi matin ?`
+            : `Réponds simplement Oui ou Non 😊\n\nVeux-tu recevoir les infos et événements du Beth Habad ?`;
+          await sendWhatsApp(from, question);
+        }
+        return;
+      }
+
       let reply, estUneDemande = false;
+
+      // ── Récupérer/créer le contact et incrémenter le compteur ──
+      const contact = await getOuCreerContact(from);
+      await incrementerMessages(from);
+      // Recharger le contact avec le nb_messages mis à jour
+      const contactMaj = await pool.query('SELECT * FROM contacts WHERE phone=$1', [from]).then(r => r.rows[0]).catch(() => null);
+
+      // ── Session demande en cours ──
       let session = null;
       try { const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]); if (sr.rows.length > 0) session = sr.rows[0]; } catch(e) {}
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
 
       if (session) {
-        // Session demande en cours (cerfa, sefer torah, salle)
         estUneDemande = true;
         const config = TYPES_DEMANDES[session.type];
         let reponses = session.reponses || {};
@@ -364,11 +469,9 @@ app.post('/webhook', async (req, res) => {
         }
 
       } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
-        // Session histoire en cours OU nouvelle demande d'histoire
         reply = await gererHistoire(from, text);
 
       } else {
-        // Réponse Claude classique
         const typeDemande = detecterTypeDemande(text);
         if (typeDemande) {
           estUneDemande = true;
@@ -381,13 +484,17 @@ app.post('/webhook', async (req, res) => {
         } else {
           let extra = null;
           if (parleDeMikve(text)) extra = await getMikvaotFemmes();
-          else if (parleDeChabbat(text)) extra = await getHorairesChabbatCached();
+          else if (parleDeChabbat(text)) extra = await getHorairesChabbatCached().then(d => d?.texte || null);
           else if (parleDevenements(text)) extra = await getEvenements();
           let historique = [];
           try { const hist = await pool.query('SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5', [from]); historique = hist.rows.reverse(); } catch (e) {}
           reply = await askClaude(text, extra, historique);
         }
       }
+
+      // ── Ajouter question abonnement si nécessaire ──
+      const questionAbonnement = await getQuestionAbonnement(from, contactMaj);
+      if (questionAbonnement) reply = reply + questionAbonnement;
 
       await sendWhatsApp(from, reply);
       if (!estUneDemande) {
@@ -397,7 +504,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ─── API ADMIN ───────────────────────────────────────────────
+// ─── API ADMIN ────────────────────────────────────────────────
 app.post('/admin/add', async (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -461,7 +568,7 @@ app.delete('/admin/demandes/:id', async (req, res) => {
   res.json({ ok: true, message: "Supprimé définitivement" });
 });
 
-// ─── BROADCAST ───────────────────────────────────────────────
+// ─── BROADCAST ────────────────────────────────────────────────
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -472,19 +579,23 @@ app.get('/admin/broadcast/contacts', async (req, res) => {
 });
 
 app.post('/admin/broadcast/send', async (req, res) => {
-  const { password, mode, paracha, date, entree, sortie, texte_libre, phone_unique } = req.body;
+  const { password, mode, paracha, date, entree, sortie, texte_libre, phone_unique, cible } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   try {
     let phones = [];
     if (phone_unique) {
-      const clean = phone_unique.replace(/[\s\+\-\.]/g, '');
-      phones = [clean];
+      phones = [phone_unique.replace(/[\s\+\-\.]/g, '')];
+    } else if (cible === 'abonnes_evenements') {
+      const result = await pool.query('SELECT phone FROM contacts WHERE abonne_evenements=TRUE');
+      phones = result.rows.map(r => r.phone);
+    } else if (cible === 'abonnes_chabbat') {
+      const result = await pool.query('SELECT phone FROM contacts WHERE abonne_chabbat=TRUE');
+      phones = result.rows.map(r => r.phone);
     } else {
       const result = await pool.query('SELECT DISTINCT phone FROM conversations ORDER BY phone');
       phones = result.rows.map(r => r.phone);
     }
     if (phones.length === 0) return res.json({ ok: false, message: "Aucun contact trouvé" });
-
     let envoyes = 0, erreurs = 0;
     for (const phone of phones) {
       try {
@@ -504,15 +615,29 @@ app.post('/admin/broadcast/send', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
 });
 
-// ─── CHABBAT INFO (pour l'admin panel) ───────────────────────
 app.get('/admin/chabbat', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const data = await getHorairesChabbat();
-  res.json({ ok: true, data });
+  res.json({ ok: true, data: data?.texte || null });
 });
 
-// ─── API ADMIN HISTOIRES ─────────────────────────────────────
+app.get('/admin/abonnes', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
+  const abonnesChabbat = result.rows.filter(r => r.abonne_chabbat).length;
+  const abonnesEvenements = result.rows.filter(r => r.abonne_evenements).length;
+  res.json({ ok: true, contacts: result.rows, total: result.rows.length, abonnesChabbat, abonnesEvenements });
+});
+
+app.post('/admin/abonnes/envoyer', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await envoyerHorairesChabbatAbonnes();
+  res.json({ ok: true, message: 'Horaires envoyés aux abonnés !' });
+});
+
 app.get('/admin/histoires', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -542,7 +667,6 @@ app.delete('/admin/histoires/:id', async (req, res) => {
   res.json({ ok: true, message: 'Supprimée !' });
 });
 
-// ─── CLAUDE ──────────────────────────────────────────────────
 async function askClaude(userMessage, extra = null, historique = []) {
   try {
     const systemPrompt = await getFullPrompt(extra);
@@ -561,4 +685,7 @@ async function sendWhatsApp(to, message) {
 }
 
 const PORT = process.env.PORT || 3000;
-initDB().then(() => app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`)));
+initDB().then(() => {
+  app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
+  demarrerCronChabbat();
+});
