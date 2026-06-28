@@ -583,7 +583,7 @@ app.get('/admin/broadcast/contacts', async (req, res) => {
 });
 
 app.post('/admin/broadcast/send', async (req, res) => {
-  const { password, mode, paracha, date, entree, sortie, texte_libre, phone_unique, cible } = req.body;
+  const { password, mode, paracha, date, entree, sortie, texte_libre, image_url, phone_unique, cible } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   try {
     let phones = [];
@@ -611,7 +611,14 @@ app.post('/admin/broadcast/send', async (req, res) => {
         }
         const response = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' }, body });
         const data = await response.json();
-        if (data.messages) envoyes++; else { erreurs++; console.error(`Broadcast erreur ${phone}:`, JSON.stringify(data)); }
+        if (data.messages) {
+          envoyes++;
+          // Si image → envoyer en 2ème message
+          if (mode !== 'chabbat' && image_url) {
+            await new Promise(r => setTimeout(r, 400));
+            await sendWhatsAppImage(phone, image_url);
+          }
+        } else { erreurs++; console.error(`Broadcast erreur ${phone}:`, JSON.stringify(data)); }
         await new Promise(r => setTimeout(r, 200));
       } catch (e) { erreurs++; }
     }
