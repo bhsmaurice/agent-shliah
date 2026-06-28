@@ -332,8 +332,13 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="modal-title">📤 Envoyer un message</div>
       <p id="envoi-contacts-label" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></p>
       <div class="field">
-        <label>Message</label>
-        <textarea id="envoi-contacts-message" style="min-height:140px;" placeholder="Écris ton message ici..."></textarea>
+        <label>Message (facultatif si image)</label>
+        <textarea id="envoi-contacts-message" style="min-height:140px;" placeholder="Ton message... (laisser vide pour envoyer uniquement l'image)"></textarea>
+      </div>
+      <div class="field">
+        <label>🖼️ Image / Affiche (facultatif)</label>
+        <input type="url" id="envoi-contacts-image" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">L'image sera envoyée après le message.</p>
       </div>
       <div class="modal-btns">
         <button class="modal-cancel" onclick="fermerModalEnvoiContacts()">Annuler</button>
@@ -401,7 +406,11 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="card" style="margin-bottom:16px;">
     <div class="card-title" style="font-size:15px;margin-bottom:12px;">📱 Envoyer à un contact</div>
     <div class="field"><label>Numéro WhatsApp</label><input id="bc-phone-unique" type="tel" placeholder="ex: 0612345678 ou +33612345678"></div>
-    <div class="field"><label>Message</label><textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea></div>
+    <div class="field"><label>Message (facultatif si image)</label><textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea></div>
+    <div class="field">
+      <label>🖼️ Image / Affiche (facultatif)</label>
+      <input type="url" id="bc-image-unique" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+    </div>
     <button class="btn-main" onclick="envoyerContactUnique()" id="btn-envoyer-unique">📤 Envoyer</button>
     <div class="alert ok" id="unique-result-ok" style="display:none;"></div>
     <div class="alert err" id="unique-result-err" style="display:none;"></div>
@@ -435,7 +444,7 @@ Chabbat Chalom à toute la communauté ! 🌟
   </div>
   <div id="form-libre" style="display:none;">
     <div class="bc-warning">⚠️ Texte libre : fonctionne uniquement si la personne a écrit dans les 24 dernières heures.</div>
-    <div class="field"><textarea id="bc-texte-libre" rows="6" placeholder="Écris ton message ici..." style="min-height:140px;"></textarea></div>
+    <div class="field"><label>Message (facultatif si image)</label><textarea id="bc-texte-libre" rows="6" placeholder="Ton message... (laisser vide pour envoyer uniquement l'image)" style="min-height:140px;"></textarea></div>
     <div class="field">
       <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.9px;margin-bottom:6px;">🖼️ Image / Affiche (facultatif)</label>
       <input type="url" id="bc-image-url" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
@@ -787,16 +796,18 @@ function closeModalEnvoiContacts(e) { if (e.target === document.getElementById('
 async function envoyerAuxContactsSelectionnes() {
   const url = getUrl(), pw = getAdminPw();
   const message = document.getElementById('envoi-contacts-message').value.trim();
+  const imageUrl = document.getElementById('envoi-contacts-image').value.trim() || null;
   const okEl = document.getElementById('envoi-contacts-ok'), errEl = document.getElementById('envoi-contacts-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
-  if (!message) { errEl.textContent = 'Écris un message'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!message && !imageUrl) { errEl.textContent = 'Écris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  const msgFinal = message || ' ';
 
   let envoyes = 0, erreurs = 0;
   for (const phone of selectedPhones) {
     try {
       const r = await fetch(url + '/admin/broadcast/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: message, phone_unique: phone })
+        body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: msgFinal, image_url: imageUrl, phone_unique: phone })
       });
       const d = await r.json();
       if (d.ok && d.envoyes > 0) envoyes++; else erreurs++;
@@ -878,8 +889,8 @@ async function loadBroadcastContacts(){const url=getUrl(),pw=getAdminPw();if(!ur
 async function chargerInfoChabbat(){const url=getUrl(),pw=getAdminPw();const box=document.getElementById('chabbat-live-box'),content=document.getElementById('chabbat-live-content');box.style.display='block';content.textContent='Chargement...';try{const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok&&d.data)content.innerHTML=d.data.replace(/\n/g,'<br>');else content.textContent='Impossible de charger les horaires.';}catch(e){content.textContent='Erreur de connexion';}}
 function setBroadcastMode(mode){broadcastMode=mode;document.getElementById('form-chabbat').style.display=mode==='chabbat'?'block':'none';document.getElementById('form-libre').style.display=mode==='libre'?'block':'none';document.getElementById('btn-mode-chabbat').className='bc-mode-btn'+(mode==='chabbat'?' active':'');document.getElementById('btn-mode-libre').className='bc-mode-btn'+(mode==='libre'?' active':'');}
 function updateApercu(){const p=document.getElementById('bc-paracha').value||'[Paracha]';const d=document.getElementById('bc-date').value||'[Date]';const e=document.getElementById('bc-entree').value||'[Heure entrée]';const s=document.getElementById('bc-sortie').value||'[Heure sortie]';document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;}
-async function envoyerContactUnique(){const url=getUrl(),pw=getAdminPw();const phone=document.getElementById('bc-phone-unique').value.trim();const message=document.getElementById('bc-message-unique').value.trim();const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');const btn=document.getElementById('btn-envoyer-unique');okEl.style.display='none';errEl.style.display='none';if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}if(!message){errEl.textContent='Écris un message';errEl.style.display='block';return;}if(!confirm(`Envoyer ce message à ${phone} ?`))return;btn.disabled=true;btn.textContent='⏳ Envoi...';try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,mode:'libre',texte_libre:message,phone_unique:phone})});const d=await r.json();if(d.ok&&d.envoyes>0){okEl.textContent='✅ Message envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';}else{errEl.textContent='❌ '+(d.message||"Erreur d'envoi");errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer';}
-async function envoyerBroadcast(){const url=getUrl(),pw=getAdminPw();const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');const btn=document.getElementById('btn-broadcast');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse dans 2699Fe0f Config";errEl.style.display='block';return;}if(!confirm('Envoyer ce message 00e0 TOUS les contacts du bot ?'))return;btn.disabled=true;btn.textContent='23f3 Envoi en cours...';const payload={password:pw,mode:broadcastMode};if(broadcastMode==='chabbat'){payload.paracha=document.getElementById('bc-paracha').value;payload.date=document.getElementById('bc-date').value;payload.entree=document.getElementById('bc-entree').value;payload.sortie=document.getElementById('bc-sortie').value;if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='D83dDce4 Envoyer 00e0 tous';return;}}else{payload.texte_libre=document.getElementById('bc-texte-libre').value;payload.image_url=document.getElementById('bc-image-url').value.trim()||null;if(!payload.texte_libre.trim()){errEl.textContent='00c9cris un message !';errEl.style.display='block';btn.disabled=false;btn.textContent='D83dDce4 Envoyer 00e0 tous';return;}}try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok){okEl.textContent=`2705 ${d.envoyes} messages envoy00e9s sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}else{errEl.textContent='274c '+d.message;errEl.style.display='block';}}catch(e){errEl.textContent='274c Erreur r00e9seau : '+e.message;errEl.style.display='block';}btn.disabled=false;btn.textContent='D83dDce4 Envoyer 00e0 tous';}
+async function envoyerContactUnique(){const url=getUrl(),pw=getAdminPw();const phone=document.getElementById('bc-phone-unique').value.trim();const message=document.getElementById('bc-message-unique').value.trim();const imageUrl=document.getElementById('bc-image-unique').value.trim()||null;const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');const btn=document.getElementById('btn-envoyer-unique');okEl.style.display='none';errEl.style.display='none';if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}if(!message&&!imageUrl){errEl.textContent='Écris un message ou ajoute une image';errEl.style.display='block';return;}if(!confirm(`Envoyer à ${phone} ?`))return;btn.disabled=true;btn.textContent='⏳ Envoi...';try{const payload={password:pw,mode:'libre',texte_libre:message||' ',image_url:imageUrl,phone_unique:phone};const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok&&d.envoyes>0){okEl.textContent='✅ Envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';document.getElementById('bc-image-unique').value='';}else{errEl.textContent='❌ '+(d.message||"Erreur d'envoi");errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer';}
+async function envoyerBroadcast(){const url=getUrl(),pw=getAdminPw();const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');const btn=document.getElementById('btn-broadcast');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse dans 2699Fe0f Config";errEl.style.display='block';return;}if(!confirm('Envoyer ce message 00e0 TOUS les contacts du bot ?'))return;btn.disabled=true;btn.textContent='23f3 Envoi en cours...';const payload={password:pw,mode:broadcastMode};if(broadcastMode==='chabbat'){payload.paracha=document.getElementById('bc-paracha').value;payload.date=document.getElementById('bc-date').value;payload.entree=document.getElementById('bc-entree').value;payload.sortie=document.getElementById('bc-sortie').value;if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='D83dDce4 Envoyer 00e0 tous';return;}}else{payload.texte_libre=document.getElementById('bc-texte-libre').value;payload.image_url=document.getElementById('bc-image-url').value.trim()||null;if(!payload.texte_libre.trim()&&!payload.image_url){errEl.textContent='Écris un message ou ajoute une image !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}if(!payload.texte_libre.trim())payload.texte_libre=' ';}try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok){okEl.textContent=`2705 ${d.envoyes} messages envoy00e9s sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}else{errEl.textContent='274c '+d.message;errEl.style.display='block';}}catch(e){errEl.textContent='274c Erreur r00e9seau : '+e.message;errEl.style.display='block';}btn.disabled=false;btn.textContent='D83dDce4 Envoyer 00e0 tous';}
 </script>
 </body>
 </html>
