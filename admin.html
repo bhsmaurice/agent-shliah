@@ -162,7 +162,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .chabbat-info-box .chabbat-line { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 6px; }
 .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
-/* ══ HISTOIRES ══ */
+/* ══ CONTACTS ══ */
+.contact-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.contact-phone { font-size: 13px; font-weight: 600; color: var(--navy); }
+.contact-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.contact-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.badge-abo { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+.badge-chabbat { background: #FEF3C7; color: #92400E; }
+.badge-evenements { background: #ECFDF5; color: #065F46; }
+.badge-non { background: #F1F5F9; color: #94A3B8; }
 .histoire-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 70px; }
 .histoire-card .histoire-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; }
@@ -214,6 +222,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
   <div class="tab" onclick="showTab('histoires',this)">📖<span class="tab-label">Histoires</span></div>
+  <div class="tab" onclick="showTab('contacts',this)">👥<span class="tab-label">Contacts</span></div>
   <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
@@ -281,6 +290,21 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 </div></div>
 <!-- ══════════════ FIN HISTOIRES ══════════════ -->
+
+<!-- CONTACTS -->
+<div class="page" id="tab-contacts"><div class="inner">
+  <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Charger les contacts</button></div>
+  <div id="contacts-stats" style="display:none">
+    <div class="stats-row" id="contacts-stats-row"></div>
+  </div>
+  <div class="filter-chips" id="contacts-filter-chips" style="display:none">
+    <div class="chip active" data-filter="tous" onclick="selectContactFilter(this)">Tous</div>
+    <div class="chip" data-filter="chabbat" onclick="selectContactFilter(this)">🕯️ Chabbat</div>
+    <div class="chip" data-filter="evenements" onclick="selectContactFilter(this)">📅 Événements</div>
+    <div class="chip" data-filter="aucun" onclick="selectContactFilter(this)">❌ Non abonnés</div>
+  </div>
+  <div id="contacts-container"></div>
+</div></div>
 
 <!-- DEMANDES -->
 <div class="page" id="tab-demandes"><div class="inner">
@@ -653,7 +677,65 @@ function showExportOk(msg){const el=document.getElementById('alert-export-ok');e
 function showExportErr(msg){const el=document.getElementById('alert-export-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
 async function importerInfos(){const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-file').files[0];const okEl=document.getElementById('alert-import-ok'),errEl=document.getElementById('alert-import-err');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse";errEl.className='alert err';errEl.style.display='block';return;}if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}const text=await file.text(),lines=text.split('\n').slice(1).filter(l=>l.trim());let imported=0,errors=0;for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}}
 
-// ══ BROADCAST ══
+// ══ CONTACTS ══
+let allContacts = [], filterContact = 'tous';
+
+function selectContactFilter(chip) {
+  document.querySelectorAll('#contacts-filter-chips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  filterContact = chip.dataset.filter;
+  afficherContacts();
+}
+
+function afficherContacts() {
+  const container = document.getElementById('contacts-container');
+  let filtered = allContacts;
+  if (filterContact === 'chabbat') filtered = allContacts.filter(c => c.abonne_chabbat);
+  else if (filterContact === 'evenements') filtered = allContacts.filter(c => c.abonne_evenements);
+  else if (filterContact === 'aucun') filtered = allContacts.filter(c => !c.abonne_chabbat && !c.abonne_evenements);
+
+  if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="icon">👥</div><p>Aucun contact</p></div>'; return; }
+  container.innerHTML = '';
+  filtered.forEach(c => {
+    const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const el = document.createElement('div');
+    el.className = 'contact-card';
+    let badges = '';
+    if (c.abonne_chabbat) badges += '<span class="badge-abo badge-chabbat">🕯️ Chabbat</span>';
+    if (c.abonne_evenements) badges += '<span class="badge-abo badge-evenements">📅 Événements</span>';
+    if (!c.abonne_chabbat && !c.abonne_evenements) badges += '<span class="badge-abo badge-non">Non abonné</span>';
+    el.innerHTML = `
+      <div>
+        <div class="contact-phone">📱 +${c.phone}</div>
+        <div class="contact-date">Depuis le ${date} · ${c.nb_messages || 0} message(s)</div>
+      </div>
+      <div class="contact-badges">${badges}</div>`;
+    container.appendChild(el);
+  });
+}
+
+async function chargerContacts() {
+  const url = getUrl(), pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
+  const container = document.getElementById('contacts-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const res = await fetch(url + '/admin/abonnes?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur</p></div>'; return; }
+    allContacts = data.contacts || [];
+    const abChabbat = data.abonnesChabbat || 0;
+    const abEv = data.abonnesEvenements || 0;
+    document.getElementById('contacts-stats-row').innerHTML = `
+      <div class="stat-box"><div class="stat-num">${data.total}</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#92400E">${abChabbat}</div><div class="stat-label">🕯️ Chabbat</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#065F46">${abEv}</div><div class="stat-label">📅 Événements</div></div>`;
+    document.getElementById('contacts-stats').style.display = 'block';
+    document.getElementById('contacts-filter-chips').style.display = 'flex';
+    afficherContacts();
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
 let broadcastMode='chabbat';
 async function loadBroadcastContacts(){const url=getUrl(),pw=getAdminPw();if(!url){document.getElementById('broadcast-contacts').innerHTML="⚠️ Configurez l'adresse dans ⚙️ Config";return;}try{const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok)document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot.`;else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;}catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}}
 async function chargerInfoChabbat(){const url=getUrl(),pw=getAdminPw();const box=document.getElementById('chabbat-live-box'),content=document.getElementById('chabbat-live-content');box.style.display='block';content.textContent='Chargement...';try{const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok&&d.data)content.innerHTML=d.data.replace(/\n/g,'<br>');else content.textContent='Impossible de charger les horaires.';}catch(e){content.textContent='Erreur de connexion';}}
