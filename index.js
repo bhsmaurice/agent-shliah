@@ -21,6 +21,9 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS messages_traites (msg_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS histoires (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, texte TEXT NOT NULL, image_url TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, phone TEXT UNIQUE NOT NULL, abonne_chabbat BOOLEAN DEFAULT FALSE, abonne_evenements BOOLEAN DEFAULT FALSE, question_chabbat_posee BOOLEAN DEFAULT FALSE, question_evenements_posee BOOLEAN DEFAULT FALSE, nb_messages INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS musiques (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, lien TEXT NOT NULL, ambiance TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS playlistes (id SERIAL PRIMARY KEY, nom TEXT NOT NULL, ambiance TEXT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
@@ -151,7 +154,6 @@ async function getHorairesChabbat() {
     }
     throw new Error('Aucun Chabbat trouvé');
   } catch (e) { console.error('Torah-Box error:', e.message); }
-
   try {
     const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const data = await res.json();
@@ -201,9 +203,7 @@ async function getOuCreerContact(phone) {
 }
 
 async function incrementerMessages(phone) {
-  try {
-    await pool.query('UPDATE contacts SET nb_messages = nb_messages + 1 WHERE phone=$1', [phone]);
-  } catch (e) {}
+  try { await pool.query('UPDATE contacts SET nb_messages = nb_messages + 1 WHERE phone=$1', [phone]); } catch (e) {}
 }
 
 async function marquerQuestionPosee(phone, type) {
@@ -220,8 +220,7 @@ async function mettreAJourAbonnement(phone, type, valeur) {
   } catch (e) {}
 }
 
-// Sessions pour les réponses aux questions d'abonnement
-let sessionsAbonnement = {}; // { phone: 'chabbat' | 'evenements' }
+let sessionsAbonnement = {};
 
 function estReponseOui(text) {
   const lower = text.toLowerCase().trim();
@@ -233,25 +232,19 @@ function estReponseNon(text) {
   return lower === 'non' || lower === 'no' || lower === 'לא' || lower === 'pas' || lower === 'nope' || lower === 'merci non' || lower === 'non merci';
 }
 
-// Vérifie si on doit poser une question d'abonnement après la réponse
 async function getQuestionAbonnement(phone, contact) {
   if (!contact) return null;
   const nb = contact.nb_messages || 0;
-
-  // Au 2ème message → question Chabbat (si pas encore posée)
   if (nb === 2 && !contact.question_chabbat_posee) {
     await marquerQuestionPosee(phone, 'chabbat');
     sessionsAbonnement[phone] = 'chabbat';
     return `\n\nAu fait, veux-tu recevoir les horaires d'allumage des bougies automatiquement chaque vendredi matin ? 🕯️ (Oui/Non)`;
   }
-
-  // Au 4ème message → question événements (si pas encore posée)
   if (nb === 4 && !contact.question_evenements_posee) {
     await marquerQuestionPosee(phone, 'evenements');
     sessionsAbonnement[phone] = 'evenements';
     return `\n\nOn organise régulièrement des événements et activités au Beth Habad. Veux-tu être tenu informé ? 😊 (Oui/Non)`;
   }
-
   return null;
 }
 
@@ -260,9 +253,7 @@ function demarrerCronChabbat() {
   setInterval(async () => {
     const now = new Date();
     const heuresParis = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-    const jour = heuresParis.getDay();
-    const heure = heuresParis.getHours();
-    const minute = heuresParis.getMinutes();
+    const jour = heuresParis.getDay(), heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
     if (jour === 5 && heure === 9 && minute < 5) {
       const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
       const cacheKey = `chabbat_envoye_${dateAujourdhui}`;
@@ -289,6 +280,67 @@ async function envoyerHorairesChabbatAbonnes() {
     }
     console.log(`🕯️ Cron: ${envoyes}/${abonnes.rows.length} envoyés`);
   } catch (e) { console.error('Cron error:', e.message); }
+}
+
+// ─── MUSIQUE & PLAYLIST ───────────────────────────────────────
+function parlDeMusique(msg) {
+  const lower = msg.toLowerCase();
+  return ['musique', 'music', 'nigoun', 'nigoune', 'nigouns', 'nigounim', 'chant', 'chanson', 'melodie', 'mélodie', 'chantons', 'chanter'].some(m => lower.includes(m));
+}
+
+function parlDePlaylist(msg) {
+  const lower = msg.toLowerCase();
+  return ['playlist', 'playliste', 'liste de music', 'liste musique', 'toutes les musiques'].some(m => lower.includes(m));
+}
+
+const AMBIANCES = {
+  '1': { label: '🎶 Douce et relaxante', key: 'douce' },
+  '2': { label: '🔥 Qui bouge', key: 'bouge' },
+  '3': { label: '🕯️ Nigounim / Chabbat', key: 'chabbat' }
+};
+
+// Sessions musique en mémoire
+let sessionsMusiqueType = {}; // { phone: 'musique' | 'playlist' }
+
+async function gererMusique(from, text, type) {
+  const session = sessionsMusiqueType[from];
+
+  // L'utilisateur répond avec un numéro d'ambiance
+  if (session && session.etape === 'ambiance') {
+    const choix = text.trim();
+    const ambiance = AMBIANCES[choix];
+    if (!ambiance) {
+      return `Réponds avec 1, 2 ou 3 :\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat`;
+    }
+
+    const modeType = session.mode; // 'musique' ou 'playlist'
+    delete sessionsMusiqueType[from];
+
+    if (modeType === 'musique') {
+      // Envoyer les musiques une par une
+      const result = await pool.query('SELECT * FROM musiques WHERE ambiance=$1 ORDER BY created_at DESC', [ambiance.key]);
+      if (result.rows.length === 0) return `Pas encore de musiques dans cette catégorie. Reviens bientôt ! 🎵\n\nKol Touv !`;
+      const liste = result.rows.map((m, i) => `${i + 1}. ${m.titre}\n${m.lien}`).join('\n\n');
+      return `🎵 ${ambiance.label}\n\nVoici les musiques recommandées par le Rav Levi :\n\n${liste}\n\nBonne écoute ! 🎶\n\nKol Touv !`;
+    } else {
+      // Envoyer la playlist correspondante
+      const result = await pool.query('SELECT p.*, array_agg(m.titre || chr(10) || m.lien ORDER BY m.titre) as musiques FROM playlistes p LEFT JOIN playliste_musiques pm ON pm.playliste_id = p.id LEFT JOIN musiques m ON m.id = pm.musique_id WHERE p.ambiance=$1 GROUP BY p.id ORDER BY p.created_at DESC LIMIT 1', [ambiance.key]);
+      if (result.rows.length === 0 || !result.rows[0].musiques[0]) {
+        // Fallback : envoyer les musiques de cette ambiance
+        const musResult = await pool.query('SELECT * FROM musiques WHERE ambiance=$1 ORDER BY created_at DESC', [ambiance.key]);
+        if (musResult.rows.length === 0) return `Pas encore de playlist dans cette catégorie. Reviens bientôt ! 🎵\n\nKol Touv !`;
+        const liste = musResult.rows.map(m => `🎵 ${m.titre}\n${m.lien}`).join('\n\n');
+        return `🎶 Playlist ${ambiance.label}\n\n${liste}\n\nBonne écoute !\n\nKol Touv !`;
+      }
+      const playlist = result.rows[0];
+      const liste = playlist.musiques.filter(Boolean).join('\n\n');
+      return `🎶 ${playlist.nom}\n\n${playlist.description ? playlist.description + '\n\n' : ''}${liste}\n\nBonne écoute ! 🎵\n\nKol Touv !`;
+    }
+  }
+
+  // Première demande → poser la question d'ambiance
+  sessionsMusiqueType[from] = { etape: 'ambiance', mode: type };
+  return `Quelle ambiance tu cherches ? 🎵\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat\n\nRéponds avec 1, 2 ou 3.`;
 }
 
 function parleDeMikve(msg) { return ['mikve', 'mikvé', 'bain rituel'].some(m => msg.toLowerCase().includes(m)); }
@@ -405,14 +457,13 @@ app.post('/webhook', async (req, res) => {
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
 
-      // Anti-doublon
       try {
         const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
         if (already.rows.length > 0) return;
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
-      // ── Réponse à une question d'abonnement en cours ──
+      // ── Réponse abonnement en cours ──
       if (sessionsAbonnement[from]) {
         const typeAbonnement = sessionsAbonnement[from];
         delete sessionsAbonnement[from];
@@ -426,7 +477,6 @@ app.post('/webhook', async (req, res) => {
           await mettreAJourAbonnement(from, typeAbonnement, false);
           await sendWhatsApp(from, `Pas de souci ! Tu peux toujours me demander à tout moment.\n\nKol Touv !`);
         } else {
-          // Réponse pas claire → reposer
           sessionsAbonnement[from] = typeAbonnement;
           const question = typeAbonnement === 'chabbat'
             ? `Réponds simplement Oui ou Non 😊\n\nVeux-tu recevoir les horaires d'allumage des bougies chaque vendredi matin ?`
@@ -438,13 +488,10 @@ app.post('/webhook', async (req, res) => {
 
       let reply, estUneDemande = false;
 
-      // ── Récupérer/créer le contact et incrémenter le compteur ──
       const contact = await getOuCreerContact(from);
       await incrementerMessages(from);
-      // Recharger le contact avec le nb_messages mis à jour
       const contactMaj = await pool.query('SELECT * FROM contacts WHERE phone=$1', [from]).then(r => r.rows[0]).catch(() => null);
 
-      // ── Session demande en cours ──
       let session = null;
       try { const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]); if (sr.rows.length > 0) session = sr.rows[0]; } catch(e) {}
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
@@ -467,6 +514,16 @@ app.post('/webhook', async (req, res) => {
           envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
           reply = `Merci, votre demande a bien été reçue !\n\nNous vous contacterons très rapidement.\n\nSi c'est urgent : 07 70 24 17 46.\n\n${getSignature()}`;
         }
+
+      } else if (sessionsMusiqueType[from]) {
+        // Session musique/playlist en cours
+        reply = await gererMusique(from, text, sessionsMusiqueType[from]?.mode || 'musique');
+
+      } else if (parlDePlaylist(text)) {
+        reply = await gererMusique(from, text, 'playlist');
+
+      } else if (parlDeMusique(text)) {
+        reply = await gererMusique(from, text, 'musique');
 
       } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
         reply = await gererHistoire(from, text);
@@ -492,8 +549,6 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
-      // ── Ajouter question abonnement si nécessaire ──
-      // Ne pas poser si le bot pose déjà une question
       const replyContientQuestion = reply && reply.trim().endsWith("?");
       if (!replyContientQuestion) {
         const questionAbonnement = await getQuestionAbonnement(from, contactMaj);
@@ -572,7 +627,6 @@ app.delete('/admin/demandes/:id', async (req, res) => {
   res.json({ ok: true, message: "Supprimé définitivement" });
 });
 
-// ─── BROADCAST ────────────────────────────────────────────────
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -587,18 +641,10 @@ app.post('/admin/broadcast/send', async (req, res) => {
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   try {
     let phones = [];
-    if (phone_unique) {
-      phones = [phone_unique.replace(/[\s\+\-\.]/g, '')];
-    } else if (cible === 'abonnes_evenements') {
-      const result = await pool.query('SELECT phone FROM contacts WHERE abonne_evenements=TRUE');
-      phones = result.rows.map(r => r.phone);
-    } else if (cible === 'abonnes_chabbat') {
-      const result = await pool.query('SELECT phone FROM contacts WHERE abonne_chabbat=TRUE');
-      phones = result.rows.map(r => r.phone);
-    } else {
-      const result = await pool.query('SELECT DISTINCT phone FROM conversations ORDER BY phone');
-      phones = result.rows.map(r => r.phone);
-    }
+    if (phone_unique) { phones = [phone_unique.replace(/[\s\+\-\.]/g, '')]; }
+    else if (cible === 'abonnes_evenements') { const r = await pool.query('SELECT phone FROM contacts WHERE abonne_evenements=TRUE'); phones = r.rows.map(r => r.phone); }
+    else if (cible === 'abonnes_chabbat') { const r = await pool.query('SELECT phone FROM contacts WHERE abonne_chabbat=TRUE'); phones = r.rows.map(r => r.phone); }
+    else { const r = await pool.query('SELECT DISTINCT phone FROM conversations ORDER BY phone'); phones = r.rows.map(r => r.phone); }
     if (phones.length === 0) return res.json({ ok: false, message: "Aucun contact trouvé" });
     let envoyes = 0, erreurs = 0;
     for (const phone of phones) {
@@ -607,12 +653,10 @@ app.post('/admin/broadcast/send', async (req, res) => {
         if (mode === 'chabbat') {
           body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'template', template: { name: 'broadcast_chabbat', language: { code: 'fr' }, components: [{ type: 'body', parameters: [{ type: 'text', text: paracha || '' }, { type: 'text', text: date || '' }, { type: 'text', text: entree || '' }, { type: 'text', text: sortie || '' }] }] } });
         } else {
-          // Si texte non vide → envoyer texte
           const texteAEnvoyer = (texte_libre || '').trim();
           if (texteAEnvoyer && texteAEnvoyer !== ' ') {
             body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: texteAEnvoyer } });
           } else if (image_url) {
-            // Que une image → envoyer directement l'image sans texte d'abord
             await sendWhatsAppImage(phone, image_url);
             envoyes++;
             await new Promise(r => setTimeout(r, 200));
@@ -623,7 +667,6 @@ app.post('/admin/broadcast/send', async (req, res) => {
         const data = await response.json();
         if (data.messages) {
           envoyes++;
-          // Si image en plus du texte → envoyer l'image après
           if (mode !== 'chabbat' && image_url && (texte_libre || '').trim() && (texte_libre || '').trim() !== ' ') {
             await new Promise(r => setTimeout(r, 400));
             await sendWhatsAppImage(phone, image_url);
@@ -647,9 +690,7 @@ app.get('/admin/abonnes', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
-  const abonnesChabbat = result.rows.filter(r => r.abonne_chabbat).length;
-  const abonnesEvenements = result.rows.filter(r => r.abonne_evenements).length;
-  res.json({ ok: true, contacts: result.rows, total: result.rows.length, abonnesChabbat, abonnesEvenements });
+  res.json({ ok: true, contacts: result.rows, total: result.rows.length, abonnesChabbat: result.rows.filter(r => r.abonne_chabbat).length, abonnesEvenements: result.rows.filter(r => r.abonne_evenements).length });
 });
 
 app.post('/admin/abonnes/envoyer', async (req, res) => {
@@ -685,6 +726,83 @@ app.delete('/admin/histoires/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('DELETE FROM histoires WHERE id=$1', [req.params.id]);
+  res.json({ ok: true, message: 'Supprimée !' });
+});
+
+// ─── API ADMIN MUSIQUES ───────────────────────────────────────
+app.get('/admin/musiques', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  const result = await pool.query('SELECT * FROM musiques ORDER BY ambiance, created_at DESC');
+  res.json({ ok: true, musiques: result.rows });
+});
+
+app.post('/admin/musiques', async (req, res) => {
+  const { password, titre, lien, ambiance } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  if (!titre || !lien || !ambiance) return res.status(400).json({ ok: false, message: 'Titre, lien et ambiance requis' });
+  await pool.query('INSERT INTO musiques (titre, lien, ambiance) VALUES ($1, $2, $3)', [titre, lien, ambiance]);
+  res.json({ ok: true, message: 'Musique ajoutée !' });
+});
+
+app.put('/admin/musiques/:id', async (req, res) => {
+  const { password, titre, lien, ambiance } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('UPDATE musiques SET titre=$1, lien=$2, ambiance=$3 WHERE id=$4', [titre, lien, ambiance, req.params.id]);
+  res.json({ ok: true, message: 'Musique mise à jour !' });
+});
+
+app.delete('/admin/musiques/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('DELETE FROM musiques WHERE id=$1', [req.params.id]);
+  res.json({ ok: true, message: 'Supprimée !' });
+});
+
+// ─── API ADMIN PLAYLISTES ─────────────────────────────────────
+app.get('/admin/playlistes', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  const result = await pool.query('SELECT * FROM playlistes ORDER BY ambiance, created_at DESC');
+  const playlistes = [];
+  for (const p of result.rows) {
+    const musiques = await pool.query('SELECT m.* FROM musiques m JOIN playliste_musiques pm ON pm.musique_id = m.id WHERE pm.playliste_id=$1', [p.id]);
+    playlistes.push({ ...p, musiques: musiques.rows });
+  }
+  res.json({ ok: true, playlistes });
+});
+
+app.post('/admin/playlistes', async (req, res) => {
+  const { password, nom, ambiance, description, musique_ids } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  if (!nom || !ambiance) return res.status(400).json({ ok: false, message: 'Nom et ambiance requis' });
+  const result = await pool.query('INSERT INTO playlistes (nom, ambiance, description) VALUES ($1, $2, $3) RETURNING id', [nom, ambiance, description || null]);
+  const id = result.rows[0].id;
+  if (musique_ids && musique_ids.length > 0) {
+    for (const mid of musique_ids) {
+      await pool.query('INSERT INTO playliste_musiques (playliste_id, musique_id) VALUES ($1, $2)', [id, mid]);
+    }
+  }
+  res.json({ ok: true, message: 'Playlist créée !' });
+});
+
+app.put('/admin/playlistes/:id', async (req, res) => {
+  const { password, nom, ambiance, description, musique_ids } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('UPDATE playlistes SET nom=$1, ambiance=$2, description=$3 WHERE id=$4', [nom, ambiance, description || null, req.params.id]);
+  if (musique_ids !== undefined) {
+    await pool.query('DELETE FROM playliste_musiques WHERE playliste_id=$1', [req.params.id]);
+    for (const mid of musique_ids) {
+      await pool.query('INSERT INTO playliste_musiques (playliste_id, musique_id) VALUES ($1, $2)', [req.params.id, mid]);
+    }
+  }
+  res.json({ ok: true, message: 'Playlist mise à jour !' });
+});
+
+app.delete('/admin/playlistes/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  await pool.query('DELETE FROM playlistes WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
 
