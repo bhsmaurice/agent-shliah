@@ -224,6 +224,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
   <div class="tab" onclick="showTab('histoires',this)">📖<span class="tab-label">Histoires</span></div>
+  <div class="tab" onclick="showTab('musiques',this)">🎵<span class="tab-label">Musiques</span></div>
   <div class="tab" onclick="showTab('contacts',this)">👥<span class="tab-label">Contacts</span></div>
   <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
@@ -292,6 +293,97 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 </div></div>
 <!-- ══════════════ FIN HISTOIRES ══════════════ -->
+
+<!-- MUSIQUES -->
+<div class="page" id="tab-musiques"><div class="inner">
+
+  <!-- Tabs internes : Musiques / Playlistes -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <button class="bc-mode-btn active" id="btn-tab-musiques" onclick="switchMusiqueTab('musiques')">🎵 Musiques</button>
+    <button class="bc-mode-btn" id="btn-tab-playlistes" onclick="switchMusiqueTab('playlistes')">🎶 Playlistes</button>
+  </div>
+
+  <!-- SECTION MUSIQUES -->
+  <div id="section-musiques">
+    <div class="card">
+      <div class="card-title">🎵 Ajouter une musique</div>
+      <div class="field"><label>Titre</label><input type="text" id="m-titre" placeholder="Ex: Nigoun du Rabbi Naphtali"></div>
+      <div class="field"><label>Lien (YouTube ou autre)</label><input type="url" id="m-lien" placeholder="https://youtube.com/..."></div>
+      <div class="field"><label>Ambiance</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="cat-btn active" data-ambiance="douce" onclick="selectAmbianceMusique(this)">🎶 Douce</button>
+          <button class="cat-btn" data-ambiance="bouge" onclick="selectAmbianceMusique(this)">🔥 Qui bouge</button>
+          <button class="cat-btn" data-ambiance="chabbat" onclick="selectAmbianceMusique(this)">🕯️ Chabbat</button>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-add-musique" onclick="ajouterMusique()">✦ Ajouter la musique</button>
+      <div class="alert ok" id="alert-musique-ok"></div>
+      <div class="alert err" id="alert-musique-err"></div>
+    </div>
+
+    <div class="card"><button class="btn-main" onclick="chargerMusiques()">🔄 Charger les musiques</button></div>
+
+    <div class="filter-chips" id="musiques-filter-chips" style="display:none">
+      <div class="chip active" data-filter="tous" onclick="selectMusiqueFilter(this)">Toutes</div>
+      <div class="chip" data-filter="douce" onclick="selectMusiqueFilter(this)">🎶 Douce</div>
+      <div class="chip" data-filter="bouge" onclick="selectMusiqueFilter(this)">🔥 Qui bouge</div>
+      <div class="chip" data-filter="chabbat" onclick="selectMusiqueFilter(this)">🕯️ Chabbat</div>
+    </div>
+    <div id="musiques-container"></div>
+  </div>
+
+  <!-- SECTION PLAYLISTES -->
+  <div id="section-playlistes" style="display:none;">
+    <div class="card">
+      <div class="card-title">🎶 Créer une playlist</div>
+      <div class="field"><label>Nom de la playlist</label><input type="text" id="pl-nom" placeholder="Ex: Les meilleurs nigouns"></div>
+      <div class="field"><label>Description (facultatif)</label><input type="text" id="pl-desc" placeholder="Ex: Sélection du Rav Levi"></div>
+      <div class="field"><label>Ambiance</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="cat-btn active" data-ambiance="douce" onclick="selectAmbiancePlayliste(this)">🎶 Douce</button>
+          <button class="cat-btn" data-ambiance="bouge" onclick="selectAmbiancePlayliste(this)">🔥 Qui bouge</button>
+          <button class="cat-btn" data-ambiance="chabbat" onclick="selectAmbiancePlayliste(this)">🕯️ Chabbat</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Musiques à inclure</label>
+        <div id="pl-musiques-select" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:10px;background:var(--bg);">
+          <p style="font-size:12px;color:var(--muted);">Charge les musiques d'abord ↑</p>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-add-playliste" onclick="ajouterPlayliste()">✦ Créer la playlist</button>
+      <div class="alert ok" id="alert-playliste-ok"></div>
+      <div class="alert err" id="alert-playliste-err"></div>
+    </div>
+
+    <div class="card"><button class="btn-main" onclick="chargerPlaylistes()">🔄 Charger les playlistes</button></div>
+    <div id="playlistes-container"></div>
+  </div>
+
+</div></div>
+
+<!-- MODAL MODIFIER MUSIQUE -->
+<div class="modal-overlay" id="modal-musique" onclick="closeModalMusique(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Modifier la musique</div>
+    <input type="hidden" id="edit-m-id">
+    <div class="field"><label>Titre</label><input type="text" id="edit-m-titre"></div>
+    <div class="field"><label>Lien</label><input type="url" id="edit-m-lien"></div>
+    <div class="field"><label>Ambiance</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;" id="edit-m-ambiance-grid">
+        <button class="cat-btn" data-ambiance="douce" onclick="selectEditAmbianceMusique(this)">🎶 Douce</button>
+        <button class="cat-btn" data-ambiance="bouge" onclick="selectEditAmbianceMusique(this)">🔥 Qui bouge</button>
+        <button class="cat-btn" data-ambiance="chabbat" onclick="selectEditAmbianceMusique(this)">🕯️ Chabbat</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalMusique()">Annuler</button>
+      <button class="modal-save" onclick="sauvegarderMusique()">💾 Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- CONTACTS -->
 <div class="page" id="tab-contacts"><div class="inner">
@@ -753,6 +845,195 @@ function telecharger(contenu,nom,type){const blob=new Blob(['\uFEFF'+contenu],{t
 function showExportOk(msg){const el=document.getElementById('alert-export-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
 function showExportErr(msg){const el=document.getElementById('alert-export-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
 async function importerInfos(){const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-file').files[0];const okEl=document.getElementById('alert-import-ok'),errEl=document.getElementById('alert-import-err');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse";errEl.className='alert err';errEl.style.display='block';return;}if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}const text=await file.text(),lines=text.split('\n').slice(1).filter(l=>l.trim());let imported=0,errors=0;for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}}
+
+
+// ══ MUSIQUES & PLAYLISTES ══
+let allMusiques = [], allPlaylistes = [];
+let ambianceMusiqueSelected = 'douce';
+let ambiancePlaylisteSelected = 'douce';
+let editAmbianceMusiqueSelected = 'douce';
+let filterMusiqueSelected = 'tous';
+
+function switchMusiqueTab(tab) {
+  document.getElementById('section-musiques').style.display = tab === 'musiques' ? 'block' : 'none';
+  document.getElementById('section-playlistes').style.display = tab === 'playlistes' ? 'block' : 'none';
+  document.getElementById('btn-tab-musiques').className = 'bc-mode-btn' + (tab === 'musiques' ? ' active' : '');
+  document.getElementById('btn-tab-playlistes').className = 'bc-mode-btn' + (tab === 'playlistes' ? ' active' : '');
+  if (tab === 'playlistes') rafraichirSelectMusiques();
+}
+
+function selectAmbianceMusique(btn) {
+  document.querySelectorAll('#section-musiques .cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ambianceMusiqueSelected = btn.dataset.ambiance;
+}
+
+function selectAmbiancePlayliste(btn) {
+  document.querySelectorAll('#section-playlistes .cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ambiancePlaylisteSelected = btn.dataset.ambiance;
+}
+
+function selectEditAmbianceMusique(btn) {
+  document.querySelectorAll('#edit-m-ambiance-grid .cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  editAmbianceMusiqueSelected = btn.dataset.ambiance;
+}
+
+function selectMusiqueFilter(chip) {
+  document.querySelectorAll('#musiques-filter-chips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  filterMusiqueSelected = chip.dataset.filter;
+  afficherMusiques();
+}
+
+function ambianceLabel(a) {
+  return { douce: '🎶 Douce', bouge: '🔥 Qui bouge', chabbat: '🕯️ Chabbat' }[a] || a;
+}
+
+function afficherMusiques() {
+  const container = document.getElementById('musiques-container');
+  let filtered = allMusiques;
+  if (filterMusiqueSelected !== 'tous') filtered = allMusiques.filter(m => m.ambiance === filterMusiqueSelected);
+  if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="icon">🎵</div><p>Aucune musique</p></div>'; return; }
+  container.innerHTML = '';
+  filtered.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'info-card';
+    el.innerHTML = `
+      <span class="badge badge-autre">${ambianceLabel(m.ambiance)}</span>
+      <div class="info-title">${m.titre}</div>
+      <div style="font-size:12px;color:var(--gold-dark);margin-top:4px;word-break:break-all;">🔗 ${m.lien}</div>
+      <div class="card-actions">
+        <button class="btn-icon edit" onclick="ouvrirModalMusique(${m.id})">✏️</button>
+        <button class="btn-icon del" onclick="supprimerMusique(${m.id})">✕</button>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
+async function ajouterMusique() {
+  const url = getUrl(), pw = getAdminPw();
+  const titre = document.getElementById('m-titre').value.trim();
+  const lien = document.getElementById('m-lien').value.trim();
+  const okEl = document.getElementById('alert-musique-ok'), errEl = document.getElementById('alert-musique-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+  if (!titre || !lien) { errEl.textContent = 'Titre et lien obligatoires'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('btn-add-musique'); btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const r = await fetch(url + '/admin/musiques', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, titre, lien, ambiance: ambianceMusiqueSelected }) });
+    const d = await r.json();
+    if (d.ok) { okEl.textContent = '✓ Musique ajoutée !'; okEl.className = 'alert ok'; okEl.style.display = 'block'; document.getElementById('m-titre').value = ''; document.getElementById('m-lien').value = ''; chargerMusiques(); }
+    else { errEl.textContent = d.message || 'Erreur'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
+  } catch (e) { errEl.textContent = 'Erreur réseau'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = '✦ Ajouter la musique';
+}
+
+async function chargerMusiques() {
+  const url = getUrl(), pw = getAdminPw();
+  if (!url) return alert("Configurez l'adresse dans ⚙️ Config");
+  document.getElementById('musiques-container').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const r = await fetch(url + '/admin/musiques?password=' + encodeURIComponent(pw));
+    const d = await r.json();
+    if (!d.ok) { document.getElementById('musiques-container').innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur</p></div>'; return; }
+    allMusiques = d.musiques || [];
+    document.getElementById('musiques-filter-chips').style.display = 'flex';
+    afficherMusiques();
+    rafraichirSelectMusiques();
+  } catch (e) { document.getElementById('musiques-container').innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+function rafraichirSelectMusiques() {
+  const container = document.getElementById('pl-musiques-select');
+  if (!allMusiques.length) { container.innerHTML = '<p style="font-size:12px;color:var(--muted);">Charge les musiques d'abord dans l'onglet Musiques</p>'; return; }
+  container.innerHTML = allMusiques.map(m => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" value="${m.id}" style="width:16px;height:16px;">
+      <span style="font-size:13px;">${ambianceLabel(m.ambiance)} ${m.titre}</span>
+    </label>`).join('');
+}
+
+function ouvrirModalMusique(id) {
+  const m = allMusiques.find(x => x.id === id); if (!m) return;
+  document.getElementById('edit-m-id').value = id;
+  document.getElementById('edit-m-titre').value = m.titre;
+  document.getElementById('edit-m-lien').value = m.lien;
+  editAmbianceMusiqueSelected = m.ambiance;
+  document.querySelectorAll('#edit-m-ambiance-grid .cat-btn').forEach(b => b.classList.toggle('active', b.dataset.ambiance === m.ambiance));
+  document.getElementById('modal-musique').classList.add('active');
+}
+function fermerModalMusique() { document.getElementById('modal-musique').classList.remove('active'); }
+function closeModalMusique(e) { if (e.target === document.getElementById('modal-musique')) fermerModalMusique(); }
+
+async function sauvegarderMusique() {
+  const url = getUrl(), pw = getAdminPw();
+  const id = document.getElementById('edit-m-id').value;
+  const titre = document.getElementById('edit-m-titre').value.trim();
+  const lien = document.getElementById('edit-m-lien').value.trim();
+  try {
+    const r = await fetch(url + '/admin/musiques/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, titre, lien, ambiance: editAmbianceMusiqueSelected }) });
+    const d = await r.json();
+    if (d.ok) { const idx = allMusiques.findIndex(x => x.id == id); if (idx !== -1) allMusiques[idx] = { ...allMusiques[idx], titre, lien, ambiance: editAmbianceMusiqueSelected }; afficherMusiques(); fermerModalMusique(); }
+  } catch (e) { alert('Erreur'); }
+}
+
+async function supprimerMusique(id) {
+  if (!confirm('Supprimer cette musique ?')) return;
+  const url = getUrl(), pw = getAdminPw();
+  try { await fetch(url + '/admin/musiques/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }); allMusiques = allMusiques.filter(m => m.id !== id); afficherMusiques(); } catch (e) { alert('Erreur'); }
+}
+
+async function ajouterPlayliste() {
+  const url = getUrl(), pw = getAdminPw();
+  const nom = document.getElementById('pl-nom').value.trim();
+  const desc = document.getElementById('pl-desc').value.trim();
+  const okEl = document.getElementById('alert-playliste-ok'), errEl = document.getElementById('alert-playliste-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+  if (!nom) { errEl.textContent = 'Nom obligatoire'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  const musique_ids = Array.from(document.querySelectorAll('#pl-musiques-select input:checked')).map(cb => parseInt(cb.value));
+  const btn = document.getElementById('btn-add-playliste'); btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const r = await fetch(url + '/admin/playlistes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, nom, ambiance: ambiancePlaylisteSelected, description: desc, musique_ids }) });
+    const d = await r.json();
+    if (d.ok) { okEl.textContent = '✓ Playlist créée !'; okEl.className = 'alert ok'; okEl.style.display = 'block'; document.getElementById('pl-nom').value = ''; document.getElementById('pl-desc').value = ''; chargerPlaylistes(); }
+    else { errEl.textContent = d.message || 'Erreur'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
+  } catch (e) { errEl.textContent = 'Erreur réseau'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = '✦ Créer la playlist';
+}
+
+async function chargerPlaylistes() {
+  const url = getUrl(), pw = getAdminPw();
+  if (!url) return;
+  const container = document.getElementById('playlistes-container');
+  container.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try {
+    const r = await fetch(url + '/admin/playlistes?password=' + encodeURIComponent(pw));
+    const d = await r.json();
+    if (!d.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur</p></div>'; return; }
+    allPlaylistes = d.playlistes || [];
+    if (!allPlaylistes.length) { container.innerHTML = '<div class="empty"><div class="icon">🎶</div><p>Aucune playlist</p></div>'; return; }
+    container.innerHTML = '';
+    allPlaylistes.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'info-card';
+      const musicList = p.musiques && p.musiques.length ? p.musiques.map(m => `• ${m.titre}`).join('<br>') : '<em>Aucune musique</em>';
+      el.innerHTML = `
+        <span class="badge badge-cours">${ambianceLabel(p.ambiance)}</span>
+        <div class="info-title">${p.nom}</div>
+        ${p.description ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${p.description}</div>` : ''}
+        <div style="font-size:12px;color:var(--text);line-height:1.8;">${musicList}</div>
+        <div class="card-actions"><button class="btn-icon del" onclick="supprimerPlayliste(${p.id})">✕</button></div>`;
+      container.appendChild(el);
+    });
+  } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
+}
+
+async function supprimerPlayliste(id) {
+  if (!confirm('Supprimer cette playlist ?')) return;
+  const url = getUrl(), pw = getAdminPw();
+  try { await fetch(url + '/admin/playlistes/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }); chargerPlaylistes(); } catch (e) { alert('Erreur'); }
+}
 
 // ══ CONTACTS ══
 let allContacts = [], filterContact = 'tous';
