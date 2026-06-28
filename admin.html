@@ -161,6 +161,14 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .chabbat-info-box .chabbat-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; color: var(--gold); margin-bottom: 10px; }
 .chabbat-info-box .chabbat-line { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 6px; }
 .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ══ HISTOIRES ══ */
+.histoire-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 70px; }
+.histoire-card .histoire-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; }
+.histoire-card .histoire-image { font-size: 11px; color: var(--green); margin-top: 6px; }
+.histoire-card .histoire-date { font-size: 11px; color: var(--muted); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
+.histoire-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
 </style>
 </head>
 <body>
@@ -205,6 +213,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="tabs" id="main-tabs">
   <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
+  <div class="tab" onclick="showTab('histoires',this)">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
@@ -213,6 +222,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab tab-admin-only" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
 </div>
 
+<!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
   <div class="card">
     <div class="card-title">Nouvelle information</div>
@@ -235,6 +245,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
 </div></div>
 
+<!-- INFOS -->
 <div class="page" id="tab-infos"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Charger les infos</button></div>
   <div class="search-box" id="search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()"></div>
@@ -250,6 +261,28 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div id="liste-container"></div>
 </div></div>
 
+<!-- ══════════════ HISTOIRES ══════════════ -->
+<div class="page" id="tab-histoires"><div class="inner">
+
+  <!-- Formulaire ajout -->
+  <div class="card">
+    <div class="card-title">📖 Ajouter une histoire</div>
+    <div class="field"><label>Titre de l'histoire</label><input type="text" id="h-titre" placeholder="Ex: Le Rabbi et le marchand..."></div>
+    <div class="field"><label>Texte de l'histoire</label><textarea id="h-texte" style="min-height:160px;" placeholder="Écris l'histoire ici..."></textarea></div>
+    <div class="field"><label>URL de l'image (facultatif)</label><input type="url" id="h-image" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/histoire1.jpg"></div>
+    <button class="btn-main" id="btn-add-histoire" onclick="ajouterHistoire()">✦ Ajouter l'histoire</button>
+    <div class="alert ok" id="alert-histoire-ok"></div>
+    <div class="alert err" id="alert-histoire-err"></div>
+  </div>
+
+  <!-- Liste des histoires -->
+  <div class="card"><button class="btn-main" onclick="chargerHistoires()">🔄 Charger les histoires</button></div>
+  <div id="histoires-container"></div>
+
+</div></div>
+<!-- ══════════════ FIN HISTOIRES ══════════════ -->
+
+<!-- DEMANDES -->
 <div class="page" id="tab-demandes"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerDemandes()">🔄 Charger les demandes</button></div>
   <div id="demandes-stats" style="display:none"><div class="stats-row" id="stats-row"></div></div>
@@ -272,6 +305,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div id="demandes-container"></div>
 </div></div>
 
+<!-- CORBEILLE -->
 <div class="page" id="tab-corbeille"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerCorbeille()">🔄 Charger la corbeille</button></div>
   <div class="select-bar" id="corbeille-select-bar">
@@ -285,51 +319,36 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div id="corbeille-container"></div>
 </div></div>
 
+<!-- QUESTIONS -->
 <div class="page" id="tab-questions"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button></div>
   <div id="convs-container"></div>
 </div></div>
 
-<!-- ══════════════ BROADCAST ══════════════ -->
+<!-- BROADCAST -->
 <div class="page" id="tab-broadcast"><div class="inner">
   <div class="card-title" style="padding:4px 0 16px;">📢 Broadcast</div>
-
-  <!-- Info Chabbat en direct -->
   <div class="chabbat-info-box" id="chabbat-live-box" style="display:none">
     <div class="chabbat-title">🕯️ Chabbat cette semaine</div>
     <div id="chabbat-live-content" class="chabbat-line">Chargement...</div>
   </div>
   <button class="btn-secondary" style="margin-bottom:16px;margin-top:0;" onclick="chargerInfoChabbat()">🕯️ Voir les horaires Chabbat du site Chabad</button>
-
   <hr class="divider">
-
-  <!-- Envoyer à un contact unique -->
   <div class="card" style="margin-bottom:16px;">
     <div class="card-title" style="font-size:15px;margin-bottom:12px;">📱 Envoyer à un contact</div>
-    <div class="field">
-      <label>Numéro WhatsApp</label>
-      <input id="bc-phone-unique" type="tel" placeholder="ex: 0612345678 ou +33612345678">
-    </div>
-    <div class="field">
-      <label>Message</label>
-      <textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea>
-    </div>
+    <div class="field"><label>Numéro WhatsApp</label><input id="bc-phone-unique" type="tel" placeholder="ex: 0612345678 ou +33612345678"></div>
+    <div class="field"><label>Message</label><textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea></div>
     <button class="btn-main" onclick="envoyerContactUnique()" id="btn-envoyer-unique">📤 Envoyer</button>
     <div class="alert ok" id="unique-result-ok" style="display:none;"></div>
     <div class="alert err" id="unique-result-err" style="display:none;"></div>
   </div>
-
   <hr class="divider">
-
-  <!-- Broadcast à tous -->
   <div class="card-title" style="padding:4px 0 12px;font-size:15px;">📢 Envoyer à tous</div>
   <div class="bc-contacts-box" id="broadcast-contacts">👥 Chargement des contacts...</div>
-
   <div style="display:flex;gap:10px;margin-bottom:20px;">
     <button class="bc-mode-btn active" id="btn-mode-chabbat" onclick="setBroadcastMode('chabbat')">🕯️ Chabbat</button>
     <button class="bc-mode-btn" id="btn-mode-libre" onclick="setBroadcastMode('libre')">✏️ Texte libre</button>
   </div>
-
   <div id="form-chabbat">
     <div class="card" style="padding:16px;">
       <div class="field"><label>📖 Paracha</label><input id="bc-paracha" type="text" placeholder="ex: Kora'h" oninput="updateApercu()"></div>
@@ -350,18 +369,16 @@ Sortie de Chabbat : [Heure sortie]
 Chabbat Chalom à toute la communauté ! 🌟
 ✡️ Beth Habad Saint-Maurice</div>
   </div>
-
   <div id="form-libre" style="display:none;">
     <div class="bc-warning">⚠️ Texte libre : fonctionne uniquement si la personne a écrit dans les 24 dernières heures.</div>
     <div class="field"><textarea id="bc-texte-libre" rows="6" placeholder="Écris ton message ici..." style="min-height:140px;"></textarea></div>
   </div>
-
   <button class="btn-main" onclick="envoyerBroadcast()" id="btn-broadcast">📤 Envoyer à tous</button>
   <div class="alert ok" id="broadcast-result-ok" style="display:none;"></div>
   <div class="alert err" id="broadcast-result-err" style="display:none;"></div>
 </div></div>
-<!-- ══════════════ FIN BROADCAST ══════════════ -->
 
+<!-- EXPORT -->
 <div class="page" id="tab-export"><div class="inner">
   <div class="card">
     <div class="card-title">📤 Exporter mes données</div>
@@ -390,6 +407,7 @@ Chabbat Chalom à toute la communauté ! 🌟
   </div>
 </div></div>
 
+<!-- CONFIG -->
 <div class="page" id="tab-config"><div class="inner">
   <div class="card">
     <div class="card-title">Configuration serveur</div>
@@ -421,6 +439,7 @@ Chabbat Chalom à toute la communauté ! 🌟
   </div>
 </div></div>
 
+<!-- MODAL MODIFIER INFO -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -447,402 +466,201 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="alert err" id="alert-edit-err"></div>
   </div>
 </div>
+
+<!-- MODAL MODIFIER HISTOIRE -->
+<div class="modal-overlay" id="modal-histoire" onclick="closeModalHistoire(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Modifier l'histoire</div>
+    <input type="hidden" id="edit-h-id">
+    <div class="field"><label>Titre</label><input type="text" id="edit-h-titre"></div>
+    <div class="field"><label>Texte</label><textarea id="edit-h-texte" style="min-height:180px"></textarea></div>
+    <div class="field"><label>URL de l'image (facultatif)</label><input type="url" id="edit-h-image" placeholder="https://..."></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalHistoire()">Annuler</button>
+      <button class="modal-save" onclick="sauvegarderHistoire()">💾 Sauvegarder</button>
+    </div>
+    <div class="alert ok" id="alert-edit-h-ok"></div>
+    <div class="alert err" id="alert-edit-h-err"></div>
+  </div>
 </div>
 
+</div><!-- fin #app -->
+
 <script>
-// ══════════════ GESTION UTILISATEURS ══════════════
-const PIN_KEY = 'shliah_admin_pin';
-const PIN2_KEY = 'shliah_user2_pin';
-const PIN2_NAME_KEY = 'shliah_user2_name';
-const DEFAULT_PIN = '194561';
-let pinBuffer = '', loginAttempts = 0, lockUntil = 0;
-let currentUser = 'admin'; // 'admin' ou 'user2'
-let activeLoginUser = 'admin';
+// ══ UTILISATEURS ══
+const PIN_KEY='shliah_admin_pin',PIN2_KEY='shliah_user2_pin',PIN2_NAME_KEY='shliah_user2_name',DEFAULT_PIN='194561';
+let pinBuffer='',loginAttempts=0,lockUntil=0,currentUser='admin',activeLoginUser='admin';
+function getPin(){return localStorage.getItem(PIN_KEY)||DEFAULT_PIN;}
+function getPin2(){return localStorage.getItem(PIN2_KEY)||'';}
+function getPin2Name(){return localStorage.getItem(PIN2_NAME_KEY)||'2ème utilisateur';}
+function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';pinBuffer='';updateDots();document.getElementById('login-error').textContent='';if(activeLoginUser==='user2'){const name=getPin2Name();document.getElementById('login-user-label').textContent=`👤 ${name}`;if(!getPin2()){document.getElementById('login-error').textContent='Aucun 2ème utilisateur configuré';activeLoginUser='admin';document.getElementById('login-user-label').textContent='👤 Administrateur';}}else{document.getElementById('login-user-label').textContent='👤 Administrateur';}}
+function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
+function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
+function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
+function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
+function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}}
+function logout(){pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 
-function getPin() { return localStorage.getItem(PIN_KEY) || DEFAULT_PIN; }
-function getPin2() { return localStorage.getItem(PIN2_KEY) || ''; }
-function getPin2Name() { return localStorage.getItem(PIN2_NAME_KEY) || '2ème utilisateur'; }
+// ══ UTILS ══
+let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],allHistoires=[],filterCat='tous',filterDemande='tous';
+let selectModeActive=false,selectedIds=new Set(),corbeilleSelectMode=false,corbeilleSelectedIds=new Set();
+function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,'');}
+function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
+function showTab(name,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');el.classList.add('active');if(name==='broadcast')loadBroadcastContacts();}
+function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
+function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
+function selectFilter(chip){document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterCat=chip.dataset.filter;afficherInfos();}
+function selectDemandeFilter(chip){document.querySelectorAll('#demandes-filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterDemande=chip.dataset.filter;afficherDemandes();}
+function filtrerInfos(){afficherInfos();}
+function badgeClass(cat){return{priere:'badge-priere',horaire:'badge-horaire',cours:'badge-cours',service:'badge-service',evenement:'badge-evenement',autre:'badge-autre'}[cat]||'badge-autre';}
+function catLabel(cat){return{priere:'🙏 Prière',horaire:'🕐 Horaire',cours:'📚 Cours',service:'🔧 Service',evenement:'✡️ Événement',autre:'📝 Autre'}[cat]||cat;}
+function typeLabel(type){return{cerfa:'📋 Cerfa',sefer_torah:'📜 Sefer Torah',location_salle:'🏠 Location Salle'}[type]||'📩 '+type;}
+function typeBadgeClass(type){return{cerfa:'type-cerfa',sefer_torah:'type-sefer_torah',location_salle:'type-location_salle'}[type]||'type-autre';}
 
-function switchUser() {
-  activeLoginUser = activeLoginUser === 'admin' ? 'user2' : 'admin';
-  pinBuffer = ''; updateDots();
-  document.getElementById('login-error').textContent = '';
-  if (activeLoginUser === 'user2') {
-    const name = getPin2Name();
-    document.getElementById('login-user-label').textContent = `👤 ${name}`;
-    if (!getPin2()) { document.getElementById('login-error').textContent = 'Aucun 2ème utilisateur configuré'; activeLoginUser = 'admin'; document.getElementById('login-user-label').textContent = '👤 Administrateur'; }
-  } else {
-    document.getElementById('login-user-label').textContent = '👤 Administrateur';
-  }
-}
+// ══ INFOS ══
+function afficherInfos(){const search=(document.getElementById('search-input').value||'').toLowerCase();const container=document.getElementById('liste-container');const filtered=allInfos.filter(item=>{const mc=filterCat==='tous'||item.categorie===filterCat;const ms=!search||item.titre.toLowerCase().includes(search)||item.contenu.toLowerCase().includes(search);return mc&&ms;});if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">🔍</div><p>Aucun résultat</p></div>';return;}container.innerHTML='';filtered.forEach(item=>{const el=document.createElement('div');el.className='info-card';el.innerHTML=`<span class="badge ${badgeClass(item.categorie)}">${catLabel(item.categorie)}</span><div class="info-title">${item.titre}</div><div class="info-preview">${item.contenu}</div><div class="info-date">📅 ${new Date(item.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div><div class="card-actions"><button class="btn-icon edit" onclick="ouvrirModal(${item.id})">✏️</button><button class="btn-icon del" onclick="supprimer(${item.id})">✕</button></div>`;container.appendChild(el);});}
+async function chargerListe(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('liste-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allInfos=data.rawInfos||[];document.getElementById('search-wrap').style.display='block';document.getElementById('filter-chips').style.display='flex';afficherInfos();}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+async function supprimer(id){if(!confirm('Supprimer cette information ?'))return;const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/delete/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});const data=await res.json();if(data.ok){allInfos=allInfos.filter(i=>i.id!==id);afficherInfos();}}catch(e){}}
+function ouvrirModal(id){const item=allInfos.find(i=>i.id===id);if(!item)return;document.getElementById('edit-id').value=id;document.getElementById('edit-titre').value=item.titre;document.getElementById('edit-contenu').value=item.contenu;document.getElementById('edit-instruction').value=item.instruction||'';editCatSelected=item.categorie;document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===item.categorie));document.getElementById('modal').classList.add('active');}
+function fermerModal(){document.getElementById('modal').classList.remove('active');}
+function closeModal(e){if(e.target===document.getElementById('modal'))fermerModal();}
+async function sauvegarderModif(){const url=getUrl(),id=document.getElementById('edit-id').value,titre=document.getElementById('edit-titre').value.trim(),contenu=document.getElementById('edit-contenu').value.trim(),instruction=document.getElementById('edit-instruction').value.trim(),pw=getAdminPw();try{const res=await fetch(url+'/admin/update/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:editCatSelected,titre,contenu,instruction})});const data=await res.json();if(data.ok){const idx=allInfos.findIndex(i=>i.id==id);if(idx!==-1)allInfos[idx]={...allInfos[idx],categorie:editCatSelected,titre,contenu,instruction};afficherInfos();fermerModal();}else{document.getElementById('alert-edit-err').textContent=data.message;document.getElementById('alert-edit-err').style.display='block';}}catch(e){document.getElementById('alert-edit-err').textContent='Erreur';document.getElementById('alert-edit-err').style.display='block';}}
+async function envoyer(){const url=getUrl(),titre=document.getElementById('titre').value.trim(),contenu=document.getElementById('contenu').value.trim(),instruction=document.getElementById('instruction').value.trim(),pw=getAdminPw();document.getElementById('alert-ok').style.display='none';document.getElementById('alert-err').style.display='none';if(!url)return showErr("Configurez l'adresse dans ⚙️ Config");if(!titre||!contenu)return showErr("Remplissez le titre et le contenu");const btn=document.getElementById('btn-send');btn.disabled=true;btn.textContent='⏳ Envoi...';try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:catSelected,titre,contenu,instruction})});const data=await res.json();if(data.ok){showOk('✓ '+data.message);document.getElementById('titre').value='';document.getElementById('contenu').value='';document.getElementById('instruction').value='';}else showErr(data.message);}catch(e){showErr("Impossible de contacter le serveur.");}btn.disabled=false;btn.textContent="✦ Envoyer à l'agent";}
 
-function pinPress(digit) {
-  const now = Date.now();
-  if (now < lockUntil) { document.getElementById('login-error').textContent = `Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`; return; }
-  if (pinBuffer.length >= 6) return;
-  pinBuffer += digit; updateDots();
-  if (pinBuffer.length === 6) setTimeout(() => checkPin(), 100);
-}
-function pinDelete() { if (pinBuffer.length > 0) { pinBuffer = pinBuffer.slice(0,-1); updateDots(); } }
-function updateDots(state) {
-  for (let i=0;i<6;i++) { const d=document.getElementById('dot-'+i); d.className='pin-dot'; if(state==='error') d.classList.add('error'); else if(i<pinBuffer.length) d.classList.add('filled'); }
-}
-
-function checkPin() {
-  const adminPin = getPin(), user2Pin = getPin2();
-  let matched = false, role = '';
-  if (activeLoginUser === 'admin' && pinBuffer === adminPin) { matched = true; role = 'admin'; }
-  else if (activeLoginUser === 'user2' && user2Pin && pinBuffer === user2Pin) { matched = true; role = 'user2'; }
-  else if (pinBuffer === adminPin) { matched = true; role = 'admin'; }
-  else if (user2Pin && pinBuffer === user2Pin) { matched = true; role = 'user2'; }
-
-  if (matched) {
-    loginAttempts = 0; currentUser = role;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    const s = localStorage.getItem('railway_url'); if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}
-    const p = localStorage.getItem('railway_admin_pw'); if(p) document.getElementById('admin-pw-config').value=p;
-    applyUserRole(role);
-  } else {
-    loginAttempts++;
-    updateDots('error');
-    document.getElementById('login-error').textContent = loginAttempts>=5 ? 'Trop de tentatives — bloqué 30s' : `Code incorrect (${loginAttempts}/5)`;
-    if (loginAttempts>=5) { lockUntil=Date.now()+30000; loginAttempts=0; }
-    setTimeout(() => { pinBuffer=''; updateDots(); }, 800);
-  }
-}
-
-function applyUserRole(role) {
-  if (role === 'user2') {
-    document.querySelectorAll('.tab-admin-only').forEach(t => t.classList.add('hidden'));
-    document.getElementById('header-user-badge').textContent = getPin2Name();
-    document.getElementById('header-user-badge').style.background = 'rgba(45,122,79,0.2)';
-    document.getElementById('header-user-badge').style.color = '#2D7A4F';
-  } else {
-    document.querySelectorAll('.tab-admin-only').forEach(t => t.classList.remove('hidden'));
-    document.getElementById('header-user-badge').textContent = 'Admin';
-    document.getElementById('header-user-badge').style.background = '';
-    document.getElementById('header-user-badge').style.color = '';
-  }
-}
-
-function logout() {
-  pinBuffer=''; updateDots(); currentUser='admin'; activeLoginUser='admin';
-  document.getElementById('login-error').textContent='';
-  document.getElementById('login-user-label').textContent='👤 Administrateur';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-}
-
-function changerPin(type) {
-  if (type === 'admin') {
-    const np=document.getElementById('new-pin').value.trim(), cp=document.getElementById('confirm-pin').value.trim();
-    const ok=document.getElementById('alert-pin-ok'), err=document.getElementById('alert-pin-err');
-    ok.style.display='none'; err.style.display='none';
-    if (!/^\d{6}$/.test(np)) { err.textContent='Le PIN doit contenir exactement 6 chiffres'; err.className='alert err'; err.style.display='block'; return; }
-    if (np!==cp) { err.textContent='Les deux PIN ne correspondent pas'; err.className='alert err'; err.style.display='block'; return; }
-    localStorage.setItem(PIN_KEY,np); ok.textContent='✓ PIN admin changé !'; ok.className='alert ok'; ok.style.display='block';
-    document.getElementById('new-pin').value=''; document.getElementById('confirm-pin').value='';
-  } else {
-    const np=document.getElementById('new-pin-2').value.trim(), cp=document.getElementById('confirm-pin-2').value.trim();
-    const name=document.getElementById('user2-name').value.trim();
-    const ok=document.getElementById('alert-pin2-ok'), err=document.getElementById('alert-pin2-err');
-    ok.style.display='none'; err.style.display='none';
-    if (!/^\d{6}$/.test(np)) { err.textContent='Le PIN doit contenir exactement 6 chiffres'; err.className='alert err'; err.style.display='block'; return; }
-    if (np!==cp) { err.textContent='Les deux PIN ne correspondent pas'; err.className='alert err'; err.style.display='block'; return; }
-    localStorage.setItem(PIN2_KEY,np); if(name) localStorage.setItem(PIN2_NAME_KEY,name);
-    ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`; ok.className='alert ok'; ok.style.display='block';
-    document.getElementById('new-pin-2').value=''; document.getElementById('confirm-pin-2').value='';
-  }
-}
-
-let catSelected='priere', editCatSelected='priere', allInfos=[], allDemandes=[], filterCat='tous', filterDemande='tous';
-let selectModeActive=false, selectedIds=new Set(), corbeilleSelectMode=false, corbeilleSelectedIds=new Set();
-function getUrl() { return (localStorage.getItem('railway_url')||'').replace(/\/$/,''); }
-function getAdminPw() { return localStorage.getItem('railway_admin_pw')||''; }
-
-function showTab(name,el) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  el.classList.add('active');
-  if (name === 'broadcast') loadBroadcastContacts();
-}
-function selectCat(btn) { document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); catSelected=btn.dataset.cat; }
-function selectEditCat(btn) { document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); editCatSelected=btn.dataset.cat; }
-function selectFilter(chip) { document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); filterCat=chip.dataset.filter; afficherInfos(); }
-function selectDemandeFilter(chip) { document.querySelectorAll('#demandes-filter-chips .chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); filterDemande=chip.dataset.filter; afficherDemandes(); }
-function filtrerInfos() { afficherInfos(); }
-function badgeClass(cat) { return {priere:'badge-priere',horaire:'badge-horaire',cours:'badge-cours',service:'badge-service',evenement:'badge-evenement',autre:'badge-autre'}[cat]||'badge-autre'; }
-function catLabel(cat) { return {priere:'🙏 Prière',horaire:'🕐 Horaire',cours:'📚 Cours',service:'🔧 Service',evenement:'✡️ Événement',autre:'📝 Autre'}[cat]||cat; }
-function typeLabel(type) { return {cerfa:'📋 Cerfa',sefer_torah:'📜 Sefer Torah',location_salle:'🏠 Location Salle'}[type]||'📩 '+type; }
-function typeBadgeClass(type) { return {cerfa:'type-cerfa',sefer_torah:'type-sefer_torah',location_salle:'type-location_salle'}[type]||'type-autre'; }
-
-function afficherInfos() {
-  const search=(document.getElementById('search-input').value||'').toLowerCase();
-  const container=document.getElementById('liste-container');
-  const filtered=allInfos.filter(item=>{const mc=filterCat==='tous'||item.categorie===filterCat; const ms=!search||item.titre.toLowerCase().includes(search)||item.contenu.toLowerCase().includes(search); return mc&&ms;});
-  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">🔍</div><p>Aucun résultat</p></div>';return;}
-  container.innerHTML='';
-  filtered.forEach(item=>{const el=document.createElement('div');el.className='info-card';el.innerHTML=`<span class="badge ${badgeClass(item.categorie)}">${catLabel(item.categorie)}</span><div class="info-title">${item.titre}</div><div class="info-preview">${item.contenu}</div><div class="info-date">📅 ${new Date(item.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div><div class="card-actions"><button class="btn-icon edit" onclick="ouvrirModal(${item.id})">✏️</button><button class="btn-icon del" onclick="supprimer(${item.id})">✕</button></div>`;container.appendChild(el);});
-}
-function activerSelection() { selectModeActive=true; selectedIds.clear(); document.querySelectorAll('.demande-card').forEach(c=>c.classList.add('select-mode')); document.getElementById('demandes-select-bar').classList.add('active'); updateSelectCount(); }
-function toutSelectionner() { if(!selectModeActive)activerSelection(); document.querySelectorAll('.demande-card').forEach(c=>{const cb=c.querySelector('.demande-checkbox');if(cb){cb.checked=true;const id=parseInt(c.id.replace('demande-',''));selectedIds.add(id);c.classList.add('selected');}}); updateSelectCount(); }
-function annulerSelection() { selectModeActive=false; selectedIds.clear(); document.querySelectorAll('.demande-card').forEach(c=>{c.classList.remove('select-mode','selected');c.querySelector('.demande-checkbox').checked=false;}); document.getElementById('demandes-select-bar').classList.remove('active'); }
-function toggleSelectDemande(id,cb) { if(cb.checked)selectedIds.add(id);else selectedIds.delete(id); document.getElementById('demande-'+id).classList.toggle('selected',cb.checked); updateSelectCount(); }
-function updateSelectCount() { document.getElementById('demandes-select-count').textContent=selectedIds.size+' sélectionnée(s)'; }
-async function corbeilleSelection() {
-  if(!selectedIds.size)return; if(!confirm(`Mettre ${selectedIds.size} demande(s) à la corbeille ?`))return;
+// ══ HISTOIRES ══
+async function ajouterHistoire(){
   const url=getUrl(),pw=getAdminPw();
-  for(const id of selectedIds){try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';}catch(e){}}
-  annulerSelection(); afficherDemandes();
-}
-function afficherDemandes() {
-  const container=document.getElementById('demandes-container');
-  let filtered=allDemandes.filter(d=>d.statut!=='corbeille');
-  if(['nouveau','en_cours','urgent','termine'].includes(filterDemande))filtered=filtered.filter(d=>d.statut===filterDemande);
-  else if(filterDemande!=='tous')filtered=filtered.filter(d=>d.type===filterDemande);
-  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>';return;}
-  container.innerHTML='';
-  const btnRow=document.createElement('div'); btnRow.style.cssText='display:flex;gap:8px;margin-bottom:10px;';
-  btnRow.innerHTML='<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelection()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionner()">✅ Tout sélectionner</button>';
-  container.appendChild(btnRow);
-  filtered.forEach(d=>{
-    const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const data=d.data||{},texte=data.texte_libre||JSON.stringify(data,null,2),phoneWa=data.phone_whatsapp||('+'+d.phone);
-    const el=document.createElement('div'); el.className='demande-card'; el.id='demande-'+d.id;
-    el.innerHTML=`<input type="checkbox" class="demande-checkbox" onchange="toggleSelectDemande(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="mettreCorbeille(${d.id})">🗑️</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">📱 ${phoneWa}</div><div class="demande-texte">${texte}</div><div class="demande-statut-row"><select class="statut-select" onchange="changerStatut(${d.id},this.value)"><option value="nouveau" ${d.statut==='nouveau'?'selected':''}>🔴 Nouveau</option><option value="en_cours" ${d.statut==='en_cours'?'selected':''}>🟡 En cours</option><option value="urgent" ${d.statut==='urgent'?'selected':''}>🔥 Urgent</option><option value="termine" ${d.statut==='termine'?'selected':''}>✅ Terminé</option></select></div>`;
-    container.appendChild(el);
-  });
-}
-async function chargerDemandes() {
-  const url=getUrl(),pw=getAdminPw(); if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
-  const container=document.getElementById('demandes-container'); container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
-  try {
-    const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw)); const data=await res.json();
-    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}
-    allDemandes=data.demandes||[];
-    const actives=allDemandes.filter(d=>d.statut!=='corbeille'),nouveaux=actives.filter(d=>d.statut==='nouveau').length,termines=actives.filter(d=>d.statut==='termine').length;
-    document.getElementById('stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${actives.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-num" style="color:var(--orange)">${nouveaux}</div><div class="stat-label">Nouveaux</div></div><div class="stat-box"><div class="stat-num" style="color:var(--green)">${termines}</div><div class="stat-label">Terminés</div></div>`;
-    document.getElementById('demandes-stats').style.display='block'; document.getElementById('demandes-filter-chips').style.display='flex'; afficherDemandes();
-  } catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
-}
-async function changerStatut(id,statut) { const url=getUrl(),pw=getAdminPw(); try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut=statut;}catch(e){} }
-async function mettreCorbeille(id) { if(!confirm('Mettre à la corbeille ?'))return; const url=getUrl(),pw=getAdminPw(); try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';afficherDemandes();}catch(e){alert('Erreur');} }
-async function chargerCorbeille() {
-  const url=getUrl(),pw=getAdminPw(); if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
-  const container=document.getElementById('corbeille-container'); container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
-  try {
-    const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw)); const data=await res.json();
-    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}
-    const corbeille=(data.demandes||[]).filter(d=>d.statut==='corbeille'); allDemandes=data.demandes||[];
-    if(!corbeille.length){container.innerHTML='<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';return;}
-    container.innerHTML='';
-    const actionsDiv=document.createElement('div'); actionsDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px;';
-    actionsDiv.innerHTML=`<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button><button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider</button>`;
-    container.appendChild(actionsDiv);
-    corbeille.forEach(d=>{
-      const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      const data2=d.data||{},texte=data2.texte_libre||JSON.stringify(data2,null,2),phoneWa=data2.phone_whatsapp||('+'+d.phone);
-      const el=document.createElement('div'); el.className='corbeille-card'; el.id='corbeille-'+d.id;
-      el.innerHTML=`<input type="checkbox" class="corbeille-checkbox" onchange="toggleSelectCorbeille(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><span class="demande-date">${date}</span></div><div class="demande-phone">📱 ${phoneWa}</div><div class="demande-texte">${texte}</div><div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);"><button class="btn-restore" onclick="restaurerDemande(${d.id})">♻️ Restaurer</button><button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer</button></div>`;
-      container.appendChild(el);
-    });
-  } catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
-}
-async function viderCorbeille() { if(!confirm('Vider toute la corbeille ? Irréversible.'))return; const url=getUrl(),pw=getAdminPw(); for(const d of allDemandes.filter(d=>d.statut==='corbeille')){try{await fetch(url+'/admin/demandes/'+d.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});}catch(e){}} chargerCorbeille(); }
-function activerSelectionCorbeille() { corbeilleSelectMode=true; corbeilleSelectedIds.clear(); document.querySelectorAll('.corbeille-card').forEach(c=>c.classList.add('select-mode')); document.getElementById('corbeille-select-bar').classList.add('active'); document.getElementById('corbeille-select-count').textContent='0 sélectionnée(s)'; }
-function toutSelectionnerCorbeille() { if(!corbeilleSelectMode)activerSelectionCorbeille(); document.querySelectorAll('.corbeille-card').forEach(c=>{const cb=c.querySelector('.corbeille-checkbox');if(cb){cb.checked=true;const id=parseInt(c.id.replace('corbeille-',''));corbeilleSelectedIds.add(id);c.classList.add('selected');}}); document.getElementById('corbeille-select-count').textContent=corbeilleSelectedIds.size+' sélectionnée(s)'; }
-function annulerSelectionCorbeille() { corbeilleSelectMode=false; corbeilleSelectedIds.clear(); document.querySelectorAll('.corbeille-card').forEach(c=>{c.classList.remove('select-mode','selected');c.querySelector('.corbeille-checkbox').checked=false;}); document.getElementById('corbeille-select-bar').classList.remove('active'); }
-function toggleSelectCorbeille(id,cb) { if(cb.checked)corbeilleSelectedIds.add(id);else corbeilleSelectedIds.delete(id); document.getElementById('corbeille-'+id).classList.toggle('selected',cb.checked); document.getElementById('corbeille-select-count').textContent=corbeilleSelectedIds.size+' sélectionnée(s)'; }
-async function supprimerSelectionCorbeille() { if(!corbeilleSelectedIds.size)return; if(!confirm(`Supprimer définitivement ${corbeilleSelectedIds.size} demande(s) ?`))return; const url=getUrl(),pw=getAdminPw(); for(const id of corbeilleSelectedIds){try{await fetch(url+'/admin/demandes/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});document.getElementById('corbeille-'+id)?.remove();}catch(e){}} annulerSelectionCorbeille(); }
-async function restaurerSelectionCorbeille() { if(!corbeilleSelectedIds.size)return; const url=getUrl(),pw=getAdminPw(); for(const id of corbeilleSelectedIds){try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'nouveau'})});document.getElementById('corbeille-'+id)?.remove();}catch(e){}} annulerSelectionCorbeille(); const container=document.getElementById('corbeille-container'); if(!container.querySelector('.corbeille-card'))chargerCorbeille(); }
-async function restaurerDemande(id) { const url=getUrl(),pw=getAdminPw(); try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'nouveau'})});document.getElementById('corbeille-'+id)?.remove();const c=document.getElementById('corbeille-container');if(!c.querySelector('.corbeille-card'))chargerCorbeille();}catch(e){alert('Erreur');} }
-async function supprimerDefinitif(id) { if(!confirm('Supprimer définitivement ? Irréversible.'))return; const url=getUrl(),pw=getAdminPw(); try{await fetch(url+'/admin/demandes/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});document.getElementById('corbeille-'+id)?.remove();const c=document.getElementById('corbeille-container');if(!c.querySelector('.corbeille-card'))chargerCorbeille();}catch(e){alert('Erreur');} }
-async function chargerListe() {
-  const url=getUrl(),pw=getAdminPw(); if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
-  const container=document.getElementById('liste-container'); container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
-  try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allInfos=data.rawInfos||[];document.getElementById('search-wrap').style.display='block';document.getElementById('filter-chips').style.display='flex';afficherInfos();}
-  catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
-}
-async function supprimer(id) { if(!confirm('Supprimer cette information ?'))return; const url=getUrl(),pw=getAdminPw(); try{const res=await fetch(url+'/admin/delete/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});const data=await res.json();if(data.ok){allInfos=allInfos.filter(i=>i.id!==id);afficherInfos();}}catch(e){} }
-function ouvrirModal(id) { const item=allInfos.find(i=>i.id===id);if(!item)return;document.getElementById('edit-id').value=id;document.getElementById('edit-titre').value=item.titre;document.getElementById('edit-contenu').value=item.contenu;document.getElementById('edit-instruction').value=item.instruction||'';editCatSelected=item.categorie;document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===item.categorie));document.getElementById('modal').classList.add('active'); }
-function fermerModal() { document.getElementById('modal').classList.remove('active'); }
-function closeModal(e) { if(e.target===document.getElementById('modal'))fermerModal(); }
-async function sauvegarderModif() {
-  const url=getUrl(),id=document.getElementById('edit-id').value,titre=document.getElementById('edit-titre').value.trim(),contenu=document.getElementById('edit-contenu').value.trim(),instruction=document.getElementById('edit-instruction').value.trim(),pw=getAdminPw();
-  try{const res=await fetch(url+'/admin/update/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:editCatSelected,titre,contenu,instruction})});const data=await res.json();if(data.ok){const idx=allInfos.findIndex(i=>i.id==id);if(idx!==-1)allInfos[idx]={...allInfos[idx],categorie:editCatSelected,titre,contenu,instruction};afficherInfos();fermerModal();}else{document.getElementById('alert-edit-err').textContent=data.message;document.getElementById('alert-edit-err').style.display='block';}}
-  catch(e){document.getElementById('alert-edit-err').textContent='Erreur';document.getElementById('alert-edit-err').style.display='block';}
-}
-async function envoyer() {
-  const url=getUrl(),titre=document.getElementById('titre').value.trim(),contenu=document.getElementById('contenu').value.trim(),instruction=document.getElementById('instruction').value.trim(),pw=getAdminPw();
-  document.getElementById('alert-ok').style.display='none';document.getElementById('alert-err').style.display='none';
-  if(!url)return showErr("Configurez l'adresse dans ⚙️ Config");
-  if(!titre||!contenu)return showErr("Remplissez le titre et le contenu");
-  const btn=document.getElementById('btn-send'); btn.disabled=true; btn.textContent='⏳ Envoi...';
-  try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:catSelected,titre,contenu,instruction})});const data=await res.json();if(data.ok){showOk('✓ '+data.message);document.getElementById('titre').value='';document.getElementById('contenu').value='';document.getElementById('instruction').value='';}else showErr(data.message);}
-  catch(e){showErr("Impossible de contacter le serveur.");}
-  btn.disabled=false; btn.textContent="✦ Envoyer à l'agent";
-}
-async function chargerConvs() {
-  const url=getUrl(),pw=getAdminPw(); if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
-  const container=document.getElementById('convs-container'); container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  const titre=document.getElementById('h-titre').value.trim();
+  const texte=document.getElementById('h-texte').value.trim();
+  const image_url=document.getElementById('h-image').value.trim();
+  const okEl=document.getElementById('alert-histoire-ok'),errEl=document.getElementById('alert-histoire-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.className='alert err';errEl.style.display='block';return;}
+  if(!titre||!texte){errEl.textContent='Titre et texte obligatoires';errEl.className='alert err';errEl.style.display='block';return;}
+  const btn=document.getElementById('btn-add-histoire');btn.disabled=true;btn.textContent='⏳ Ajout...';
   try{
-    const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw)); const data=await res.json();
-    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}
-    if(!data.conversations.length){container.innerHTML='<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>';return;}
+    const res=await fetch(url+'/admin/histoires',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,titre,texte,image_url:image_url||null})});
+    const data=await res.json();
+    if(data.ok){okEl.textContent='✓ Histoire ajoutée !';okEl.className='alert ok';okEl.style.display='block';document.getElementById('h-titre').value='';document.getElementById('h-texte').value='';document.getElementById('h-image').value='';chargerHistoires();}
+    else{errEl.textContent=data.message||'Erreur';errEl.className='alert err';errEl.style.display='block';}
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
+  btn.disabled=false;btn.textContent='✦ Ajouter l\'histoire';
+}
+
+async function chargerHistoires(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
+  const container=document.getElementById('histoires-container');
+  container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try{
+    const res=await fetch(url+'/admin/histoires?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur</p></div>';return;}
+    allHistoires=data.histoires||[];
+    if(!allHistoires.length){container.innerHTML='<div class="empty"><div class="icon">📖</div><p>Aucune histoire pour le moment</p></div>';return;}
     container.innerHTML='';
-    data.conversations.forEach(conv=>{
-      const date=new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      const el=document.createElement('div'); el.className='conv-card';
-      el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 +${conv.phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;
+    allHistoires.forEach(h=>{
+      const el=document.createElement('div');el.className='histoire-card';
+      const date=new Date(h.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      el.innerHTML=`
+        <div class="histoire-titre">${h.titre}</div>
+        <div class="histoire-preview">${h.texte}</div>
+        ${h.image_url?`<div class="histoire-image">🖼️ Image ajoutée</div>`:'<div style="font-size:11px;color:var(--muted);margin-top:4px;">📷 Pas encore d\'image</div>'}
+        <div class="histoire-date">📅 ${date}</div>
+        <div class="card-actions">
+          <button class="btn-icon edit" onclick="ouvrirModalHistoire(${h.id})">✏️</button>
+          <button class="btn-icon del" onclick="supprimerHistoire(${h.id})">✕</button>
+        </div>`;
       container.appendChild(el);
     });
   }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
 }
-function sauvegarderConfig() {
-  const pw=document.getElementById('admin-pw-config').value.trim(); if(pw)localStorage.setItem('railway_admin_pw',pw);
-  const url=document.getElementById('server-url').value.trim().replace(/\/$/,''); if(!url)return;
-  localStorage.setItem('railway_url',url); document.getElementById('current-url').textContent=url;
-  const al=document.getElementById('alert-config'); al.className='alert ok'; al.style.display='block'; al.textContent='✓ Adresse sauvegardée !';
-  setTimeout(()=>al.style.display='none',2000);
+
+function ouvrirModalHistoire(id){
+  const h=allHistoires.find(x=>x.id===id);if(!h)return;
+  document.getElementById('edit-h-id').value=id;
+  document.getElementById('edit-h-titre').value=h.titre;
+  document.getElementById('edit-h-texte').value=h.texte;
+  document.getElementById('edit-h-image').value=h.image_url||'';
+  document.getElementById('alert-edit-h-ok').style.display='none';
+  document.getElementById('alert-edit-h-err').style.display='none';
+  document.getElementById('modal-histoire').classList.add('active');
 }
+function fermerModalHistoire(){document.getElementById('modal-histoire').classList.remove('active');}
+function closeModalHistoire(e){if(e.target===document.getElementById('modal-histoire'))fermerModalHistoire();}
+
+async function sauvegarderHistoire(){
+  const url=getUrl(),pw=getAdminPw();
+  const id=document.getElementById('edit-h-id').value;
+  const titre=document.getElementById('edit-h-titre').value.trim();
+  const texte=document.getElementById('edit-h-texte').value.trim();
+  const image_url=document.getElementById('edit-h-image').value.trim();
+  try{
+    const res=await fetch(url+'/admin/histoires/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,titre,texte,image_url:image_url||null})});
+    const data=await res.json();
+    if(data.ok){const idx=allHistoires.findIndex(x=>x.id==id);if(idx!==-1)allHistoires[idx]={...allHistoires[idx],titre,texte,image_url:image_url||null};chargerHistoires();fermerModalHistoire();}
+    else{document.getElementById('alert-edit-h-err').textContent=data.message;document.getElementById('alert-edit-h-err').style.display='block';}
+  }catch(e){document.getElementById('alert-edit-h-err').textContent='Erreur';document.getElementById('alert-edit-h-err').style.display='block';}
+}
+
+async function supprimerHistoire(id){
+  if(!confirm('Supprimer cette histoire ?'))return;
+  const url=getUrl(),pw=getAdminPw();
+  try{await fetch(url+'/admin/histoires/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});allHistoires=allHistoires.filter(h=>h.id!==id);chargerHistoires();}
+  catch(e){alert('Erreur');}
+}
+
+// ══ DEMANDES ══
+function activerSelection(){selectModeActive=true;selectedIds.clear();document.querySelectorAll('.demande-card').forEach(c=>c.classList.add('select-mode'));document.getElementById('demandes-select-bar').classList.add('active');updateSelectCount();}
+function toutSelectionner(){if(!selectModeActive)activerSelection();document.querySelectorAll('.demande-card').forEach(c=>{const cb=c.querySelector('.demande-checkbox');if(cb){cb.checked=true;const id=parseInt(c.id.replace('demande-',''));selectedIds.add(id);c.classList.add('selected');}});updateSelectCount();}
+function annulerSelection(){selectModeActive=false;selectedIds.clear();document.querySelectorAll('.demande-card').forEach(c=>{c.classList.remove('select-mode','selected');c.querySelector('.demande-checkbox').checked=false;});document.getElementById('demandes-select-bar').classList.remove('active');}
+function toggleSelectDemande(id,cb){if(cb.checked)selectedIds.add(id);else selectedIds.delete(id);document.getElementById('demande-'+id).classList.toggle('selected',cb.checked);updateSelectCount();}
+function updateSelectCount(){document.getElementById('demandes-select-count').textContent=selectedIds.size+' sélectionnée(s)';}
+async function corbeilleSelection(){if(!selectedIds.size)return;if(!confirm(`Mettre ${selectedIds.size} demande(s) à la corbeille ?`))return;const url=getUrl(),pw=getAdminPw();for(const id of selectedIds){try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';}catch(e){}}annulerSelection();afficherDemandes();}
+function afficherDemandes(){const container=document.getElementById('demandes-container');let filtered=allDemandes.filter(d=>d.statut!=='corbeille');if(['nouveau','en_cours','urgent','termine'].includes(filterDemande))filtered=filtered.filter(d=>d.statut===filterDemande);else if(filterDemande!=='tous')filtered=filtered.filter(d=>d.type===filterDemande);if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>';return;}container.innerHTML='';const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;margin-bottom:10px;';btnRow.innerHTML='<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelection()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionner()">✅ Tout sélectionner</button>';container.appendChild(btnRow);filtered.forEach(d=>{const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const data=d.data||{},texte=data.texte_libre||JSON.stringify(data,null,2),phoneWa=data.phone_whatsapp||('+'+d.phone);const el=document.createElement('div');el.className='demande-card';el.id='demande-'+d.id;el.innerHTML=`<input type="checkbox" class="demande-checkbox" onchange="toggleSelectDemande(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="mettreCorbeille(${d.id})">🗑️</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">📱 ${phoneWa}</div><div class="demande-texte">${texte}</div><div class="demande-statut-row"><select class="statut-select" onchange="changerStatut(${d.id},this.value)"><option value="nouveau" ${d.statut==='nouveau'?'selected':''}>🔴 Nouveau</option><option value="en_cours" ${d.statut==='en_cours'?'selected':''}>🟡 En cours</option><option value="urgent" ${d.statut==='urgent'?'selected':''}>🔥 Urgent</option><option value="termine" ${d.statut==='termine'?'selected':''}>✅ Terminé</option></select></div>`;container.appendChild(el);});}
+async function chargerDemandes(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('demandes-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allDemandes=data.demandes||[];const actives=allDemandes.filter(d=>d.statut!=='corbeille'),nouveaux=actives.filter(d=>d.statut==='nouveau').length,termines=actives.filter(d=>d.statut==='termine').length;document.getElementById('stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${actives.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-num" style="color:var(--orange)">${nouveaux}</div><div class="stat-label">Nouveaux</div></div><div class="stat-box"><div class="stat-num" style="color:var(--green)">${termines}</div><div class="stat-label">Terminés</div></div>`;document.getElementById('demandes-stats').style.display='block';document.getElementById('demandes-filter-chips').style.display='flex';afficherDemandes();}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+async function changerStatut(id,statut){const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut=statut;}catch(e){}}
+async function mettreCorbeille(id){if(!confirm('Mettre à la corbeille ?'))return;const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';afficherDemandes();}catch(e){alert('Erreur');}}
+async function chargerCorbeille(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('corbeille-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}const corbeille=(data.demandes||[]).filter(d=>d.statut==='corbeille');allDemandes=data.demandes||[];if(!corbeille.length){container.innerHTML='<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';return;}container.innerHTML='';const actionsDiv=document.createElement('div');actionsDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px;';actionsDiv.innerHTML=`<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button><button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider</button>`;container.appendChild(actionsDiv);corbeille.forEach(d=>{const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const data2=d.data||{},texte=data2.texte_libre||JSON.stringify(data2,null,2),phoneWa=data2.phone_whatsapp||('+'+d.phone);const el=document.createElement('div');el.className='corbeille-card';el.id='corbeille-'+d.id;el.innerHTML=`<input type="checkbox" class="corbeille-checkbox" onchange="toggleSelectCorbeille(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><span class="demande-date">${date}</span></div><div class="demande-phone">📱 ${phoneWa}</div><div class="demande-texte">${texte}</div><div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);"><button class="btn-restore" onclick="restaurerDemande(${d.id})">♻️ Restaurer</button><button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer</button></div>`;container.appendChild(el);});}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+async function viderCorbeille(){if(!confirm('Vider toute la corbeille ? Irréversible.'))return;const url=getUrl(),pw=getAdminPw();for(const d of allDemandes.filter(d=>d.statut==='corbeille')){try{await fetch(url+'/admin/demandes/'+d.id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});}catch(e){}}chargerCorbeille();}
+function activerSelectionCorbeille(){corbeilleSelectMode=true;corbeilleSelectedIds.clear();document.querySelectorAll('.corbeille-card').forEach(c=>c.classList.add('select-mode'));document.getElementById('corbeille-select-bar').classList.add('active');document.getElementById('corbeille-select-count').textContent='0 sélectionnée(s)';}
+function toutSelectionnerCorbeille(){if(!corbeilleSelectMode)activerSelectionCorbeille();document.querySelectorAll('.corbeille-card').forEach(c=>{const cb=c.querySelector('.corbeille-checkbox');if(cb){cb.checked=true;const id=parseInt(c.id.replace('corbeille-',''));corbeilleSelectedIds.add(id);c.classList.add('selected');}});document.getElementById('corbeille-select-count').textContent=corbeilleSelectedIds.size+' sélectionnée(s)';}
+function annulerSelectionCorbeille(){corbeilleSelectMode=false;corbeilleSelectedIds.clear();document.querySelectorAll('.corbeille-card').forEach(c=>{c.classList.remove('select-mode','selected');c.querySelector('.corbeille-checkbox').checked=false;});document.getElementById('corbeille-select-bar').classList.remove('active');}
+function toggleSelectCorbeille(id,cb){if(cb.checked)corbeilleSelectedIds.add(id);else corbeilleSelectedIds.delete(id);document.getElementById('corbeille-'+id).classList.toggle('selected',cb.checked);document.getElementById('corbeille-select-count').textContent=corbeilleSelectedIds.size+' sélectionnée(s)';}
+async function supprimerSelectionCorbeille(){if(!corbeilleSelectedIds.size)return;if(!confirm(`Supprimer définitivement ${corbeilleSelectedIds.size} demande(s) ?`))return;const url=getUrl(),pw=getAdminPw();for(const id of corbeilleSelectedIds){try{await fetch(url+'/admin/demandes/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});document.getElementById('corbeille-'+id)?.remove();}catch(e){}}annulerSelectionCorbeille();}
+async function restaurerSelectionCorbeille(){if(!corbeilleSelectedIds.size)return;const url=getUrl(),pw=getAdminPw();for(const id of corbeilleSelectedIds){try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'nouveau'})});document.getElementById('corbeille-'+id)?.remove();}catch(e){}}annulerSelectionCorbeille();const container=document.getElementById('corbeille-container');if(!container.querySelector('.corbeille-card'))chargerCorbeille();}
+async function restaurerDemande(id){const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'nouveau'})});document.getElementById('corbeille-'+id)?.remove();const c=document.getElementById('corbeille-container');if(!c.querySelector('.corbeille-card'))chargerCorbeille();}catch(e){alert('Erreur');}}
+async function supprimerDefinitif(id){if(!confirm('Supprimer définitivement ? Irréversible.'))return;const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});document.getElementById('corbeille-'+id)?.remove();const c=document.getElementById('corbeille-container');if(!c.querySelector('.corbeille-card'))chargerCorbeille();}catch(e){alert('Erreur');}}
+
+// ══ CONVERSATIONS ══
+async function chargerConvs(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('convs-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}if(!data.conversations.length){container.innerHTML='<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>';return;}container.innerHTML='';data.conversations.forEach(conv=>{const date=new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});const el=document.createElement('div');el.className='conv-card';el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 +${conv.phone}</span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;container.appendChild(el);});}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+
+// ══ CONFIG ══
+function sauvegarderConfig(){const pw=document.getElementById('admin-pw-config').value.trim();if(pw)localStorage.setItem('railway_admin_pw',pw);const url=document.getElementById('server-url').value.trim().replace(/\/$/,'');if(!url)return;localStorage.setItem('railway_url',url);document.getElementById('current-url').textContent=url;const al=document.getElementById('alert-config');al.className='alert ok';al.style.display='block';al.textContent='✓ Adresse sauvegardée !';setTimeout(()=>al.style.display='none',2000);}
 function showOk(msg){const el=document.getElementById('alert-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
 function showErr(msg){const el=document.getElementById('alert-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
-async function exporterInfos() {
-  const url=getUrl(),pw=getAdminPw();
-  try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Catégorie,Titre,Contenu,Instruction,Date\n';data.rawInfos.forEach(row=>{const date=new Date(row.created_at).toLocaleDateString('fr-FR');csv+=`"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-infos-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.rawInfos.length+' infos exportées !');}
-  catch(e){showExportErr("Erreur de connexion");}
-}
-async function exporterQuestions() {
-  const url=getUrl(),pw=getAdminPw();
-  try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Téléphone,Question,Réponse,Date\n';data.conversations.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"+${row.phone}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-questions-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.conversations.length+' questions exportées !');}
-  catch(e){showExportErr("Erreur de connexion");}
-}
-async function exporterDemandes() {
-  const url=getUrl(),pw=getAdminPw();
-  try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Type,Téléphone,Message,Statut,Date\n';data.demandes.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"${row.type}","${row.data?.phone_whatsapp||''}","${(row.data?.texte_libre||'').replace(/"/g,'""')}","${row.statut}","${date}"\n`;});telecharger(csv,'shliah-demandes-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.demandes.length+' demandes exportées !');}
-  catch(e){showExportErr("Erreur de connexion");}
-}
-async function analyserQuestions() {
-  const url=getUrl(),pw=getAdminPw();
-  try{
-    const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();
-    if(!data.ok)return showExportErr(data.message);if(!data.conversations.length)return showExportErr("Pas encore de questions");
-    const sujets=[{nom:'🕐 Horaires des offices',mots:['horaire','heure','chaharit','minha','arvit','prière','office','chabbat','shabbat']},{nom:'📚 Cours de Torah',mots:['cours','guémara','tanya','paracha','hassidout','leçon','shiour']},{nom:'🔧 Téfilines & Mezouzot',mots:['téfiline','tefiline','mezouza','vérification','poser','mettre']},{nom:'🏊 Mikve',mots:['mikve','mikvé','bain','immersion']},{nom:'🙏 Prières',mots:['prière','tefila','téfilat','haderech','voyage','bénédiction']},{nom:'🎂 Location de salle',mots:['salle','louer','location','anniversaire','événement','fête']},{nom:'☀️ Fêtes juives',mots:['roch hachana','yom kippour','souccot','hanoucca','pourim','pessah']},{nom:'📞 Contact Rav',mots:['rav','rabbi','contact','appeler','téléphone','hala']}];
-    const comptages=sujets.map(s=>({...s,count:data.conversations.filter(c=>s.mots.some(m=>c.question.toLowerCase().includes(m))).length})).filter(s=>s.count>0).sort((a,b)=>b.count-a.count);
-    const max=comptages[0]?.count||1;
-    document.getElementById('analyse-container').innerHTML=comptages.map(s=>`<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${Math.round(s.count/max*100)}%"></div></div></div><div class="topic-count">${s.count}</div></div>`).join('');
-    document.getElementById('suggestions-container').innerHTML=comptages.slice(0,3).map(s=>`<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`).join('');
-    document.getElementById('analyse-card').style.display='block'; showExportOk('✓ Analyse de '+data.conversations.length+' questions terminée !');
-  }catch(e){showExportErr("Erreur de connexion");}
-}
+
+// ══ EXPORT ══
+async function exporterInfos(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Catégorie,Titre,Contenu,Instruction,Date\n';data.rawInfos.forEach(row=>{const date=new Date(row.created_at).toLocaleDateString('fr-FR');csv+=`"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-infos-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.rawInfos.length+' infos exportées !');}catch(e){showExportErr("Erreur de connexion");}}
+async function exporterQuestions(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Téléphone,Question,Réponse,Date\n';data.conversations.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"+${row.phone}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-questions-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.conversations.length+' questions exportées !');}catch(e){showExportErr("Erreur de connexion");}}
+async function exporterDemandes(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Type,Téléphone,Message,Statut,Date\n';data.demandes.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"${row.type}","${row.data?.phone_whatsapp||''}","${(row.data?.texte_libre||'').replace(/"/g,'""')}","${row.statut}","${date}"\n`;});telecharger(csv,'shliah-demandes-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.demandes.length+' demandes exportées !');}catch(e){showExportErr("Erreur de connexion");}}
+async function analyserQuestions(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);if(!data.conversations.length)return showExportErr("Pas encore de questions");const sujets=[{nom:'🕐 Horaires des offices',mots:['horaire','heure','chaharit','minha','arvit','prière','office','chabbat','shabbat']},{nom:'📚 Cours de Torah',mots:['cours','guémara','tanya','paracha','hassidout','leçon','shiour']},{nom:'🔧 Téfilines & Mezouzot',mots:['téfiline','tefiline','mezouza','vérification','poser','mettre']},{nom:'🏊 Mikve',mots:['mikve','mikvé','bain','immersion']},{nom:'🙏 Prières',mots:['prière','tefila','téfilat','haderech','voyage','bénédiction']},{nom:'🎂 Location de salle',mots:['salle','louer','location','anniversaire','événement','fête']},{nom:'☀️ Fêtes juives',mots:['roch hachana','yom kippour','souccot','hanoucca','pourim','pessah']},{nom:'📞 Contact Rav',mots:['rav','rabbi','contact','appeler','téléphone','hala']}];const comptages=sujets.map(s=>({...s,count:data.conversations.filter(c=>s.mots.some(m=>c.question.toLowerCase().includes(m))).length})).filter(s=>s.count>0).sort((a,b)=>b.count-a.count);const max=comptages[0]?.count||1;document.getElementById('analyse-container').innerHTML=comptages.map(s=>`<div class="topic-item"><div class="topic-bar-wrap"><div class="topic-name">${s.nom}</div><div class="topic-bar"><div class="topic-bar-fill" style="width:${Math.round(s.count/max*100)}%"></div></div></div><div class="topic-count">${s.count}</div></div>`).join('');document.getElementById('suggestions-container').innerHTML=comptages.slice(0,3).map(s=>`<button class="suggest-btn" onclick="creerInfoDepuisSuggestion('${s.nom}')">➕ Créer une info pour "${s.nom}"</button>`).join('');document.getElementById('analyse-card').style.display='block';showExportOk('✓ Analyse de '+data.conversations.length+' questions terminée !');}catch(e){showExportErr("Erreur de connexion");}}
 function creerInfoDepuisSuggestion(nom){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('tab-ajouter').classList.add('active');document.querySelector('.tab[onclick*="ajouter"]').classList.add('active');document.getElementById('titre').value=nom.replace(/^[^\w]*/,'').trim();window.scrollTo(0,0);}
 function telecharger(contenu,nom,type){const blob=new Blob(['\uFEFF'+contenu],{type:type+';charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=nom;a.click();URL.revokeObjectURL(url);}
 function showExportOk(msg){const el=document.getElementById('alert-export-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
 function showExportErr(msg){const el=document.getElementById('alert-export-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
-async function importerInfos(){
-  const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-file').files[0];
-  const okEl=document.getElementById('alert-import-ok'),errEl=document.getElementById('alert-import-err');
-  okEl.style.display='none';errEl.style.display='none';
-  if(!url){errEl.textContent="Configurez l'adresse";errEl.className='alert err';errEl.style.display='block';return;}
-  if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}
-  const text=await file.text(),lines=text.split('\n').slice(1).filter(l=>l.trim());
-  let imported=0,errors=0;
-  for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}
-  if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}
-  else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}
-}
+async function importerInfos(){const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-file').files[0];const okEl=document.getElementById('alert-import-ok'),errEl=document.getElementById('alert-import-err');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse";errEl.className='alert err';errEl.style.display='block';return;}if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}const text=await file.text(),lines=text.split('\n').slice(1).filter(l=>l.trim());let imported=0,errors=0;for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}}
 
-// ══════════════ BROADCAST ══════════════
-let broadcastMode = 'chabbat';
-
-async function loadBroadcastContacts() {
-  const url=getUrl(),pw=getAdminPw();
-  if(!url){document.getElementById('broadcast-contacts').innerHTML='⚠️ Configurez l\'adresse dans ⚙️ Config';return;}
-  try{
-    const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));
-    const d=await r.json();
-    if(d.ok) document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot.`;
-    else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;
-  }catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}
-}
-
-async function chargerInfoChabbat() {
-  const url=getUrl(),pw=getAdminPw();
-  const box=document.getElementById('chabbat-live-box'), content=document.getElementById('chabbat-live-content');
-  box.style.display='block'; content.textContent='Chargement depuis fr.chabad.org...';
-  try{
-    const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));
-    const d=await r.json();
-    if(d.ok && d.data) content.innerHTML=d.data.replace(/\n/g,'<br>');
-    else content.textContent='Impossible de charger les horaires.';
-  }catch(e){content.textContent='Erreur de connexion.';}
-}
-
-function setBroadcastMode(mode) {
-  broadcastMode=mode;
-  document.getElementById('form-chabbat').style.display=mode==='chabbat'?'block':'none';
-  document.getElementById('form-libre').style.display=mode==='libre'?'block':'none';
-  document.getElementById('btn-mode-chabbat').className='bc-mode-btn'+(mode==='chabbat'?' active':'');
-  document.getElementById('btn-mode-libre').className='bc-mode-btn'+(mode==='libre'?' active':'');
-}
-
-function updateApercu() {
-  const p=document.getElementById('bc-paracha').value||'[Paracha]';
-  const d=document.getElementById('bc-date').value||'[Date]';
-  const e=document.getElementById('bc-entree').value||'[Heure entrée]';
-  const s=document.getElementById('bc-sortie').value||'[Heure sortie]';
-  document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;
-}
-
-async function envoyerContactUnique() {
-  const url=getUrl(),pw=getAdminPw();
-  const phone=document.getElementById('bc-phone-unique').value.trim();
-  const message=document.getElementById('bc-message-unique').value.trim();
-  const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');
-  const btn=document.getElementById('btn-envoyer-unique');
-  okEl.style.display='none'; errEl.style.display='none';
-  if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}
-  if(!message){errEl.textContent='Écris un message';errEl.style.display='block';return;}
-  if(!confirm(`Envoyer ce message à ${phone} ?`))return;
-  btn.disabled=true; btn.textContent='⏳ Envoi...';
-  try{
-    const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,mode:'libre',texte_libre:message,phone_unique:phone})});
-    const d=await r.json();
-    if(d.ok && d.envoyes>0){okEl.textContent='✅ Message envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';}
-    else{errEl.textContent='❌ '+(d.message||'Erreur d\'envoi');errEl.style.display='block';}
-  }catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}
-  btn.disabled=false; btn.textContent='📤 Envoyer';
-}
-
-async function envoyerBroadcast() {
-  const url=getUrl(),pw=getAdminPw();
-  const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');
-  const btn=document.getElementById('btn-broadcast');
-  okEl.style.display='none'; errEl.style.display='none';
-  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.style.display='block';return;}
-  if(!confirm('Envoyer ce message à TOUS les contacts du bot ?'))return;
-  btn.disabled=true; btn.textContent='⏳ Envoi en cours...';
-  const payload={password:pw,mode:broadcastMode};
-  if(broadcastMode==='chabbat'){
-    payload.paracha=document.getElementById('bc-paracha').value;
-    payload.date=document.getElementById('bc-date').value;
-    payload.entree=document.getElementById('bc-entree').value;
-    payload.sortie=document.getElementById('bc-sortie').value;
-    if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
-  } else {
-    payload.texte_libre=document.getElementById('bc-texte-libre').value;
-    if(!payload.texte_libre.trim()){errEl.textContent='Écris un message !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}
-  }
-  try{
-    const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const d=await r.json();
-    if(d.ok){okEl.textContent=`✅ ${d.envoyes} messages envoyés sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}
-    else{errEl.textContent='❌ '+d.message;errEl.style.display='block';}
-  }catch(e){errEl.textContent='❌ Erreur réseau : '+e.message;errEl.style.display='block';}
-  btn.disabled=false; btn.textContent='📤 Envoyer à tous';
-}
+// ══ BROADCAST ══
+let broadcastMode='chabbat';
+async function loadBroadcastContacts(){const url=getUrl(),pw=getAdminPw();if(!url){document.getElementById('broadcast-contacts').innerHTML="⚠️ Configurez l'adresse dans ⚙️ Config";return;}try{const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok)document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot.`;else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;}catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}}
+async function chargerInfoChabbat(){const url=getUrl(),pw=getAdminPw();const box=document.getElementById('chabbat-live-box'),content=document.getElementById('chabbat-live-content');box.style.display='block';content.textContent='Chargement...';try{const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok&&d.data)content.innerHTML=d.data.replace(/\n/g,'<br>');else content.textContent='Impossible de charger les horaires.';}catch(e){content.textContent='Erreur de connexion';}}
+function setBroadcastMode(mode){broadcastMode=mode;document.getElementById('form-chabbat').style.display=mode==='chabbat'?'block':'none';document.getElementById('form-libre').style.display=mode==='libre'?'block':'none';document.getElementById('btn-mode-chabbat').className='bc-mode-btn'+(mode==='chabbat'?' active':'');document.getElementById('btn-mode-libre').className='bc-mode-btn'+(mode==='libre'?' active':'');}
+function updateApercu(){const p=document.getElementById('bc-paracha').value||'[Paracha]';const d=document.getElementById('bc-date').value||'[Date]';const e=document.getElementById('bc-entree').value||'[Heure entrée]';const s=document.getElementById('bc-sortie').value||'[Heure sortie]';document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;}
+async function envoyerContactUnique(){const url=getUrl(),pw=getAdminPw();const phone=document.getElementById('bc-phone-unique').value.trim();const message=document.getElementById('bc-message-unique').value.trim();const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');const btn=document.getElementById('btn-envoyer-unique');okEl.style.display='none';errEl.style.display='none';if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}if(!message){errEl.textContent='Écris un message';errEl.style.display='block';return;}if(!confirm(`Envoyer ce message à ${phone} ?`))return;btn.disabled=true;btn.textContent='⏳ Envoi...';try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,mode:'libre',texte_libre:message,phone_unique:phone})});const d=await r.json();if(d.ok&&d.envoyes>0){okEl.textContent='✅ Message envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';}else{errEl.textContent='❌ '+(d.message||"Erreur d'envoi");errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer';}
+async function envoyerBroadcast(){const url=getUrl(),pw=getAdminPw();const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');const btn=document.getElementById('btn-broadcast');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.style.display='block';return;}if(!confirm('Envoyer ce message à TOUS les contacts du bot ?'))return;btn.disabled=true;btn.textContent='⏳ Envoi en cours...';const payload={password:pw,mode:broadcastMode};if(broadcastMode==='chabbat'){payload.paracha=document.getElementById('bc-paracha').value;payload.date=document.getElementById('bc-date').value;payload.entree=document.getElementById('bc-entree').value;payload.sortie=document.getElementById('bc-sortie').value;if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}}else{payload.texte_libre=document.getElementById('bc-texte-libre').value;if(!payload.texte_libre.trim()){errEl.textContent='Écris un message !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}}try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok){okEl.textContent=`✅ ${d.envoyes} messages envoyés sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}else{errEl.textContent='❌ '+d.message;errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau : '+e.message;errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer à tous';}
 </script>
 </body>
 </html>
