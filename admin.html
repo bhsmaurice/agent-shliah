@@ -946,7 +946,7 @@ async function chargerMusiques() {
 
 function rafraichirSelectMusiques() {
   const container = document.getElementById('pl-musiques-select');
-  if (!allMusiques.length) { container.innerHTML = '<p style="font-size:12px;color:var(--muted);">Charge les musiques d'abord dans l'onglet Musiques</p>'; return; }
+  if (!allMusiques.length) { container.innerHTML = "<p style=\"font-size:12px;color:var(--muted)\">Aucune musique. Ajoute d'abord des musiques dans l'onglet Musiques.</p>"; return; }
   container.innerHTML = allMusiques.map(m => `
     <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" value="${m.id}" style="width:16px;height:16px;">
