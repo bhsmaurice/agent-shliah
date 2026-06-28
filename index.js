@@ -607,14 +607,24 @@ app.post('/admin/broadcast/send', async (req, res) => {
         if (mode === 'chabbat') {
           body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'template', template: { name: 'broadcast_chabbat', language: { code: 'fr' }, components: [{ type: 'body', parameters: [{ type: 'text', text: paracha || '' }, { type: 'text', text: date || '' }, { type: 'text', text: entree || '' }, { type: 'text', text: sortie || '' }] }] } });
         } else {
-          body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: texte_libre || '' } });
+          // Si texte non vide → envoyer texte
+          const texteAEnvoyer = (texte_libre || '').trim();
+          if (texteAEnvoyer && texteAEnvoyer !== ' ') {
+            body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: texteAEnvoyer } });
+          } else if (image_url) {
+            // Que une image → envoyer directement l'image sans texte d'abord
+            await sendWhatsAppImage(phone, image_url);
+            envoyes++;
+            await new Promise(r => setTimeout(r, 200));
+            continue;
+          }
         }
         const response = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' }, body });
         const data = await response.json();
         if (data.messages) {
           envoyes++;
-          // Si image → envoyer en 2ème message
-          if (mode !== 'chabbat' && image_url) {
+          // Si image en plus du texte → envoyer l'image après
+          if (mode !== 'chabbat' && image_url && (texte_libre || '').trim() && (texte_libre || '').trim() !== ' ') {
             await new Promise(r => setTimeout(r, 400));
             await sendWhatsAppImage(phone, image_url);
           }
