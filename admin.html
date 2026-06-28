@@ -163,7 +163,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
 /* ══ CONTACTS ══ */
-.contact-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.contact-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.04); transition: border-color 0.15s; }
+.contact-card.selected { border-color: var(--gold); background: #FFFDF5; }
+.contact-card.select-mode .contact-checkbox { display: block !important; }
 .contact-phone { font-size: 13px; font-weight: 600; color: var(--navy); }
 .contact-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .contact-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
@@ -303,7 +305,45 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="chip" data-filter="evenements" onclick="selectContactFilter(this)">📅 Événements</div>
     <div class="chip" data-filter="aucun" onclick="selectContactFilter(this)">❌ Non abonnés</div>
   </div>
+
+  <!-- Barre de sélection -->
+  <div class="select-bar" id="contacts-select-bar">
+    <div class="select-bar-left" id="contacts-select-count">0 sélectionné(s)</div>
+    <div class="select-bar-right">
+      <button class="btn-select-action" style="background:var(--gold-light);color:var(--gold-dark);" onclick="ouvrirEnvoiContacts()">📤 Envoyer</button>
+      <button class="btn-select-action btn-sel-cancel" onclick="annulerSelectionContacts()">Annuler</button>
+    </div>
+  </div>
+
+  <!-- Boutons sélection -->
+  <div id="contacts-actions" style="display:none;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionContacts()">☑️ Sélectionner</button>
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerContacts()">✅ Tout sélectionner</button>
+    </div>
+  </div>
+
   <div id="contacts-container"></div>
+
+  <!-- Modal envoi message -->
+  <div class="modal-overlay" id="modal-envoi-contacts" onclick="closeModalEnvoiContacts(event)">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📤 Envoyer un message</div>
+      <p id="envoi-contacts-label" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></p>
+      <div class="field">
+        <label>Message</label>
+        <textarea id="envoi-contacts-message" style="min-height:140px;" placeholder="Écris ton message ici..."></textarea>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="fermerModalEnvoiContacts()">Annuler</button>
+        <button class="modal-save" onclick="envoyerAuxContactsSelectionnes()">📤 Envoyer</button>
+      </div>
+      <div class="alert ok" id="envoi-contacts-ok"></div>
+      <div class="alert err" id="envoi-contacts-err"></div>
+    </div>
+  </div>
+
 </div></div>
 
 <!-- DEMANDES -->
@@ -679,12 +719,94 @@ async function importerInfos(){const url=getUrl(),pw=getAdminPw(),file=document.
 
 // ══ CONTACTS ══
 let allContacts = [], filterContact = 'tous';
+let contactsSelectMode = false, selectedPhones = new Set();
 
 function selectContactFilter(chip) {
   document.querySelectorAll('#contacts-filter-chips .chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   filterContact = chip.dataset.filter;
   afficherContacts();
+}
+
+function activerSelectionContacts() {
+  contactsSelectMode = true;
+  selectedPhones.clear();
+  document.querySelectorAll('.contact-card').forEach(c => c.classList.add('select-mode'));
+  document.getElementById('contacts-select-bar').classList.add('active');
+  updateContactsSelectCount();
+}
+
+function toutSelectionnerContacts() {
+  if (!contactsSelectMode) activerSelectionContacts();
+  document.querySelectorAll('.contact-card').forEach(c => {
+    const cb = c.querySelector('.contact-checkbox');
+    if (cb) { cb.checked = true; selectedPhones.add(cb.dataset.phone); c.classList.add('selected'); }
+  });
+  updateContactsSelectCount();
+}
+
+function annulerSelectionContacts() {
+  contactsSelectMode = false;
+  selectedPhones.clear();
+  document.querySelectorAll('.contact-card').forEach(c => {
+    c.classList.remove('select-mode', 'selected');
+    const cb = c.querySelector('.contact-checkbox');
+    if (cb) cb.checked = false;
+  });
+  document.getElementById('contacts-select-bar').classList.remove('active');
+}
+
+function toggleSelectContact(phone, cb) {
+  if (cb.checked) selectedPhones.add(phone);
+  else selectedPhones.delete(phone);
+  document.getElementById('contact-' + phone).classList.toggle('selected', cb.checked);
+  updateContactsSelectCount();
+}
+
+function updateContactsSelectCount() {
+  document.getElementById('contacts-select-count').textContent = selectedPhones.size + ' sélectionné(s)';
+}
+
+function ouvrirEnvoiContacts() {
+  if (!selectedPhones.size) return;
+  document.getElementById('envoi-contacts-label').textContent = `Envoyer à ${selectedPhones.size} contact(s) sélectionné(s)`;
+  document.getElementById('envoi-contacts-message').value = '';
+  document.getElementById('envoi-contacts-ok').style.display = 'none';
+  document.getElementById('envoi-contacts-err').style.display = 'none';
+  document.getElementById('modal-envoi-contacts').classList.add('active');
+}
+
+function fermerModalEnvoiContacts() { document.getElementById('modal-envoi-contacts').classList.remove('active'); }
+function closeModalEnvoiContacts(e) { if (e.target === document.getElementById('modal-envoi-contacts')) fermerModalEnvoiContacts(); }
+
+async function envoyerAuxContactsSelectionnes() {
+  const url = getUrl(), pw = getAdminPw();
+  const message = document.getElementById('envoi-contacts-message').value.trim();
+  const okEl = document.getElementById('envoi-contacts-ok'), errEl = document.getElementById('envoi-contacts-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+  if (!message) { errEl.textContent = 'Écris un message'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+
+  let envoyes = 0, erreurs = 0;
+  for (const phone of selectedPhones) {
+    try {
+      const r = await fetch(url + '/admin/broadcast/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: message, phone_unique: phone })
+      });
+      const d = await r.json();
+      if (d.ok && d.envoyes > 0) envoyes++; else erreurs++;
+      await new Promise(r => setTimeout(r, 200));
+    } catch (e) { erreurs++; }
+  }
+
+  if (envoyes > 0) {
+    okEl.textContent = `✅ ${envoyes} message(s) envoyé(s) !`;
+    okEl.className = 'alert ok'; okEl.style.display = 'block';
+    setTimeout(() => { fermerModalEnvoiContacts(); annulerSelectionContacts(); }, 2000);
+  } else {
+    errEl.textContent = `❌ Erreur d'envoi (${erreurs} erreurs)`;
+    errEl.className = 'alert err'; errEl.style.display = 'block';
+  }
 }
 
 function afficherContacts() {
@@ -695,19 +817,31 @@ function afficherContacts() {
   else if (filterContact === 'aucun') filtered = allContacts.filter(c => !c.abonne_chabbat && !c.abonne_evenements);
 
   if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="icon">👥</div><p>Aucun contact</p></div>'; return; }
+
   container.innerHTML = '';
+
+  // Boutons sélection
+  const actionsDiv = document.createElement('div');
+  actionsDiv.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+  actionsDiv.innerHTML = '<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionContacts()">☑️ Sélectionner</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerContacts()">✅ Tout sélectionner</button>';
+  container.appendChild(actionsDiv);
+
   filtered.forEach(c => {
     const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const el = document.createElement('div');
     el.className = 'contact-card';
+    el.id = 'contact-' + c.phone;
     let badges = '';
     if (c.abonne_chabbat) badges += '<span class="badge-abo badge-chabbat">🕯️ Chabbat</span>';
     if (c.abonne_evenements) badges += '<span class="badge-abo badge-evenements">📅 Événements</span>';
     if (!c.abonne_chabbat && !c.abonne_evenements) badges += '<span class="badge-abo badge-non">Non abonné</span>';
     el.innerHTML = `
-      <div>
-        <div class="contact-phone">📱 +${c.phone}</div>
-        <div class="contact-date">Depuis le ${date} · ${c.nb_messages || 0} message(s)</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" class="contact-checkbox" data-phone="${c.phone}" onchange="toggleSelectContact('${c.phone}',this)" style="width:18px;height:18px;display:none;">
+        <div>
+          <div class="contact-phone">📱 +${c.phone}</div>
+          <div class="contact-date">Depuis le ${date} · ${c.nb_messages || 0} msg</div>
+        </div>
       </div>
       <div class="contact-badges">${badges}</div>`;
     container.appendChild(el);
@@ -724,12 +858,10 @@ async function chargerContacts() {
     const data = await res.json();
     if (!data.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur</p></div>'; return; }
     allContacts = data.contacts || [];
-    const abChabbat = data.abonnesChabbat || 0;
-    const abEv = data.abonnesEvenements || 0;
     document.getElementById('contacts-stats-row').innerHTML = `
       <div class="stat-box"><div class="stat-num">${data.total}</div><div class="stat-label">Total</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:#92400E">${abChabbat}</div><div class="stat-label">🕯️ Chabbat</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:#065F46">${abEv}</div><div class="stat-label">📅 Événements</div></div>`;
+      <div class="stat-box"><div class="stat-num" style="color:#92400E">${data.abonnesChabbat || 0}</div><div class="stat-label">🕯️ Chabbat</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#065F46">${data.abonnesEvenements || 0}</div><div class="stat-label">📅 Événements</div></div>`;
     document.getElementById('contacts-stats').style.display = 'block';
     document.getElementById('contacts-filter-chips').style.display = 'flex';
     afficherContacts();
