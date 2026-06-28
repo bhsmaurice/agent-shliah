@@ -493,8 +493,12 @@ app.post('/webhook', async (req, res) => {
       }
 
       // ── Ajouter question abonnement si nécessaire ──
-      const questionAbonnement = await getQuestionAbonnement(from, contactMaj);
-      if (questionAbonnement) reply = reply + questionAbonnement;
+      // Ne pas poser si le bot pose déjà une question
+      const replyContientQuestion = reply && reply.trim().endsWith("?");
+      if (!replyContientQuestion) {
+        const questionAbonnement = await getQuestionAbonnement(from, contactMaj);
+        if (questionAbonnement) reply = reply + questionAbonnement;
+      }
 
       await sendWhatsApp(from, reply);
       if (!estUneDemande) {
