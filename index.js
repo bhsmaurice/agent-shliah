@@ -834,6 +834,31 @@ app.delete('/admin/cerfa/:id', async (req, res) => {
   await pool.query('DELETE FROM cerfa_receipts WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé" });
 });
+app.post('/admin/cerfa/generer', async (req, res) => {
+  const { password, nom, prenom, adresse, montant, mode } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!nom || !adresse || !montant) return res.status(400).json({ ok: false, message: "Nom, adresse et montant requis" });
+  try {
+    const montantNum = parseFloat(String(montant).replace(',', '.'));
+    if (isNaN(montantNum)) return res.status(400).json({ ok: false, message: "Montant invalide" });
+    const modeLower = (mode || '').toLowerCase();
+    let modeFinal = "Remise d'espèces";
+    if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) modeFinal = 'Virement, prélèvement, carte bancaire';
+    else if (/ch[eè]que/.test(modeLower)) modeFinal = 'Chèque';
+    const numero = await getNextCerfaNumero();
+    const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
+    const pdfBuffer = await generateCerfaPDF({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal });
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)`,
+      [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal]
+    );
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
