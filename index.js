@@ -137,42 +137,118 @@ async function getNextCerfaNumero() {
 
 async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode }) {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const marginX = 50;
-  let y = 800;
+  const PW = 595.28, PH = 841.89;
+  const page = pdfDoc.addPage([PW, PH]);
+  const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+  const bold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const marginX = 45;
+  const contentW = PW - 2 * marginX;
   const black = rgb(0, 0, 0);
-  const draw = (text, opts = {}) => {
-    const { size = 10, useBold = false, x = marginX, gap = 16 } = opts;
-    page.drawText(text, { x, y, size, font: useBold ? bold : font, color: black });
-    y -= gap;
+  const gray = rgb(0.75, 0.75, 0.75);
+  const lineGray = rgb(0.4, 0.4, 0.4);
+  const Y = (topPt) => PH - topPt;
+
+  const drawCentered = (text, topPt, size, f = font, color = black) => {
+    const w = f.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: (PW - w) / 2, y: Y(topPt), size, font: f, color });
   };
+  const drawRight = (text, topPt, size, f = font, color = black, rightX = PW - marginX) => {
+    const w = f.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: rightX - w, y: Y(topPt), size, font: f, color });
+  };
+  const drawLeft = (text, topPt, size, f = font, color = black, x = marginX) => {
+    page.drawText(text, { x, y: Y(topPt), size, font: f, color });
+  };
+  const drawLabelValue = (label, value, topPt, x = marginX + 10, size = 10.5) => {
+    page.drawText(label, { x, y: Y(topPt), size, font: bold, color: black });
+    const lw = bold.widthOfTextAtSize(label, size);
+    page.drawText(value, { x: x + lw + 3, y: Y(topPt), size, font, color: black });
+  };
+  const grayBar = (label, topPt, height = 22, size = 12) => {
+    page.drawRectangle({ x: marginX, y: Y(topPt + height), width: contentW, height, color: gray });
+    const w = bold.widthOfTextAtSize(label, size);
+    page.drawText(label, { x: (PW - w) / 2, y: Y(topPt + height - 6), size, font: bold, color: black });
+  };
+  const box = (topPt, height) => {
+    page.drawRectangle({ x: marginX, y: Y(topPt + height), width: contentW, height, borderColor: lineGray, borderWidth: 1 });
+  };
+
   const dateVersement = new Date().toLocaleDateString('fr-FR');
   const dateGeneration = new Date().toLocaleDateString('fr-FR');
-  draw('Reçu au titre des dons', { useBold: true, size: 12 });
-  page.drawText("Numéro d'ordre du reçu", { x: 380, y: y + 16, size: 9, font, color: black });
-  page.drawText(numero, { x: 380, y: y, size: 11, font: bold, color: black });
-  draw("à certains organismes d'intérêt général", { size: 10, gap: 14 });
-  draw('N°11580*05 — Articles 200 et 885-0 V bis A du code général des impôts (CGI)', { size: 8, gap: 26 });
-  draw('Bénéficiaire des versements', { useBold: true, gap: 18 });
-  draw(`Nom ou dénomination : ${ASSOCIATION.nom}`);
-  draw(`Numéro RNA : ${ASSOCIATION.rna}`);
-  draw(`Adresse : ${ASSOCIATION.adresse}`);
-  draw(`Objet : ${ASSOCIATION.objet}`, { size: 9 });
-  draw(`Qualité : ${ASSOCIATION.qualite}`, { gap: 26 });
-  draw('Donateur', { useBold: true, gap: 18 });
-  draw(`Nom : ${nom}    Prénom : ${prenom}`);
-  draw(`Adresse : ${adresse}`, { gap: 26 });
-  draw("Le bénéficiaire reconnaît avoir reçu au titre des dons et versements ouvrant droit à", { size: 9 });
-  draw("réduction d'impôt, la somme de :", { size: 9, gap: 20 });
-  draw(`***${montant}*** ${numberToFrenchWords(montant)}`, { useBold: true, gap: 26 });
-  draw("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit ouvrent", { size: 9 });
-  draw(`droit à la réduction d'impôt prévue à l'article : ${ASSOCIATION.articleCGI}`, { size: 9, gap: 20 });
-  draw('Forme du don : Déclaration de don manuel      Nature du don : Numéraire', { size: 9 });
-  draw(`Mode de versement du don : ${mode}      Date du versement : ${dateVersement}`, { size: 9, gap: 30 });
-  draw('Date et signature', { gap: 40 });
-  page.drawText(`Reçu généré automatiquement — ${ASSOCIATION.nom} — ${dateGeneration}`, { x: marginX, y: 40, size: 7, font, color: rgb(0.4, 0.4, 0.4) });
+
+  // ── En-tête ──
+  drawLeft('N°11580*05', 42, 10.5, bold);
+  drawLeft('DGFIP', 57, 9.5, font);
+  drawCentered('Reçu au titre des dons', 40, 15, bold);
+  drawCentered("à certains organismes d'intérêt général", 58, 11.5, font);
+  drawCentered('Articles 200 et 885-0 V bis A du code général des impôts (CGI)', 73, 9, font);
+  drawRight("Numéro d'ordre du reçu", 40, 10.5, font);
+  drawRight(numero, 58, 13, bold);
+
+  // ── Bloc destinataire ──
+  drawLeft(`${prenom} ${nom}`, 168, 12.5, bold, black, 330);
+  const adresseParts = adresse.split(',').map((s) => s.trim()).filter(Boolean);
+  let addrTop = 186;
+  adresseParts.forEach((part) => { drawLeft(part, addrTop, 11.5, font, black, 330); addrTop += 16; });
+
+  // ── Bénéficiaire des versements ──
+  let top = 300;
+  grayBar('Bénéficiaire des versements', top);
+  top += 22;
+  const beneficiaireBoxStart = top;
+  let rowTop = top + 18;
+  [['Nom ou dénomination : ', ASSOCIATION.nom], ['Numéro RNA : ', ASSOCIATION.rna], ['Adresse : ', ASSOCIATION.adresse]]
+    .forEach(([label, value]) => { drawLabelValue(label, value, rowTop); rowTop += 20; });
+  drawLabelValue('Objet : ', '', rowTop);
+  page.drawText(ASSOCIATION.objet, { x: marginX + 55, y: Y(rowTop), size: 9, font, color: black });
+  rowTop += 20;
+  drawLabelValue('Qualité : ', ASSOCIATION.qualite, rowTop);
+  rowTop += 22;
+  box(beneficiaireBoxStart, rowTop - beneficiaireBoxStart);
+  top = rowTop;
+
+  // ── Donateur ──
+  grayBar('Donateur', top);
+  top += 22;
+  const donateurBoxStart = top;
+  drawLabelValue('Nom : ', nom, top + 18);
+  drawLabelValue('Prénom : ', prenom, top + 18, marginX + 220);
+  drawLabelValue('Adresse : ', adresse, top + 38);
+  top += 58;
+  box(donateurBoxStart, top - donateurBoxStart);
+
+  // ── Montant + mentions légales ──
+  const bigBoxStart = top;
+  top += 22;
+  drawCentered("Le bénéficiaire reconnaît avoir reçu au titre des dons et versements ouvrant droit à réduction d'impôt, la somme de :", top, 10, font);
+  top += 26;
+  const montantLabel = `***${montant}***  ${numberToFrenchWords(montant)}`;
+  const mW = bold.widthOfTextAtSize(montantLabel, 12);
+  page.drawRectangle({ x: (PW - mW) / 2 - 10, y: Y(top + 16), width: mW + 20, height: 20, borderColor: lineGray, borderWidth: 1 });
+  drawCentered(montantLabel, top + 3, 12, bold);
+  top += 34;
+  drawCentered("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit ouvrent droit à la réduction d'impôt prévue", top, 9.5, font);
+  top += 14;
+  drawCentered(`à l'article : ${ASSOCIATION.articleCGI}`, top, 9.5, font);
+  top += 26;
+  page.drawText('Forme du don : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
+  page.drawText('Déclaration de don manuel', { x: marginX + 10 + font.widthOfTextAtSize('Forme du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
+  page.drawText('Nature du don : ', { x: 330, y: Y(top), size: 10, font, color: black });
+  page.drawText('Numéraire', { x: 330 + font.widthOfTextAtSize('Nature du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
+  top += 20;
+  page.drawText('Mode de versement du don : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
+  page.drawText(mode, { x: marginX + 10 + font.widthOfTextAtSize('Mode de versement du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
+  page.drawText('Date du versement : ', { x: 330, y: Y(top), size: 10, font, color: black });
+  page.drawText(dateVersement, { x: 330 + font.widthOfTextAtSize('Date du versement : ', 10), y: Y(top), size: 10, font: bold, color: black });
+  top += 20;
+  box(bigBoxStart, top - bigBoxStart);
+
+  // ── Pied de page ──
+  top += 60;
+  drawLeft('Reçu généré automatiquement par Shliah Bot', top, 10, bold);
+  drawRight('Date et signature', top - 10, 11, bold);
+  drawRight(dateGeneration, top + 8, 10, font);
+
   return Buffer.from(await pdfDoc.save());
 }
 
