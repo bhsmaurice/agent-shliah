@@ -135,7 +135,7 @@ async function getNextCerfaNumero() {
   return `BH${year}-${String(res.rows[0].last_number).padStart(3, '0')}`;
 }
 
-async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode }) {
+async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, dateVersement: dateVersementOverride }) {
   const pdfDoc = await PDFDocument.create();
   const PW = 595.28, PH = 841.89;
   const page = pdfDoc.addPage([PW, PH]);
@@ -173,7 +173,7 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode })
     page.drawRectangle({ x: marginX, y: Y(topPt + height), width: contentW, height, borderColor: lineGray, borderWidth: 1 });
   };
 
-  const dateVersement = new Date().toLocaleDateString('fr-FR');
+  const dateVersement = dateVersementOverride || new Date().toLocaleDateString('fr-FR');
   const dateGeneration = new Date().toLocaleDateString('fr-FR');
 
   // ── En-tête ──
@@ -854,6 +854,25 @@ app.post('/admin/cerfa/generer', async (req, res) => {
     );
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+app.get('/admin/cerfa/:id/pdf', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false, message: "Reçu introuvable" });
+    const r = result.rows[0];
+    const dateVersement = new Date(r.date_don).toLocaleDateString('fr-FR');
+    const pdfBuffer = await generateCerfaPDF({
+      numero: r.numero, nom: r.nom, prenom: r.prenom, adresse: r.adresse,
+      montant: parseFloat(r.montant), mode: r.mode_paiement, dateVersement,
+    });
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="Cerfa_${r.numero}.pdf"`);
     res.send(pdfBuffer);
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
