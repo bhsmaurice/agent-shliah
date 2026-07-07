@@ -855,7 +855,7 @@ function afficherCerfa(){
     const el=document.createElement('div');
     el.className='demande-card';
     el.id='cerfa-'+c.id;
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${c.prenom||''} ${c.nom||''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}<br>📍 ${c.adresse||''}</div>`;
+    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${c.prenom||''} ${c.nom||''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
 }
@@ -885,6 +885,19 @@ async function supprimerCerfa(id){
     allCerfa=allCerfa.filter(c=>c.id!==id);
     afficherCerfa();
   }catch(e){alert('Erreur');}
+}
+async function telechargerCerfa(id){
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    const res=await fetch(url+'/admin/cerfa/'+id+'/pdf?password='+encodeURIComponent(pw));
+    if(!res.ok){alert('Erreur : reçu introuvable');return;}
+    const blob=await res.blob();
+    const cd=res.headers.get('Content-Disposition')||'';
+    const match=cd.match(/filename="?([^"]+)"?/);
+    const filename=match?match[1]:'Cerfa.pdf';
+    const dlUrl=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=dlUrl;a.download=filename;a.click();URL.revokeObjectURL(dlUrl);
+  }catch(e){alert('Erreur de connexion');}
 }
 // ══ CONVERSATIONS ══
 async function chargerConvs(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('convs-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}if(!data.conversations.length){container.innerHTML='<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>';return;}container.innerHTML='';data.conversations.forEach(conv=>{const date=new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});const el=document.createElement('div');el.className='conv-card';el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${conv.phone}')" >+${conv.phone}</span></span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;container.appendChild(el);});}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
