@@ -442,6 +442,23 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- CERFA -->
 <div class="page" id="tab-cerfa"><div class="inner">
+  <div class="card">
+    <div class="card-title">🧾 Générer un reçu Cerfa</div>
+    <div class="field"><label>Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
+    <div class="field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
+    <div class="field"><label>Adresse complète</label><input type="text" id="cerfa-adresse" placeholder="Ex: 4 rue d'Avignon, 94700 Maisons-Alfort"></div>
+    <div class="field"><label>Montant (€)</label><input type="number" id="cerfa-montant" placeholder="Ex: 1000"></div>
+    <div class="field"><label>Mode de paiement</label>
+      <div class="cat-grid">
+        <button class="cat-btn active" data-mode="especes" onclick="selectCerfaMode(this)">💵 Espèces</button>
+        <button class="cat-btn" data-mode="cb" onclick="selectCerfaMode(this)">💳 CB</button>
+        <button class="cat-btn" data-mode="cheque" onclick="selectCerfaMode(this)">📝 Chèque</button>
+      </div>
+    </div>
+    <button class="btn-main" id="btn-generer-cerfa" onclick="genererCerfa()">✦ Générer le Cerfa</button>
+    <div class="alert ok" id="alert-cerfa-ok"></div>
+    <div class="alert err" id="alert-cerfa-err"></div>
+  </div>
   <div class="card"><button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button></div>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
   <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Rechercher par nom, prénom ou numéro..." oninput="afficherCerfa()"></div>
@@ -789,6 +806,40 @@ async function restaurerDemande(id){const url=getUrl(),pw=getAdminPw();try{await
 async function supprimerDefinitif(id){if(!confirm('Supprimer définitivement ? Irréversible.'))return;const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});document.getElementById('corbeille-'+id)?.remove();const c=document.getElementById('corbeille-container');if(!c.querySelector('.corbeille-card'))chargerCorbeille();}catch(e){alert('Erreur');}}
 // ══ CERFA ══
 let allCerfa = [];
+let cerfaModeSelected = 'especes';
+function selectCerfaMode(btn){document.querySelectorAll('#tab-cerfa .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaModeSelected=btn.dataset.mode;}
+async function genererCerfa(){
+  const url=getUrl(),pw=getAdminPw();
+  const nom=document.getElementById('cerfa-nom').value.trim();
+  const prenom=document.getElementById('cerfa-prenom').value.trim();
+  const adresse=document.getElementById('cerfa-adresse').value.trim();
+  const montant=document.getElementById('cerfa-montant').value.trim();
+  const okEl=document.getElementById('alert-cerfa-ok'),errEl=document.getElementById('alert-cerfa-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.className='alert err';errEl.style.display='block';return;}
+  if(!nom||!adresse||!montant){errEl.textContent='Nom, adresse et montant obligatoires';errEl.className='alert err';errEl.style.display='block';return;}
+  const btn=document.getElementById('btn-generer-cerfa');btn.disabled=true;btn.textContent='⏳ Génération...';
+  try{
+    const res=await fetch(url+'/admin/cerfa/generer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,nom,prenom,adresse,montant,mode:cerfaModeSelected})});
+    if(!res.ok){
+      let msg='Erreur';
+      try{const data=await res.json();msg=data.message||msg;}catch(e){}
+      errEl.textContent=msg;errEl.className='alert err';errEl.style.display='block';
+      btn.disabled=false;btn.textContent='✦ Générer le Cerfa';
+      return;
+    }
+    const blob=await res.blob();
+    const cd=res.headers.get('Content-Disposition')||'';
+    const match=cd.match(/filename="?([^"]+)"?/);
+    const filename=match?match[1]:'Cerfa.pdf';
+    const dlUrl=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=dlUrl;a.download=filename;a.click();URL.revokeObjectURL(dlUrl);
+    okEl.textContent='✓ Cerfa généré et téléchargé !';okEl.className='alert ok';okEl.style.display='block';
+    document.getElementById('cerfa-nom').value='';document.getElementById('cerfa-prenom').value='';document.getElementById('cerfa-adresse').value='';document.getElementById('cerfa-montant').value='';
+    chargerCerfa();
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
+  btn.disabled=false;btn.textContent='✦ Générer le Cerfa';
+}
 function afficherCerfa(){
   const search=(document.getElementById('cerfa-search-input').value||'').toLowerCase();
   const container=document.getElementById('cerfa-container');
