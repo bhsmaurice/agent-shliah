@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 app.use(express.json());
-
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -9,10 +8,9 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-
 const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS infos (id SERIAL PRIMARY KEY, categorie TEXT, titre TEXT, contenu TEXT, instruction TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS conversations (id SERIAL PRIMARY KEY, phone TEXT, question TEXT, reponse TEXT, created_at TIMESTAMP DEFAULT NOW())`);
@@ -24,17 +22,201 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS musiques (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, lien TEXT NOT NULL, ambiance TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playlistes (id SERIAL PRIMARY KEY, nom TEXT NOT NULL, ambiance TEXT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_counters (year INT PRIMARY KEY, last_number INT NOT NULL DEFAULT 0)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
-
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "shliah_beth_habad";
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
+// ─── ADMIN CERFA (génération automatique de reçus fiscaux) ────
+// Numéros WhatsApp autorisés à déclencher "Admin CERFA" (sans +, sans espace)
+// Ajoute-en d'autres en les séparant par une virgule, ou via la variable
+// d'environnement Railway ADMIN_WHATSAPP_NUMBERS (ex: "33770241746,33600000000")
+const ADMIN_WHATSAPP_NUMBERS = (process.env.ADMIN_WHATSAPP_NUMBERS || '33770241746')
+  .split(',').map(n => n.trim()).filter(Boolean);
+
+// Infos fixes de l'association (reprises du modèle Cerfa officiel utilisé actuellement)
+const ASSOCIATION = {
+  nom: 'BH S Maurice',
+  rna: 'W941009534',
+  adresse: '127, rue du Maréchal Leclerc - 94410 Saint-Maurice, France',
+  objet: "aider, promouvoir, soutenir, créer, gérer toute activité d'ordre social, éducatif et culturel.",
+  qualite: "Oeuvre ou organisme d'intérêt général",
+  articleCGI: '200 du CGI',
+};
+
+function isAdminCerfaTrigger(text) {
+  return /^admin\s+cerfa/i.test(text.trim());
+}
+
+function isAuthorizedAdminCerfa(fromNumber) {
+  const clean = String(fromNumber).replace(/\D/g, '');
+  return ADMIN_WHATSAPP_NUMBERS.some((n) => clean.endsWith(n) || n.endsWith(clean));
+}
+
+// Conversion nombre -> lettres (français)
+function numberToFrenchWords(n) {
+  const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+  const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+  function below100(num) {
+    if (num < 20) return units[num];
+    const t = Math.floor(num / 10), u = num % 10;
+    if (t === 7 || t === 9) return tens[t] + '-' + units[10 + u];
+    let word = tens[t];
+    if (u === 0) return t === 8 ? word + 's' : word;
+    if (u === 1 && t !== 8) return word + ' et un';
+    return word + '-' + units[u];
+  }
+  function below1000(num) {
+    const h = Math.floor(num / 100), rest = num % 100;
+    let word = '';
+    if (h > 0) {
+      word += h === 1 ? 'cent' : units[h] + ' cent';
+      if (h > 1 && rest === 0) word += 's';
+      if (rest > 0) word += ' ';
+    }
+    if (rest > 0) word += below100(rest);
+    return word;
+  }
+  function convert(num) {
+    if (num === 0) return 'zéro';
+    let word = '';
+    const millions = Math.floor(num / 1000000), thousands = Math.floor((num % 1000000) / 1000), rest = num % 1000;
+    if (millions > 0) word += (millions === 1 ? 'un million' : below1000(millions) + ' millions') + ' ';
+    if (thousands > 0) word += (thousands === 1 ? 'mille' : below1000(thousands) + ' mille') + ' ';
+    if (rest > 0) word += below1000(rest);
+    return word.trim();
+  }
+  const intPart = Math.floor(n);
+  return convert(intPart) + (intPart > 1 ? ' euros' : ' euro');
+}
+
+/**
+ * Format attendu après "Admin CERFA" (une info par ligne) :
+ * montant / Nom Prénom / adresse / especes|cb|cheque
+ */
+function parseAdminCerfaMessage(rawText) {
+  const withoutTrigger = rawText.replace(/^admin\s+cerfa/i, '').trim();
+  const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 4) {
+    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque");
+  }
+  const [montantLine, nomPrenomLine, adresseLine, modeLine] = lines;
+  const montantMatch = montantLine.replace(',', '.').match(/(\d+(\.\d+)?)/);
+  if (!montantMatch) throw new Error(`Montant introuvable dans : "${montantLine}"`);
+  const montant = parseFloat(montantMatch[1]);
+  const nomParts = nomPrenomLine.replace(/^(mr|mme|m\.|mlle)\s+/i, '').trim().split(/\s+/);
+  const nom = nomParts[0];
+  const prenom = nomParts.slice(1).join(' ') || '-';
+  const adresse = adresseLine;
+  const modeLower = modeLine.toLowerCase();
+  let mode = "Remise d'espèces";
+  if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) mode = 'Virement, prélèvement, carte bancaire';
+  else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
+  else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
+  return { montant, nom, prenom, adresse, mode };
+}
+
+async function getNextCerfaNumero() {
+  const year = new Date().getFullYear();
+  const res = await pool.query(
+    `INSERT INTO cerfa_counters (year, last_number) VALUES ($1, 1)
+     ON CONFLICT (year) DO UPDATE SET last_number = cerfa_counters.last_number + 1
+     RETURNING last_number`,
+    [year]
+  );
+  return `BH${year}-${String(res.rows[0].last_number).padStart(3, '0')}`;
+}
+
+async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode }) {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595.28, 841.89]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const marginX = 50;
+  let y = 800;
+  const black = rgb(0, 0, 0);
+  const draw = (text, opts = {}) => {
+    const { size = 10, useBold = false, x = marginX, gap = 16 } = opts;
+    page.drawText(text, { x, y, size, font: useBold ? bold : font, color: black });
+    y -= gap;
+  };
+  const dateVersement = new Date().toLocaleDateString('fr-FR');
+  const dateGeneration = new Date().toLocaleDateString('fr-FR');
+  draw('Reçu au titre des dons', { useBold: true, size: 12 });
+  page.drawText("Numéro d'ordre du reçu", { x: 380, y: y + 16, size: 9, font, color: black });
+  page.drawText(numero, { x: 380, y: y, size: 11, font: bold, color: black });
+  draw("à certains organismes d'intérêt général", { size: 10, gap: 14 });
+  draw('N°11580*05 — Articles 200 et 885-0 V bis A du code général des impôts (CGI)', { size: 8, gap: 26 });
+  draw('Bénéficiaire des versements', { useBold: true, gap: 18 });
+  draw(`Nom ou dénomination : ${ASSOCIATION.nom}`);
+  draw(`Numéro RNA : ${ASSOCIATION.rna}`);
+  draw(`Adresse : ${ASSOCIATION.adresse}`);
+  draw(`Objet : ${ASSOCIATION.objet}`, { size: 9 });
+  draw(`Qualité : ${ASSOCIATION.qualite}`, { gap: 26 });
+  draw('Donateur', { useBold: true, gap: 18 });
+  draw(`Nom : ${nom}    Prénom : ${prenom}`);
+  draw(`Adresse : ${adresse}`, { gap: 26 });
+  draw("Le bénéficiaire reconnaît avoir reçu au titre des dons et versements ouvrant droit à", { size: 9 });
+  draw("réduction d'impôt, la somme de :", { size: 9, gap: 20 });
+  draw(`***${montant}*** ${numberToFrenchWords(montant)}`, { useBold: true, gap: 26 });
+  draw("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit ouvrent", { size: 9 });
+  draw(`droit à la réduction d'impôt prévue à l'article : ${ASSOCIATION.articleCGI}`, { size: 9, gap: 20 });
+  draw('Forme du don : Déclaration de don manuel      Nature du don : Numéraire', { size: 9 });
+  draw(`Mode de versement du don : ${mode}      Date du versement : ${dateVersement}`, { size: 9, gap: 30 });
+  draw('Date et signature', { gap: 40 });
+  page.drawText(`Reçu généré automatiquement — ${ASSOCIATION.nom} — ${dateGeneration}`, { x: marginX, y: 40, size: 7, font, color: rgb(0.4, 0.4, 0.4) });
+  return Buffer.from(await pdfDoc.save());
+}
+
+async function sendWhatsAppDocument(to, pdfBuffer, filename) {
+  const form = new FormData();
+  const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+  form.append('file', blob, filename);
+  form.append('messaging_product', 'whatsapp');
+  const uploadRes = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/media`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` },
+    body: form,
+  });
+  const uploadData = await uploadRes.json();
+  const mediaId = uploadData.id;
+  if (!mediaId) throw new Error('Upload média WhatsApp échoué: ' + JSON.stringify(uploadData));
+  await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'document', document: { id: mediaId, filename, caption: `Reçu Cerfa ${filename}` } }),
+  });
+}
+
+/**
+ * @returns {boolean} true si le message était une commande Admin CERFA (traité ou ignoré)
+ */
+async function handleAdminCerfaCommand(from, text) {
+  if (!isAdminCerfaTrigger(text)) return false;
+  if (!isAuthorizedAdminCerfa(from)) return true; // ignoré silencieusement
+  try {
+    const data = parseAdminCerfaMessage(text);
+    const numero = await getNextCerfaNumero();
+    const pdfBuffer = await generateCerfaPDF({ numero, ...data });
+    const filename = `Cerfa_${numero}.pdf`;
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)`,
+      [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode]
+    );
+    await sendWhatsAppDocument(from, pdfBuffer, filename);
+  } catch (e) {
+    await sendWhatsApp(from, `Erreur génération Cerfa : ${e.message}`);
+  }
+  return true;
+}
 
 const SYSTEM_PROMPT_BASE = `Tu t'appelles Shliah Bot, l'assistant virtuel du Beth Habad S. Maurice.
 Tu représentes le Rav Levi Basanger, Shliah du Rabbi, et la Rebbetzin Myriam Basanger.
@@ -47,44 +229,37 @@ N'utilise jamais d'astérisques * pour mettre en gras. Écris normalement sans f
 Laisse toujours une ligne vide entre chaque information dans le message.
 Pour la signature de fin : le vendredi uniquement écris "Chabbat Chalom !", tous les autres jours écris "Kol Touv !". Aucune autre formule.
 Si tu ne connais pas la réponse, dis : "Je n'ai pas cette information. Contacte le Rav Levi au 07 70 24 17 46." Ne jamais inventer.
-
 REGLE IMPORTANTE - HORAIRES DE CHABBAT :
 Quand quelquun demande les "horaires de Chabbat" ou "heure de Chabbat" sans preciser, tu DOIS toujours poser cette question avant de repondre :
 "Tu veux les horaires dallumage des bougies (entree/sortie de Chabbat) ou les horaires des offices au Beth Habad ?"
 Ne jamais repondre directement sans avoir pose cette question.
 Exception : si la personne mentionne "allumage", "bougies", "havdalah" ou "paracha" donne directement les horaires dallumage.
 Exception : si la personne mentionne "Chaharit", "Minha", "office", "priere" donne directement les horaires des offices.
-
 PRIERES - HORAIRES FIXES
 En semaine (Lundi-Vendredi) : Chaharit 1er office 7h30, 2e office 9h00, Minha & Arvit 19h30
 Dimanche : Chaharit 9h00
 Chabbat : Entrée vendredi soir 19h30, Chaharit samedi 9h30, Kiddouch 12h30, Minha & Havdalah samedi après-midi
-
 COURS DE TORAH
 Tous les matins 8h30-9h30 : Guémara avec Rav Levi (hommes)
 Lundi 20h30 : Guémara & Tanya avec Rav Levi (hommes)
 Mardi 20h30 : Hassidout avec Reb Nehemia (hommes)
 Mercredi 21h00 : Paracha avec Myriam Basanger (femmes)
 Jeudi 21h00 : Hassidout mensuel (tous)
-
 VERIFICATION TEFILINES & MEZOUZOT
 Vérification Téfilines : 75 euros/paire, délai 2 semaines. On peut prêter une paire pendant la vérification si disponible.
 Téfilines neuves : 480 euros/paire, sur commande
 Mezouza neuve : 55 euros/pièce, immédiat
 Vérification Mezouza : 9 euros/pièce, délai 5 jours
 Pose à domicile possible sur demande
-
 PETIT DEJEUNER DU MATIN
 Formules : 50 euros, 150 euros, 250 euros
 Demande d'abord pour quelle occasion (anniversaire, Bar Mitsva, Yartzeit, autre).
 Lien de paiement : https://habad-s-maurice.kehila.io/don/0f8eb241-2a1e-40fa-8cfc-d81c4bffde63
 Demander de mettre la raison dans les commentaires.
-
 CONTACT
 Beth Habad S. Maurice
 30 Avenue du Maréchal de Lattre de Tassigny, 94410 Saint-Maurice
 Téléphone : 07 70 24 17 46`;
-
 async function getFullPrompt(extra = null) {
   const now = new Date();
   const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -106,7 +281,6 @@ async function getFullPrompt(extra = null) {
   if (extra) prompt += "\n\n" + extra;
   return prompt;
 }
-
 async function getMikvaotFemmes() {
   try {
     const res = await fetch('https://www.loubavitch.fr/pratique/liste-des-mikves', { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -115,7 +289,6 @@ async function getMikvaotFemmes() {
     return "LISTE DES MIKVAOT FEMMES :\n" + texte.substring(0, 3000);
   } catch (e) { return null; }
 }
-
 async function getEvenements() {
   try {
     const res = await fetch('https://habad-s-maurice.kehila.io/evenements', { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -124,7 +297,6 @@ async function getEvenements() {
     return "ÉVÉNEMENTS ACTUELS :\n" + texte.substring(0, 2000);
   } catch (e) { return null; }
 }
-
 // ─── SCRAPING CHABBAT ─────────────────────────────────────────
 async function getHorairesChabbat() {
   try {
@@ -181,7 +353,6 @@ async function getHorairesChabbat() {
   } catch (e) { console.error('Hebcal error:', e.message); }
   return null;
 }
-
 let chabbatCache = { data: null, lastFetch: 0 };
 async function getHorairesChabbatCached() {
   const now = Date.now();
@@ -190,7 +361,6 @@ async function getHorairesChabbatCached() {
   if (data) { chabbatCache.data = data; chabbatCache.lastFetch = now; }
   return data;
 }
-
 // ─── GESTION CONTACTS & ABONNEMENTS ──────────────────────────
 async function getOuCreerContact(phone) {
   try {
@@ -201,37 +371,30 @@ async function getOuCreerContact(phone) {
     return res2.rows[0];
   } catch (e) { console.error('Contact error:', e.message); return null; }
 }
-
 async function incrementerMessages(phone) {
   try { await pool.query('UPDATE contacts SET nb_messages = nb_messages + 1 WHERE phone=$1', [phone]); } catch (e) {}
 }
-
 async function marquerQuestionPosee(phone, type) {
   try {
     if (type === 'chabbat') await pool.query('UPDATE contacts SET question_chabbat_posee=TRUE WHERE phone=$1', [phone]);
     if (type === 'evenements') await pool.query('UPDATE contacts SET question_evenements_posee=TRUE WHERE phone=$1', [phone]);
   } catch (e) {}
 }
-
 async function mettreAJourAbonnement(phone, type, valeur) {
   try {
     if (type === 'chabbat') await pool.query('UPDATE contacts SET abonne_chabbat=$1 WHERE phone=$2', [valeur, phone]);
     if (type === 'evenements') await pool.query('UPDATE contacts SET abonne_evenements=$1 WHERE phone=$2', [valeur, phone]);
   } catch (e) {}
 }
-
 let sessionsAbonnement = {};
-
 function estReponseOui(text) {
   const lower = text.toLowerCase().trim();
   return ['oui', 'yes', 'כן', 'ok', 'ouais', 'bien sûr', 'avec plaisir', 'volontiers', 'pourquoi pas'].some(m => lower.includes(m));
 }
-
 function estReponseNon(text) {
   const lower = text.toLowerCase().trim();
   return lower === 'non' || lower === 'no' || lower === 'לא' || lower === 'pas' || lower === 'nope' || lower === 'merci non' || lower === 'non merci';
 }
-
 async function getQuestionAbonnement(phone, contact) {
   if (!contact) return null;
   const nb = contact.nb_messages || 0;
@@ -247,7 +410,6 @@ async function getQuestionAbonnement(phone, contact) {
   }
   return null;
 }
-
 // ─── CRON CHABBAT ─────────────────────────────────────────────
 function demarrerCronChabbat() {
   setInterval(async () => {
@@ -265,7 +427,6 @@ function demarrerCronChabbat() {
   }, 5 * 60 * 1000);
   console.log('⏰ Cron Chabbat démarré');
 }
-
 async function envoyerHorairesChabbatAbonnes() {
   try {
     const chabbat = await getHorairesChabbat();
@@ -281,52 +442,39 @@ async function envoyerHorairesChabbatAbonnes() {
     console.log(`🕯️ Cron: ${envoyes}/${abonnes.rows.length} envoyés`);
   } catch (e) { console.error('Cron error:', e.message); }
 }
-
 // ─── MUSIQUE & PLAYLIST ───────────────────────────────────────
 function parlDeMusique(msg) {
   const lower = msg.toLowerCase();
   return ['musique', 'music', 'nigoun', 'nigoune', 'nigouns', 'nigounim', 'chant', 'chanson', 'melodie', 'mélodie', 'chantons', 'chanter'].some(m => lower.includes(m));
 }
-
 function parlDePlaylist(msg) {
   const lower = msg.toLowerCase();
   return ['playlist', 'playliste', 'liste de music', 'liste musique', 'toutes les musiques'].some(m => lower.includes(m));
 }
-
 const AMBIANCES = {
   '1': { label: '🎶 Douce et relaxante', key: 'douce' },
   '2': { label: '🔥 Qui bouge', key: 'bouge' },
   '3': { label: '🕯️ Nigounim / Chabbat', key: 'chabbat' }
 };
-
-// Sessions musique en mémoire
-let sessionsMusiqueType = {}; // { phone: 'musique' | 'playlist' }
-
+let sessionsMusiqueType = {};
 async function gererMusique(from, text, type) {
   const session = sessionsMusiqueType[from];
-
-  // L'utilisateur répond avec un numéro d'ambiance
   if (session && session.etape === 'ambiance') {
     const choix = text.trim();
     const ambiance = AMBIANCES[choix];
     if (!ambiance) {
       return `Réponds avec 1, 2 ou 3 :\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat`;
     }
-
-    const modeType = session.mode; // 'musique' ou 'playlist'
+    const modeType = session.mode;
     delete sessionsMusiqueType[from];
-
     if (modeType === 'musique') {
-      // Envoyer les musiques une par une
       const result = await pool.query('SELECT * FROM musiques WHERE ambiance=$1 ORDER BY created_at DESC', [ambiance.key]);
       if (result.rows.length === 0) return `Pas encore de musiques dans cette catégorie. Reviens bientôt ! 🎵\n\nKol Touv !`;
       const liste = result.rows.map((m, i) => `${i + 1}. ${m.titre}\n${m.lien}`).join('\n\n');
       return `🎵 ${ambiance.label}\n\nVoici les musiques recommandées par le Rav Levi :\n\n${liste}\n\nBonne écoute ! 🎶\n\nKol Touv !`;
     } else {
-      // Envoyer la playlist correspondante
       const result = await pool.query('SELECT p.*, array_agg(m.titre || chr(10) || m.lien ORDER BY m.titre) as musiques FROM playlistes p LEFT JOIN playliste_musiques pm ON pm.playliste_id = p.id LEFT JOIN musiques m ON m.id = pm.musique_id WHERE p.ambiance=$1 GROUP BY p.id ORDER BY p.created_at DESC LIMIT 1', [ambiance.key]);
       if (result.rows.length === 0 || !result.rows[0].musiques[0]) {
-        // Fallback : envoyer les musiques de cette ambiance
         const musResult = await pool.query('SELECT * FROM musiques WHERE ambiance=$1 ORDER BY created_at DESC', [ambiance.key]);
         if (musResult.rows.length === 0) return `Pas encore de playlist dans cette catégorie. Reviens bientôt ! 🎵\n\nKol Touv !`;
         const liste = musResult.rows.map(m => `🎵 ${m.titre}\n${m.lien}`).join('\n\n');
@@ -337,27 +485,21 @@ async function gererMusique(from, text, type) {
       return `🎶 ${playlist.nom}\n\n${playlist.description ? playlist.description + '\n\n' : ''}${liste}\n\nBonne écoute ! 🎵\n\nKol Touv !`;
     }
   }
-
-  // Première demande → poser la question d'ambiance
   sessionsMusiqueType[from] = { etape: 'ambiance', mode: type };
   return `Quelle ambiance tu cherches ? 🎵\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat\n\nRéponds avec 1, 2 ou 3.`;
 }
-
 function parleDeMikve(msg) { return ['mikve', 'mikvé', 'bain rituel'].some(m => msg.toLowerCase().includes(m)); }
 function parleDevenements(msg) { return ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'cette semaine', 'ce mois', 'soirée', 'soiree'].some(m => msg.toLowerCase().includes(m)); }
 function parleDeChabbat(msg) {
   const lower = msg.toLowerCase();
   return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
 }
-
 // ─── HISTOIRES DU RABBI ───────────────────────────────────────
 function parleDeHistoire(msg) {
   const lower = msg.toLowerCase();
   return ['histoire', 'histoires', 'rabbi', 'rebbie', 'rebbe', 'conte', 'récit', 'recit'].some(m => lower.includes(m));
 }
-
 let sessionsHistoires = {};
-
 async function gererHistoire(from, text) {
   const session = sessionsHistoires[from];
   if (session && session.etape === 'choix') {
@@ -381,7 +523,6 @@ async function gererHistoire(from, text) {
   const liste = result.rows.map((h, i) => `${i + 1}. ${h.titre}`).join('\n');
   return `📖 Histoires du Rabbi\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
 }
-
 async function sendWhatsAppImage(to, imageUrl, caption = '') {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -389,7 +530,6 @@ async function sendWhatsAppImage(to, imageUrl, caption = '') {
     body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
   });
 }
-
 // ─── SYSTÈME DE DEMANDES ──────────────────────────────────────
 const TYPES_DEMANDES = {
   cerfa: {
@@ -411,19 +551,16 @@ const TYPES_DEMANDES = {
     messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone`
   }
 };
-
 function detecterTypeDemande(msg) {
   for (const [type, config] of Object.entries(TYPES_DEMANDES)) { if (config.detecter(msg)) return type; }
   return null;
 }
-
 async function sauvegarderDemande(type, phone, texteLibre) {
   try {
     const data = { texte_libre: texteLibre, phone_whatsapp: '+' + phone };
     await pool.query('INSERT INTO demandes (type, phone, data) VALUES ($1, $2, $3)', [type, phone, JSON.stringify(data)]);
   } catch (e) { console.error('Demande save error:', e.message); }
 }
-
 async function envoyerEmailDemande(type, phone, texteLibre) {
   if (!GMAIL_APP_PASSWORD) return;
   try {
@@ -439,16 +576,13 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
     });
   } catch (e) { console.error('Email error:', e.message); }
 }
-
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
-
 // ─── WEBHOOK META ─────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'], token = req.query['hub.verify_token'], challenge = req.query['hub.challenge'];
   if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
   else res.sendStatus(403);
 });
-
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
   const body = req.body;
@@ -456,12 +590,14 @@ app.post('/webhook', async (req, res) => {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
-
       try {
         const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
         if (already.rows.length > 0) return;
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
+
+      // ── Commande Admin CERFA (prioritaire, avant tout le reste) ──
+      if (await handleAdminCerfaCommand(from, text)) return;
 
       // ── Réponse abonnement en cours ──
       if (sessionsAbonnement[from]) {
@@ -485,17 +621,13 @@ app.post('/webhook', async (req, res) => {
         }
         return;
       }
-
       let reply, estUneDemande = false;
-
       const contact = await getOuCreerContact(from);
       await incrementerMessages(from);
       const contactMaj = await pool.query('SELECT * FROM contacts WHERE phone=$1', [from]).then(r => r.rows[0]).catch(() => null);
-
       let session = null;
       try { const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]); if (sr.rows.length > 0) session = sr.rows[0]; } catch(e) {}
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
-
       if (session) {
         estUneDemande = true;
         const config = TYPES_DEMANDES[session.type];
@@ -514,20 +646,14 @@ app.post('/webhook', async (req, res) => {
           envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
           reply = `Merci, votre demande a bien été reçue !\n\nNous vous contacterons très rapidement.\n\nSi c'est urgent : 07 70 24 17 46.\n\n${getSignature()}`;
         }
-
       } else if (sessionsMusiqueType[from]) {
-        // Session musique/playlist en cours
         reply = await gererMusique(from, text, sessionsMusiqueType[from]?.mode || 'musique');
-
       } else if (parlDePlaylist(text)) {
         reply = await gererMusique(from, text, 'playlist');
-
       } else if (parlDeMusique(text)) {
         reply = await gererMusique(from, text, 'musique');
-
       } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
         reply = await gererHistoire(from, text);
-
       } else {
         const typeDemande = detecterTypeDemande(text);
         if (typeDemande) {
@@ -548,13 +674,11 @@ app.post('/webhook', async (req, res) => {
           reply = await askClaude(text, extra, historique);
         }
       }
-
       const replyContientQuestion = reply && reply.trim().endsWith("?");
       if (!replyContientQuestion) {
         const questionAbonnement = await getQuestionAbonnement(from, contactMaj);
         if (questionAbonnement) reply = reply + questionAbonnement;
       }
-
       await sendWhatsApp(from, reply);
       if (!estUneDemande) {
         try { await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]); } catch (e) {}
@@ -562,7 +686,6 @@ app.post('/webhook', async (req, res) => {
     }
   }
 });
-
 // ─── API ADMIN ────────────────────────────────────────────────
 app.post('/admin/add', async (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
@@ -572,7 +695,6 @@ app.post('/admin/add', async (req, res) => {
   const count = await pool.query('SELECT COUNT(*) FROM infos');
   res.json({ ok: true, message: "Information ajoutée avec succès !", total: parseInt(count.rows[0].count) });
 });
-
 app.get('/admin/list', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -581,28 +703,24 @@ app.get('/admin/list', async (req, res) => {
   const infos = result.rows.map(row => { let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} ---\n${row.contenu}`; if (row.instruction) bloc += `\nInstruction : ${row.instruction}`; return bloc; });
   res.json({ ok: true, infos, rawInfos: result.rows, ids: result.rows.map(r => r.id), total: result.rows.length });
 });
-
 app.put('/admin/update/:id', async (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   await pool.query('UPDATE infos SET categorie=$1, titre=$2, contenu=$3, instruction=$4 WHERE id=$5', [categorie, titre, contenu, instruction || null, req.params.id]);
   res.json({ ok: true, message: "Information mise à jour !" });
 });
-
 app.delete('/admin/delete/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   await pool.query('DELETE FROM infos WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé" });
 });
-
 app.get('/admin/conversations', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const result = await pool.query('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 50');
   res.json({ ok: true, conversations: result.rows });
 });
-
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -612,21 +730,18 @@ app.get('/admin/demandes', async (req, res) => {
   const result = await pool.query(query, params);
   res.json({ ok: true, demandes: result.rows, types: Object.keys(TYPES_DEMANDES).map(k => ({ key: k, label: TYPES_DEMANDES[k].label })) });
 });
-
 app.put('/admin/demandes/:id/statut', async (req, res) => {
   const { password, statut } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   await pool.query('UPDATE demandes SET statut = $1 WHERE id = $2', [statut, req.params.id]);
   res.json({ ok: true, message: "Statut mis à jour" });
 });
-
 app.delete('/admin/demandes/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   await pool.query('DELETE FROM demandes WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé définitivement" });
 });
-
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -635,7 +750,6 @@ app.get('/admin/broadcast/contacts', async (req, res) => {
     res.json({ ok: true, count: result.rows.length, phones: result.rows.map(r => r.phone) });
   } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
 });
-
 app.post('/admin/broadcast/send', async (req, res) => {
   const { password, mode, paracha, date, entree, sortie, texte_libre, image_url, phone_unique, cible } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -678,35 +792,30 @@ app.post('/admin/broadcast/send', async (req, res) => {
     res.json({ ok: true, total: phones.length, envoyes, erreurs, message: `${envoyes} messages envoyés, ${erreurs} erreurs` });
   } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
 });
-
 app.get('/admin/chabbat', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const data = await getHorairesChabbat();
   res.json({ ok: true, data: data?.texte || null });
 });
-
 app.get('/admin/abonnes', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   const result = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
   res.json({ ok: true, contacts: result.rows, total: result.rows.length, abonnesChabbat: result.rows.filter(r => r.abonne_chabbat).length, abonnesEvenements: result.rows.filter(r => r.abonne_evenements).length });
 });
-
 app.post('/admin/abonnes/envoyer', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await envoyerHorairesChabbatAbonnes();
   res.json({ ok: true, message: 'Horaires envoyés aux abonnés !' });
 });
-
 app.get('/admin/histoires', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   const result = await pool.query('SELECT * FROM histoires ORDER BY created_at DESC');
   res.json({ ok: true, histoires: result.rows });
 });
-
 app.post('/admin/histoires', async (req, res) => {
   const { password, titre, texte, image_url } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -714,21 +823,18 @@ app.post('/admin/histoires', async (req, res) => {
   await pool.query('INSERT INTO histoires (titre, texte, image_url) VALUES ($1, $2, $3)', [titre, texte, image_url || null]);
   res.json({ ok: true, message: 'Histoire ajoutée !' });
 });
-
 app.put('/admin/histoires/:id', async (req, res) => {
   const { password, titre, texte, image_url } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('UPDATE histoires SET titre=$1, texte=$2, image_url=$3 WHERE id=$4', [titre, texte, image_url || null, req.params.id]);
   res.json({ ok: true, message: 'Histoire mise à jour !' });
 });
-
 app.delete('/admin/histoires/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('DELETE FROM histoires WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
-
 // ─── API ADMIN MUSIQUES ───────────────────────────────────────
 app.get('/admin/musiques', async (req, res) => {
   const { password } = req.query;
@@ -736,7 +842,6 @@ app.get('/admin/musiques', async (req, res) => {
   const result = await pool.query('SELECT * FROM musiques ORDER BY ambiance, created_at DESC');
   res.json({ ok: true, musiques: result.rows });
 });
-
 app.post('/admin/musiques', async (req, res) => {
   const { password, titre, lien, ambiance } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -744,21 +849,18 @@ app.post('/admin/musiques', async (req, res) => {
   await pool.query('INSERT INTO musiques (titre, lien, ambiance) VALUES ($1, $2, $3)', [titre, lien, ambiance]);
   res.json({ ok: true, message: 'Musique ajoutée !' });
 });
-
 app.put('/admin/musiques/:id', async (req, res) => {
   const { password, titre, lien, ambiance } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('UPDATE musiques SET titre=$1, lien=$2, ambiance=$3 WHERE id=$4', [titre, lien, ambiance, req.params.id]);
   res.json({ ok: true, message: 'Musique mise à jour !' });
 });
-
 app.delete('/admin/musiques/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('DELETE FROM musiques WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
-
 // ─── API ADMIN PLAYLISTES ─────────────────────────────────────
 app.get('/admin/playlistes', async (req, res) => {
   const { password } = req.query;
@@ -771,7 +873,6 @@ app.get('/admin/playlistes', async (req, res) => {
   }
   res.json({ ok: true, playlistes });
 });
-
 app.post('/admin/playlistes', async (req, res) => {
   const { password, nom, ambiance, description, musique_ids } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -785,7 +886,6 @@ app.post('/admin/playlistes', async (req, res) => {
   }
   res.json({ ok: true, message: 'Playlist créée !' });
 });
-
 app.put('/admin/playlistes/:id', async (req, res) => {
   const { password, nom, ambiance, description, musique_ids } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -798,14 +898,12 @@ app.put('/admin/playlistes/:id', async (req, res) => {
   }
   res.json({ ok: true, message: 'Playlist mise à jour !' });
 });
-
 app.delete('/admin/playlistes/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await pool.query('DELETE FROM playlistes WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
-
 async function askClaude(userMessage, extra = null, historique = []) {
   try {
     const systemPrompt = await getFullPrompt(extra);
@@ -818,11 +916,9 @@ async function askClaude(userMessage, extra = null, historique = []) {
     return "Erreur: " + JSON.stringify(data);
   } catch (e) { return "Erreur: " + e.message; }
 }
-
 async function sendWhatsApp(to, message) {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } }) });
 }
-
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
