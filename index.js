@@ -818,6 +818,22 @@ app.delete('/admin/demandes/:id', async (req, res) => {
   await pool.query('DELETE FROM demandes WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé définitivement" });
 });
+// ─── API ADMIN CERFA ───────────────────────────────────────────
+app.get('/admin/cerfa', async (req, res) => {
+  const { password, search } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  let query = 'SELECT * FROM cerfa_receipts'; const params = [];
+  if (search) { query += ' WHERE nom ILIKE $1 OR prenom ILIKE $1 OR numero ILIKE $1'; params.push(`%${search}%`); }
+  query += ' ORDER BY created_at DESC';
+  const result = await pool.query(query, params);
+  res.json({ ok: true, receipts: result.rows, total: result.rows.length });
+});
+app.delete('/admin/cerfa/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('DELETE FROM cerfa_receipts WHERE id = $1', [req.params.id]);
+  res.json({ ok: true, message: "Supprimé" });
+});
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
