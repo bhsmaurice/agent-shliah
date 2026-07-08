@@ -25,6 +25,7 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_counters (year INT PRIMARY KEY, last_number INT NOT NULL DEFAULT 0)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
+  await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
@@ -51,6 +52,27 @@ const ASSOCIATION = {
   qualite: "Oeuvre ou organisme d'intérêt général",
   articleCGI: '200 du CGI',
 };
+
+// Logo Beth Habad : récupéré une seule fois depuis une URL (variable d'env
+// BETH_HABAD_LOGO_URL) puis gardé en mémoire. Si l'URL n'est pas configurée
+// ou si le téléchargement échoue, le reçu est simplement généré sans logo.
+let bethHabadLogoBytesCache = null;
+let bethHabadLogoFetchAttempted = false;
+async function getBethHabadLogoBytes() {
+  if (bethHabadLogoBytesCache || bethHabadLogoFetchAttempted) return bethHabadLogoBytesCache;
+  bethHabadLogoFetchAttempted = true;
+  const url = process.env.BETH_HABAD_LOGO_URL;
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    bethHabadLogoBytesCache = Buffer.from(await res.arrayBuffer());
+    return bethHabadLogoBytesCache;
+  } catch (e) {
+    console.error('Logo Beth Habad : échec du téléchargement -', e.message);
+    return null;
+  }
+}
 
 function isAdminCerfaTrigger(text) {
   return /^admin\s+cerfa/i.test(text.trim());
@@ -141,6 +163,7 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const page = pdfDoc.addPage([PW, PH]);
   const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
   const bold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const italicFont = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
   const marginX = 45;
   const contentW = PW - 2 * marginX;
   const black = rgb(0, 0, 0);
@@ -177,13 +200,59 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const dateGeneration = new Date().toLocaleDateString('fr-FR');
 
   // ── En-tête ──
-  drawLeft('N°11580*05', 42, 10.5, bold);
-  drawLeft('DGFIP', 57, 9.5, font);
+  // Logo "cerfa" (ovale bleu marine, dessiné directement, pas une image)
+  const cerfaOvalW = 60, cerfaOvalH = 26;
+  const cerfaOvalCx = marginX + cerfaOvalW / 2;
+  const cerfaOvalCy = Y(20);
+  page.drawEllipse({
+    x: cerfaOvalCx,
+    y: cerfaOvalCy,
+    xScale: cerfaOvalW / 2,
+    yScale: cerfaOvalH / 2,
+    color: rgb(0.09, 0.16, 0.38),
+  });
+  const cerfaLabel = 'cerfa';
+  const cerfaLabelSize = 15;
+  const cerfaLabelW = italicFont.widthOfTextAtSize(cerfaLabel, cerfaLabelSize);
+  page.drawText(cerfaLabel, {
+    x: cerfaOvalCx - cerfaLabelW / 2,
+    y: cerfaOvalCy - cerfaLabelSize / 2 + 2,
+    size: cerfaLabelSize,
+    font: italicFont,
+    color: rgb(1, 1, 1),
+  });
+  const headerTextX = marginX + cerfaOvalW + 12;
+  drawLeft('N°11580*05', 36, 10.5, bold, black, headerTextX);
+  drawLeft('DGFIP', 51, 9.5, font, black, headerTextX);
   drawCentered('Reçu au titre des dons', 40, 15, bold);
   drawCentered("à certains organismes d'intérêt général", 58, 11.5, font);
   drawCentered('Articles 200 et 885-0 V bis A du code général des impôts (CGI)', 73, 9, font);
   drawRight("Numéro d'ordre du reçu", 40, 10.5, font);
   drawRight(numero, 58, 13, bold);
+
+  // Logo Beth Habad (image réelle, si configurée via BETH_HABAD_LOGO_URL)
+  const logoBytes = await getBethHabadLogoBytes();
+  if (logoBytes) {
+    try {
+      let embeddedLogo;
+      try {
+        embeddedLogo = await pdfDoc.embedPng(logoBytes);
+      } catch (e) {
+        embeddedLogo = await pdfDoc.embedJpg(logoBytes);
+      }
+      const targetH = 46;
+      const scale = targetH / embeddedLogo.height;
+      const targetW = embeddedLogo.width * scale;
+      page.drawImage(embeddedLogo, {
+        x: PW - marginX - targetW,
+        y: Y(140),
+        width: targetW,
+        height: targetH,
+      });
+    } catch (e) {
+      console.error('Logo Beth Habad : échec insertion dans le PDF -', e.message);
+    }
+  }
 
   // ── Bloc destinataire ──
   drawLeft(`${prenom} ${nom}`, 168, 12.5, bold, black, 330);
@@ -835,7 +904,7 @@ app.delete('/admin/cerfa/:id', async (req, res) => {
   res.json({ ok: true, message: "Supprimé" });
 });
 app.post('/admin/cerfa/generer', async (req, res) => {
-  const { password, nom, prenom, adresse, montant, mode } = req.body;
+  const { password, nom, prenom, adresse, montant, mode, email, date } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   if (!nom || !adresse || !montant) return res.status(400).json({ ok: false, message: "Nom, adresse et montant requis" });
   try {
@@ -847,10 +916,14 @@ app.post('/admin/cerfa/generer', async (req, res) => {
     else if (/ch[eè]que/.test(modeLower)) modeFinal = 'Chèque';
     const numero = await getNextCerfaNumero();
     const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
-    const pdfBuffer = await generateCerfaPDF({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal });
+    const emailFinal = email && email.trim() ? email.trim() : null;
+    // date fournie au format YYYY-MM-DD (input type="date") ; sinon date du jour
+    const dateDon = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().slice(0, 10);
+    const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
+    const pdfBuffer = await generateCerfaPDF({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal, dateVersement });
     await pool.query(
-      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)`,
-      [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal]
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, dateDon, emailFinal]
     );
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
