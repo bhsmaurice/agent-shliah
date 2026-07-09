@@ -964,10 +964,28 @@ app.get('/admin/logo-check', async (req, res) => {
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const url = process.env.BETH_HABAD_LOGO_URL || null;
   if (!url) return res.json({ ok: true, configured: false, message: "La variable BETH_HABAD_LOGO_URL n'est pas configurée sur Railway." });
+  // Teste la fonction RÉELLEMENT utilisée par la génération de Cerfa (pas un fetch séparé)
+  const realBytes = await getBethHabadLogoBytes();
   try {
     const r = await fetch(url);
     const contentType = r.headers.get('content-type') || null;
     const buf = Buffer.from(await r.arrayBuffer());
+    const lookslikeImage = !!(contentType && contentType.startsWith('image/'));
+    let embedOk = false, embedError = null, embedFormat = null, width = null, height = null;
+    if (lookslikeImage) {
+      const testDoc = await PDFDocument.create();
+      try {
+        const img = await testDoc.embedPng(buf);
+        embedOk = true; embedFormat = 'png'; width = img.width; height = img.height;
+      } catch (e1) {
+        try {
+          const img = await testDoc.embedJpg(buf);
+          embedOk = true; embedFormat = 'jpg'; width = img.width; height = img.height;
+        } catch (e2) {
+          embedError = `PNG: ${e1.message} | JPG: ${e2.message}`;
+        }
+      }
+    }
     res.json({
       ok: true,
       configured: true,
@@ -975,10 +993,21 @@ app.get('/admin/logo-check', async (req, res) => {
       httpStatus: r.status,
       contentType,
       byteLength: buf.length,
-      lookslikeImage: contentType && contentType.startsWith('image/'),
-      message: (contentType && contentType.startsWith('image/'))
-        ? "Le lien renvoie bien une image, ça devrait marcher."
-        : "Le lien ne renvoie PAS une image (probablement une page HTML) - utilise le lien 'Raw' ou 'Copier l'adresse de l'image', pas le lien de la page GitHub.",
+      lookslikeImage,
+      embedOk,
+      embedFormat,
+      width,
+      height,
+      embedError,
+      realFunctionWorks: !!realBytes,
+      realFunctionByteLength: realBytes ? realBytes.length : 0,
+      message: !lookslikeImage
+        ? "Le lien ne renvoie PAS une image (probablement une page HTML) - utilise le lien 'Raw' ou 'Copier l'adresse de l'image', pas le lien de la page GitHub."
+        : !embedOk
+          ? "Le lien renvoie bien une image, mais pdf-lib n'arrive pas à l'insérer dans le PDF (format non supporté - il faut un PNG ou JPG classique, pas WEBP/GIF/SVG). Détail : " + embedError
+          : !realBytes
+            ? "Le test direct marche, MAIS la fonction réellement utilisée pour générer les Cerfa (getBethHabadLogoBytes) renvoie rien — il y a sûrement une ancienne version de cette fonction encore présente dans index.js (peut-être collée deux fois). Il faut retélécharger le fichier index.js le plus récent et bien tout remplacer."
+            : "Tout fonctionne : le logo devrait apparaître sur les Cerfa générés.",
     });
   } catch (e) {
     res.json({ ok: true, configured: true, url, error: e.message, message: "Le téléchargement du logo a échoué." });
