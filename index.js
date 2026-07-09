@@ -35,6 +35,23 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+// Le raccourci "service: gmail" de nodemailer force le port 465, que certains
+// hébergeurs (dont Railway, par moments) bloquent en sortie -> "Connection
+// timeout". On utilise plutôt le port 587 (STARTTLS), plus souvent autorisé,
+// avec des délais explicites pour ne pas rester bloqué en silence.
+function getMailTransporter() {
+  const nodemailer = require('nodemailer');
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
+  });
+}
 
 // ─── ADMIN CERFA (génération automatique de reçus fiscaux) ────
 // Numéros WhatsApp autorisés à déclencher "Admin CERFA" (sans +, sans espace)
@@ -772,8 +789,7 @@ async function sauvegarderDemande(type, phone, texteLibre) {
 async function envoyerEmailDemande(type, phone, texteLibre) {
   if (!GMAIL_APP_PASSWORD) return;
   try {
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+    const transporter = getMailTransporter();
     const config = TYPES_DEMANDES[type]; const label = config ? config.label : type;
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -791,8 +807,7 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
 async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode, dateVersement, email }, pdfBuffer) {
   if (!GMAIL_APP_PASSWORD) return;
   try {
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+    const transporter = getMailTransporter();
     await transporter.sendMail({
       from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
       to: 'bhsmaurice@gmail.com',
@@ -987,8 +1002,7 @@ app.get('/admin/email-check', async (req, res) => {
     return res.json({ ok: false, configured: false, message: "La variable GMAIL_APP_PASSWORD n'est pas configurée sur Railway." });
   }
   try {
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+    const transporter = getMailTransporter();
     await transporter.verify();
     await transporter.sendMail({
       from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
@@ -1020,8 +1034,7 @@ app.get('/admin/cerfa/export', async (req, res) => {
     if (email !== 'false') {
       (async () => {
         try {
-          const nodemailer = require('nodemailer');
-          const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+          const transporter = getMailTransporter();
           await transporter.sendMail({
             from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
             to: 'bhsmaurice@gmail.com',
