@@ -45,11 +45,11 @@ const ADMIN_WHATSAPP_NUMBERS = (process.env.ADMIN_WHATSAPP_NUMBERS || '337702417
 
 // Infos fixes de l'association (reprises du modèle Cerfa officiel utilisé actuellement)
 const ASSOCIATION = {
-  nom: 'BH S Maurice',
-  rna: 'W941009534',
-  adresse: '127, rue du Maréchal Leclerc - 94410 Saint-Maurice, France',
-  objet: "aider, promouvoir, soutenir, créer, gérer toute activité d'ordre social, éducatif et culturel.",
-  qualite: "Oeuvre ou organisme d'intérêt général",
+  nom: 'Beth habad S. Maurice Plateau',
+  rna: 'W941017037',
+  adresse: '54 Avenue maréchal de Lattre de Tassigny, 94410 Saint Maurice',
+  objet: "Action d'intérêt général de bienfaisance",
+  qualite: "Œuvre ou organisme d'intérêt général",
   articleCGI: '200 du CGI',
 };
 
@@ -167,8 +167,8 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const marginX = 45;
   const contentW = PW - 2 * marginX;
   const black = rgb(0, 0, 0);
-  const gray = rgb(0.75, 0.75, 0.75);
-  const lineGray = rgb(0.4, 0.4, 0.4);
+  const gray = rgb(0.8, 0.8, 0.8);
+  const lineGray = rgb(0.45, 0.45, 0.45);
   const Y = (topPt) => PH - topPt;
 
   const drawCentered = (text, topPt, size, f = font, color = black) => {
@@ -182,12 +182,12 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const drawLeft = (text, topPt, size, f = font, color = black, x = marginX) => {
     page.drawText(text, { x, y: Y(topPt), size, font: f, color });
   };
-  const drawLabelValue = (label, value, topPt, x = marginX + 10, size = 10.5) => {
+  const drawLabelValue = (label, value, topPt, x = marginX + 10, size = 9.5) => {
     page.drawText(label, { x, y: Y(topPt), size, font: bold, color: black });
     const lw = bold.widthOfTextAtSize(label, size);
-    page.drawText(value, { x: x + lw + 3, y: Y(topPt), size, font, color: black });
+    page.drawText(value, { x: x + lw + 4, y: Y(topPt), size, font, color: black });
   };
-  const grayBar = (label, topPt, height = 22, size = 12) => {
+  const grayBar = (label, topPt, height = 20, size = 11) => {
     page.drawRectangle({ x: marginX, y: Y(topPt + height), width: contentW, height, color: gray });
     const w = bold.widthOfTextAtSize(label, size);
     page.drawText(label, { x: (PW - w) / 2, y: Y(topPt + height - 6), size, font: bold, color: black });
@@ -195,15 +195,36 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const box = (topPt, height) => {
     page.drawRectangle({ x: marginX, y: Y(topPt + height), width: contentW, height, borderColor: lineGray, borderWidth: 1 });
   };
+  const hLine = (topPt, x1 = marginX, x2 = PW - marginX) => {
+    page.drawLine({ start: { x: x1, y: Y(topPt) }, end: { x: x2, y: Y(topPt) }, thickness: 0.6, color: lineGray });
+  };
+  const drawCheckbox = (label, checked, x, topPt, size = 9) => {
+    const boxSize = 8.5;
+    const boxY = Y(topPt) - boxSize + 2.5;
+    page.drawRectangle({ x, y: boxY, width: boxSize, height: boxSize, borderColor: black, borderWidth: 0.8 });
+    if (checked) {
+      page.drawLine({ start: { x: x + 1, y: boxY + 4 }, end: { x: x + 3.2, y: boxY + 1.5 }, thickness: 1.1, color: black });
+      page.drawLine({ start: { x: x + 3.2, y: boxY + 1.5 }, end: { x: x + 7.3, y: boxY + 7.5 }, thickness: 1.1, color: black });
+    }
+    page.drawText(label, { x: x + boxSize + 4, y: Y(topPt), size, font: checked ? bold : font, color: black });
+  };
+  const drawUnderlinedLabel = (label, topPt, size = 9.5) => {
+    page.drawText(label, { x: marginX + 10, y: Y(topPt), size, font: bold, color: black });
+    const w = bold.widthOfTextAtSize(label, size);
+    page.drawLine({ start: { x: marginX + 10, y: Y(topPt) - 2 }, end: { x: marginX + 10 + w, y: Y(topPt) - 2 }, thickness: 0.6, color: black });
+  };
 
   const dateVersement = dateVersementOverride || new Date().toLocaleDateString('fr-FR');
-  const dateGeneration = new Date().toLocaleDateString('fr-FR');
+  const nomDonateurComplet = `${prenom} ${nom}`.toUpperCase();
+  const montantNum = Number(montant);
+  const montantDisplay = Number.isInteger(montantNum) ? String(montantNum) : montantNum.toFixed(2).replace('.', ',');
 
   // ── En-tête ──
   // Logo "cerfa" (ovale bleu marine, dessiné directement, pas une image)
-  const cerfaOvalW = 60, cerfaOvalH = 26;
-  const cerfaOvalCx = marginX + cerfaOvalW / 2;
-  const cerfaOvalCy = Y(20);
+  drawLeft('2041-RD', 24, 8, font, black, marginX + 8);
+  const cerfaOvalW = 58, cerfaOvalH = 25;
+  const cerfaOvalCx = marginX + cerfaOvalW / 2 + 8;
+  const cerfaOvalCy = Y(52);
   page.drawEllipse({
     x: cerfaOvalCx,
     y: cerfaOvalCy,
@@ -212,7 +233,7 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
     color: rgb(0.09, 0.16, 0.38),
   });
   const cerfaLabel = 'cerfa';
-  const cerfaLabelSize = 15;
+  const cerfaLabelSize = 14;
   const cerfaLabelW = italicFont.widthOfTextAtSize(cerfaLabel, cerfaLabelSize);
   page.drawText(cerfaLabel, {
     x: cerfaOvalCx - cerfaLabelW / 2,
@@ -221,17 +242,21 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
     font: italicFont,
     color: rgb(1, 1, 1),
   });
-  const headerTextX = marginX + cerfaOvalW + 12;
-  drawLeft('N°11580*05', 36, 10.5, bold, black, headerTextX);
-  drawLeft('DGFIP', 51, 9.5, font, black, headerTextX);
-  drawCentered('Reçu au titre des dons', 40, 15, bold);
-  drawCentered("à certains organismes d'intérêt général", 58, 11.5, font);
-  drawCentered('Articles 200 et 885-0 V bis A du code général des impôts (CGI)', 73, 9, font);
-  drawRight("Numéro d'ordre du reçu", 40, 10.5, font);
-  drawRight(numero, 58, 13, bold);
+  drawLeft('N° 11580*05', 90, 9, font, black, marginX);
 
-  // Logo Beth Habad (image réelle, si configurée via BETH_HABAD_LOGO_URL)
+  drawCentered('Reçu des dons et versements', 30, 13, bold);
+  drawCentered('effectués par les particuliers au titre', 46, 10, font);
+  drawCentered('des articles 200 et 978 du code', 59, 10, font);
+  drawCentered('général des impôts', 72, 10, font);
+
+  drawRight("N° d'ordre du reçu", 30, 10, font);
+  drawRight(numero, 50, 14, bold);
+
+  hLine(100);
+
+  // ── Colonne gauche : logo + nom association / Colonne droite : donateur ──
   const logoBytes = await getBethHabadLogoBytes();
+  let logoBottomY = 110;
   if (logoBytes) {
     try {
       let embeddedLogo;
@@ -240,83 +265,99 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
       } catch (e) {
         embeddedLogo = await pdfDoc.embedJpg(logoBytes);
       }
-      const targetH = 46;
+      const targetH = 42;
       const scale = targetH / embeddedLogo.height;
       const targetW = embeddedLogo.width * scale;
-      page.drawImage(embeddedLogo, {
-        x: PW - marginX - targetW,
-        y: Y(140),
-        width: targetW,
-        height: targetH,
-      });
+      const logoX = marginX + (contentW / 2 - 30 - targetW) / 2;
+      page.drawImage(embeddedLogo, { x: logoX, y: Y(152), width: targetW, height: targetH });
+      logoBottomY = 152;
     } catch (e) {
       console.error('Logo Beth Habad : échec insertion dans le PDF -', e.message);
     }
   }
+  const leftColCenterX = marginX + (contentW / 2 - 30) / 2;
+  const nomAssoW = bold.widthOfTextAtSize(ASSOCIATION.nom, 10);
+  page.drawText(ASSOCIATION.nom, { x: leftColCenterX - nomAssoW / 2, y: Y(logoBottomY + 20), size: 10, font: bold, color: black });
 
-  // ── Bloc destinataire ──
-  drawLeft(`${prenom} ${nom}`, 168, 12.5, bold, black, 330);
+  const donateurColX = 330;
+  drawLeft(nomDonateurComplet, 117, 11.5, bold, black, donateurColX);
   const adresseParts = adresse.split(',').map((s) => s.trim()).filter(Boolean);
-  let addrTop = 186;
-  adresseParts.forEach((part) => { drawLeft(part, addrTop, 11.5, font, black, 330); addrTop += 16; });
+  let addrTop = 134;
+  adresseParts.forEach((part) => { drawLeft(part, addrTop, 10.5, font, black, donateurColX); addrTop += 15; });
 
-  // ── Bénéficiaire des versements ──
-  let top = 300;
-  grayBar('Bénéficiaire des versements', top);
-  top += 22;
+  hLine(182);
+
+  // ── Bénéficiaire du don ──
+  let top = 192;
+  grayBar('BÉNÉFICIAIRE DU DON', top);
+  top += 20;
   const beneficiaireBoxStart = top;
-  let rowTop = top + 18;
-  [['Nom ou dénomination : ', ASSOCIATION.nom], ['Numéro RNA : ', ASSOCIATION.rna], ['Adresse : ', ASSOCIATION.adresse]]
-    .forEach(([label, value]) => { drawLabelValue(label, value, rowTop); rowTop += 20; });
-  drawLabelValue('Objet : ', '', rowTop);
-  page.drawText(ASSOCIATION.objet, { x: marginX + 55, y: Y(rowTop), size: 9, font, color: black });
+  let rowTop = top + 17;
+  [
+    ['NOM OU DENOMINATION : ', ASSOCIATION.nom],
+    ['Numéro SIREN ou RNA : ', ASSOCIATION.rna],
+    ['ADRESSE ASSOCIATION : ', ASSOCIATION.adresse],
+    ['OBJET : ', ASSOCIATION.objet],
+    ['QUALITE DE L’ORGANISME : ', ASSOCIATION.qualite],
+  ].forEach(([label, value]) => { drawLabelValue(label, value, rowTop); rowTop += 18; });
+  rowTop += 8;
+  hLine(rowTop, marginX + 8, PW - marginX - 8);
   rowTop += 20;
-  drawLabelValue('Qualité : ', ASSOCIATION.qualite, rowTop);
-  rowTop += 22;
+  drawLeft("Le bénéficiaire reconnaît avoir reçu au titre des dons et versements ouvrant droit à", rowTop, 9.5, font, black, marginX + 10);
+  rowTop += 13;
+  drawLeft("réduction d'impôt, la somme de :", rowTop, 9.5, font, black, marginX + 10);
+  rowTop += 20;
+  const montantLabel = `***${montantDisplay} Euros***  ${numberToFrenchWords(montantNum)}`;
+  const mW = bold.widthOfTextAtSize(montantLabel, 12);
+  page.drawRectangle({ x: marginX + 10, y: Y(rowTop + 18), width: mW + 20, height: 20, borderColor: lineGray, borderWidth: 1 });
+  page.drawText(montantLabel, { x: marginX + 20, y: Y(rowTop + 5), size: 12, font: bold, color: black });
+  rowTop += 30;
   box(beneficiaireBoxStart, rowTop - beneficiaireBoxStart);
   top = rowTop;
 
   // ── Donateur ──
-  grayBar('Donateur', top);
-  top += 22;
+  top += 18;
+  grayBar('DONATEUR', top);
+  top += 20;
   const donateurBoxStart = top;
-  drawLabelValue('Nom : ', nom, top + 18);
-  drawLabelValue('Prénom : ', prenom, top + 18, marginX + 220);
-  drawLabelValue('Adresse : ', adresse, top + 38);
-  top += 58;
+  drawLabelValue('NOM OU DENOMINATION : ', nomDonateurComplet, top + 17);
+  drawLabelValue('ADRESSE DONATEUR : ', adresse, top + 35);
+  top += 50;
   box(donateurBoxStart, top - donateurBoxStart);
 
-  // ── Montant + mentions légales ──
-  const bigBoxStart = top;
-  top += 22;
-  drawCentered("Le bénéficiaire reconnaît avoir reçu au titre des dons et versements ouvrant droit à réduction d'impôt, la somme de :", top, 10, font);
-  top += 26;
-  const montantLabel = `***${montant}***  ${numberToFrenchWords(montant)}`;
-  const mW = bold.widthOfTextAtSize(montantLabel, 12);
-  page.drawRectangle({ x: (PW - mW) / 2 - 10, y: Y(top + 16), width: mW + 20, height: 20, borderColor: lineGray, borderWidth: 1 });
-  drawCentered(montantLabel, top + 3, 12, bold);
-  top += 34;
-  drawCentered("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit ouvrent droit à la réduction d'impôt prévue", top, 9.5, font);
+  // ── Certification + cases à cocher ──
+  top += 24;
+  drawCentered("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit", top, 9.5, font);
   top += 14;
-  drawCentered(`à l'article : ${ASSOCIATION.articleCGI}`, top, 9.5, font);
+  drawCentered("ouvrent droit à la réduction d'impôt prévue à l'article", top, 9.5, font);
+  top += 24;
+  drawCheckbox('200 du CGI', ASSOCIATION.articleCGI === '200 du CGI', marginX + 10, top);
+  drawCheckbox('238 bis du CGI', ASSOCIATION.articleCGI === '238 bis du CGI', marginX + 190, top);
+  drawCheckbox('978 du CGI', ASSOCIATION.articleCGI === '978 du CGI', marginX + 370, top);
+  top += 22;
+  drawUnderlinedLabel('Forme du don', top);
+  top += 20;
+  drawCheckbox('Acte authentique', false, marginX + 10, top);
+  drawCheckbox('Acte sous seing privé', false, marginX + 140, top);
+  drawCheckbox('Déclaration de don manuel', true, marginX + 290, top);
+  top += 22;
+  drawUnderlinedLabel('Nature du don', top);
+  top += 20;
+  drawCheckbox('Numéraire', true, marginX + 10, top);
+  drawCheckbox('Titres de sociétés cotées', false, marginX + 110, top);
+  drawCheckbox('Autres', false, marginX + 290, top);
   top += 26;
-  page.drawText('Forme du don : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
-  page.drawText('Déclaration de don manuel', { x: marginX + 10 + font.widthOfTextAtSize('Forme du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
-  page.drawText('Nature du don : ', { x: 330, y: Y(top), size: 10, font, color: black });
-  page.drawText('Numéraire', { x: 330 + font.widthOfTextAtSize('Nature du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
-  top += 20;
-  page.drawText('Mode de versement du don : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
-  page.drawText(mode, { x: marginX + 10 + font.widthOfTextAtSize('Mode de versement du don : ', 10), y: Y(top), size: 10, font: bold, color: black });
-  page.drawText('Date du versement : ', { x: 330, y: Y(top), size: 10, font, color: black });
-  page.drawText(dateVersement, { x: 330 + font.widthOfTextAtSize('Date du versement : ', 10), y: Y(top), size: 10, font: bold, color: black });
-  top += 20;
-  box(bigBoxStart, top - bigBoxStart);
+  hLine(top);
+
+  // ── Mode de versement / date et signature ──
+  top += 22;
+  page.drawText('Mode de versement : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
+  page.drawText(mode, { x: marginX + 10 + font.widthOfTextAtSize('Mode de versement : ', 10), y: Y(top), size: 10, font: bold, color: black });
+  drawRight('Date et signature', top - 10, 10.5, bold);
+  drawRight(dateVersement, top + 8, 10, font);
 
   // ── Pied de page ──
-  top += 60;
-  drawLeft('Reçu généré automatiquement par Shliah Bot', top, 10, bold);
-  drawRight('Date et signature', top - 10, 11, bold);
-  drawRight(dateGeneration, top + 8, 10, font);
+  drawCentered('Reçu cerfa généré par Shliah Bot', 760, 9, font);
 
   return Buffer.from(await pdfDoc.save());
 }
