@@ -57,10 +57,8 @@ const ASSOCIATION = {
 // BETH_HABAD_LOGO_URL) puis gardé en mémoire. Si l'URL n'est pas configurée
 // ou si le téléchargement échoue, le reçu est simplement généré sans logo.
 let bethHabadLogoBytesCache = null;
-let bethHabadLogoFetchAttempted = false;
 async function getBethHabadLogoBytes() {
-  if (bethHabadLogoBytesCache || bethHabadLogoFetchAttempted) return bethHabadLogoBytesCache;
-  bethHabadLogoFetchAttempted = true;
+  if (bethHabadLogoBytesCache) return bethHabadLogoBytesCache;
   const url = process.env.BETH_HABAD_LOGO_URL;
   if (!url) return null;
   try {
@@ -960,6 +958,31 @@ app.get('/admin/cerfa', async (req, res) => {
   query += ' ORDER BY created_at DESC';
   const result = await pool.query(query, params);
   res.json({ ok: true, receipts: result.rows, total: result.rows.length });
+});
+app.get('/admin/logo-check', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const url = process.env.BETH_HABAD_LOGO_URL || null;
+  if (!url) return res.json({ ok: true, configured: false, message: "La variable BETH_HABAD_LOGO_URL n'est pas configurée sur Railway." });
+  try {
+    const r = await fetch(url);
+    const contentType = r.headers.get('content-type') || null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.json({
+      ok: true,
+      configured: true,
+      url,
+      httpStatus: r.status,
+      contentType,
+      byteLength: buf.length,
+      lookslikeImage: contentType && contentType.startsWith('image/'),
+      message: (contentType && contentType.startsWith('image/'))
+        ? "Le lien renvoie bien une image, ça devrait marcher."
+        : "Le lien ne renvoie PAS une image (probablement une page HTML) - utilise le lien 'Raw' ou 'Copier l'adresse de l'image', pas le lien de la page GitHub.",
+    });
+  } catch (e) {
+    res.json({ ok: true, configured: true, url, error: e.message, message: "Le téléchargement du logo a échoué." });
+  }
 });
 app.delete('/admin/cerfa/:id', async (req, res) => {
   const { password } = req.body;
