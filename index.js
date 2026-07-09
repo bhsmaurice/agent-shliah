@@ -971,6 +971,13 @@ app.get('/admin/logo-check', async (req, res) => {
     const contentType = r.headers.get('content-type') || null;
     const buf = Buffer.from(await r.arrayBuffer());
     const lookslikeImage = !!(contentType && contentType.startsWith('image/'));
+    const magicHex = buf.slice(0, 12).toString('hex');
+    let realFormat = 'inconnu';
+    if (magicHex.startsWith('89504e47')) realFormat = 'PNG (signature valide)';
+    else if (magicHex.startsWith('ffd8ff')) realFormat = 'JPEG (signature valide)';
+    else if (magicHex.startsWith('47494638')) realFormat = 'GIF';
+    else if (magicHex.startsWith('52494646') && buf.slice(8, 12).toString('ascii') === 'WEBP') realFormat = 'WEBP';
+    else if (magicHex.startsWith('3c737667') || magicHex.startsWith('3c3f786d')) realFormat = 'SVG (texte, pas une image bitmap)';
     let embedOk = false, embedError = null, embedFormat = null, width = null, height = null;
     if (lookslikeImage) {
       const testDoc = await PDFDocument.create();
@@ -982,7 +989,7 @@ app.get('/admin/logo-check', async (req, res) => {
           const img = await testDoc.embedJpg(buf);
           embedOk = true; embedFormat = 'jpg'; width = img.width; height = img.height;
         } catch (e2) {
-          embedError = `PNG: ${e1.message} | JPG: ${e2.message}`;
+          embedError = `PNG: ${e1 && (e1.message || e1)} | JPG: ${e2 && (e2.message || e2)}`;
         }
       }
     }
@@ -994,6 +1001,8 @@ app.get('/admin/logo-check', async (req, res) => {
       contentType,
       byteLength: buf.length,
       lookslikeImage,
+      magicHex,
+      realFormat,
       embedOk,
       embedFormat,
       width,
@@ -1004,7 +1013,7 @@ app.get('/admin/logo-check', async (req, res) => {
       message: !lookslikeImage
         ? "Le lien ne renvoie PAS une image (probablement une page HTML) - utilise le lien 'Raw' ou 'Copier l'adresse de l'image', pas le lien de la page GitHub."
         : !embedOk
-          ? "Le lien renvoie bien une image, mais pdf-lib n'arrive pas à l'insérer dans le PDF (format non supporté - il faut un PNG ou JPG classique, pas WEBP/GIF/SVG). Détail : " + embedError
+          ? `Le fichier fait ${buf.length} octets et son vrai format détecté est : ${realFormat}. pdf-lib n'arrive pas à l'insérer (${embedError}). Il faut ré-enregistrer l'image en PNG classique (par exemple en l'ouvrant et en la ré-exportant avec Aperçu sur Mac, ou Paint sur Windows) puis la re-uploader.`
           : !realBytes
             ? "Le test direct marche, MAIS la fonction réellement utilisée pour générer les Cerfa (getBethHabadLogoBytes) renvoie rien — il y a sûrement une ancienne version de cette fonction encore présente dans index.js (peut-être collée deux fois). Il faut retélécharger le fichier index.js le plus récent et bien tout remplacer."
             : "Tout fonctionne : le logo devrait apparaître sur les Cerfa générés.",
