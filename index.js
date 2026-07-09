@@ -418,6 +418,7 @@ async function handleAdminCerfaCommand(from, text) {
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)`,
       [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode]
     );
+    envoyerBackupCerfa({ numero, ...data, dateVersement: new Date().toLocaleDateString('fr-FR') }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
     await sendWhatsAppDocument(from, pdfBuffer, filename);
   } catch (e) {
     await sendWhatsApp(from, `Erreur génération Cerfa : ${e.message}`);
@@ -783,6 +784,26 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
     });
   } catch (e) { console.error('Email error:', e.message); }
 }
+// Sauvegarde automatique : envoie chaque Cerfa généré par email (avec le PDF en
+// pièce jointe) sur bhsmaurice@gmail.com. C'est une copie indépendante de Railway
+// et GitHub — en cas de piratage ou de panne, les reçus restent consultables dans
+// la boîte mail.
+async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode, dateVersement, email }, pdfBuffer) {
+  if (!GMAIL_APP_PASSWORD) return;
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+    await transporter.sendMail({
+      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
+      to: 'bhsmaurice@gmail.com',
+      subject: `🧾 Sauvegarde Cerfa ${numero}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🧾 Sauvegarde automatique — Cerfa ${numero}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Donateur</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${prenom || ''} ${nom || ''}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Adresse</td><td style="padding:8px;border-bottom:1px solid #eee;">${adresse || ''}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Montant</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${montant} €</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Mode</td><td style="padding:8px;border-bottom:1px solid #eee;">${mode || ''}</td></tr><tr><td style="padding:8px;color:#666;">Date du don</td><td style="padding:8px;">${dateVersement || ''}</td></tr></table><p style="color:#999;font-size:12px;margin-top:16px;">Ce mail est généré automatiquement à chaque Cerfa créé, pour garder une copie de secours indépendante.</p></div>`,
+      attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
+    });
+  } catch (e) {
+    console.error('Backup Cerfa email error:', e.message);
+  }
+}
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
 // ─── WEBHOOK META ─────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
@@ -959,6 +980,44 @@ app.get('/admin/cerfa', async (req, res) => {
   const result = await pool.query(query, params);
   res.json({ ok: true, receipts: result.rows, total: result.rows.length });
 });
+app.get('/admin/cerfa/export', async (req, res) => {
+  const { password, email } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts ORDER BY created_at ASC');
+    const rows = result.rows;
+    const cols = ['numero', 'nom', 'prenom', 'adresse', 'montant', 'mode_paiement', 'date_don', 'email', 'created_at'];
+    const csvEscape = (v) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csvLines = [cols.join(';')];
+    rows.forEach((r) => { csvLines.push(cols.map((c) => csvEscape(r[c])).join(';')); });
+    const csv = '﻿' + csvLines.join('\n'); // ﻿ = BOM pour Excel
+    // Envoie aussi une copie par email pour une sauvegarde indépendante
+    if (email !== 'false') {
+      (async () => {
+        try {
+          const nodemailer = require('nodemailer');
+          const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+          await transporter.sendMail({
+            from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
+            to: 'bhsmaurice@gmail.com',
+            subject: `📦 Sauvegarde complète Cerfa (${rows.length} reçus)`,
+            html: `<p>Export complet de tous les reçus Cerfa, ${rows.length} au total, en pièce jointe (fichier CSV, s'ouvre avec Excel/Numbers).</p>`,
+            attachments: [{ filename: `Cerfa_export_${new Date().toISOString().slice(0, 10)}.csv`, content: csv }],
+          });
+        } catch (e) { console.error('Export email error:', e.message); }
+      })();
+    }
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="Cerfa_export_${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 app.get('/admin/logo-check', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -1050,6 +1109,7 @@ app.post('/admin/cerfa/generer', async (req, res) => {
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, dateDon, emailFinal]
     );
+    envoyerBackupCerfa({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal, dateVersement, email: emailFinal }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
     res.send(pdfBuffer);
