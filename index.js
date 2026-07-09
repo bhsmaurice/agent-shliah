@@ -980,6 +980,27 @@ app.get('/admin/cerfa', async (req, res) => {
   const result = await pool.query(query, params);
   res.json({ ok: true, receipts: result.rows, total: result.rows.length });
 });
+app.get('/admin/email-check', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!GMAIL_APP_PASSWORD) {
+    return res.json({ ok: false, configured: false, message: "La variable GMAIL_APP_PASSWORD n'est pas configurée sur Railway." });
+  }
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD } });
+    await transporter.verify();
+    await transporter.sendMail({
+      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
+      to: 'bhsmaurice@gmail.com',
+      subject: '✅ Test email de sauvegarde Shliah Bot',
+      html: '<p>Ceci est un email de test. Si tu le reçois, le système de sauvegarde par email fonctionne.</p>',
+    });
+    res.json({ ok: true, configured: true, message: 'Email de test envoyé avec succès à bhsmaurice@gmail.com. Vérifie ta boîte de réception (et les spams).' });
+  } catch (e) {
+    res.json({ ok: false, configured: true, message: "La variable est configurée mais l'envoi a échoué.", error: e.message });
+  }
+});
 app.get('/admin/cerfa/export', async (req, res) => {
   const { password, email } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
