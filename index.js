@@ -208,6 +208,15 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
     }
     page.drawText(label, { x: x + boxSize + 4, y: Y(topPt), size, font: checked ? bold : font, color: black });
   };
+  const drawCheckboxRow = (items, topPt, size = 9, gap = 24) => {
+    const boxSize = 8.5;
+    let x = marginX + 10;
+    items.forEach(({ label, checked }) => {
+      drawCheckbox(label, checked, x, topPt, size);
+      const labelW = (checked ? bold : font).widthOfTextAtSize(label, size);
+      x += boxSize + 4 + labelW + gap;
+    });
+  };
   const drawUnderlinedLabel = (label, topPt, size = 9.5) => {
     page.drawText(label, { x: marginX + 10, y: Y(topPt), size, font: bold, color: black });
     const w = bold.widthOfTextAtSize(label, size);
@@ -217,7 +226,13 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const dateVersement = dateVersementOverride || new Date().toLocaleDateString('fr-FR');
   const nomDonateurComplet = `${prenom} ${nom}`.toUpperCase();
   const montantNum = Number(montant);
-  const montantDisplay = Number.isInteger(montantNum) ? String(montantNum) : montantNum.toFixed(2).replace('.', ',');
+  const formatMontantFr = (n) => {
+    const isInt = Number.isInteger(n);
+    const parts = isInt ? [String(n)] : n.toFixed(2).split('.');
+    const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return isInt ? intPart : `${intPart},${parts[1]}`;
+  };
+  const montantDisplay = formatMontantFr(montantNum);
 
   // ── En-tête ──
   // Logo "cerfa" (ovale bleu marine, dessiné directement, pas une image)
@@ -331,21 +346,28 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   top += 14;
   drawCentered("ouvrent droit à la réduction d'impôt prévue à l'article", top, 9.5, font);
   top += 24;
-  drawCheckbox('200 du CGI', ASSOCIATION.articleCGI === '200 du CGI', marginX + 10, top);
-  drawCheckbox('238 bis du CGI', ASSOCIATION.articleCGI === '238 bis du CGI', marginX + 190, top);
-  drawCheckbox('978 du CGI', ASSOCIATION.articleCGI === '978 du CGI', marginX + 370, top);
+  drawCheckboxRow([
+    { label: '200 du CGI', checked: ASSOCIATION.articleCGI === '200 du CGI' },
+    { label: '238 bis du CGI', checked: ASSOCIATION.articleCGI === '238 bis du CGI' },
+    { label: '978 du CGI', checked: ASSOCIATION.articleCGI === '978 du CGI' },
+  ], top);
   top += 22;
   drawUnderlinedLabel('Forme du don', top);
   top += 20;
-  drawCheckbox('Acte authentique', false, marginX + 10, top);
-  drawCheckbox('Acte sous seing privé', false, marginX + 140, top);
-  drawCheckbox('Déclaration de don manuel', true, marginX + 290, top);
+  drawCheckboxRow([
+    { label: 'Acte authentique', checked: false },
+    { label: 'Acte sous seing privé', checked: false },
+    { label: 'Déclaration de don manuel', checked: true },
+    { label: 'Autres', checked: false },
+  ], top);
   top += 22;
   drawUnderlinedLabel('Nature du don', top);
   top += 20;
-  drawCheckbox('Numéraire', true, marginX + 10, top);
-  drawCheckbox('Titres de sociétés cotées', false, marginX + 110, top);
-  drawCheckbox('Autres', false, marginX + 290, top);
+  drawCheckboxRow([
+    { label: 'Numéraire', checked: true },
+    { label: 'Titres de sociétés cotées', checked: false },
+    { label: 'Autres', checked: false },
+  ], top);
   top += 26;
   hLine(top);
 
