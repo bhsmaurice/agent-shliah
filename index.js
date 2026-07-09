@@ -324,8 +324,9 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   rowTop += 20;
   const montantLabel = `***${montantDisplay} Euros***  ${numberToFrenchWords(montantNum)}`;
   const mW = bold.widthOfTextAtSize(montantLabel, 12);
-  page.drawRectangle({ x: marginX + 10, y: Y(rowTop + 18), width: mW + 20, height: 20, borderColor: lineGray, borderWidth: 1 });
-  page.drawText(montantLabel, { x: marginX + 20, y: Y(rowTop + 5), size: 12, font: bold, color: black });
+  const montantBoxX = (PW - (mW + 20)) / 2;
+  page.drawRectangle({ x: montantBoxX, y: Y(rowTop + 18), width: mW + 20, height: 20, borderColor: lineGray, borderWidth: 1 });
+  page.drawText(montantLabel, { x: montantBoxX + 10, y: Y(rowTop + 5), size: 12, font: bold, color: black });
   rowTop += 30;
   box(beneficiaireBoxStart, rowTop - beneficiaireBoxStart);
   top = rowTop;
