@@ -465,6 +465,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert ok" id="alert-logo-ok"></div>
     <div class="alert err" id="alert-logo-err"></div>
   </div>
+  <div class="card"><button class="btn-main" onclick="sauvegarderCerfa()">📦 Sauvegarder tous les Cerfa</button>
+    <div class="alert ok" id="alert-backup-ok"></div>
+    <div class="alert err" id="alert-backup-err"></div>
+  </div>
   <div class="card"><button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button></div>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
   <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Rechercher par nom, prénom ou numéro..." oninput="afficherCerfa()"></div>
@@ -867,6 +871,21 @@ function afficherCerfa(){
     el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${c.prenom||''} ${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
+}
+async function sauvegarderCerfa(){
+  const url=getUrl(),pw=getAdminPw();
+  const okEl=document.getElementById('alert-backup-ok'), errEl=document.getElementById('alert-backup-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if(!url||!pw){ errEl.textContent="Configure d'abord l'adresse Railway et le mot de passe admin dans ⚙️ Config."; errEl.style.display='block'; return; }
+  try{
+    const link=`${url}/admin/cerfa/export?password=${encodeURIComponent(pw)}`;
+    window.open(link,'_blank');
+    okEl.textContent='✓ Téléchargement lancé, et une copie a aussi été envoyée par email à bhsmaurice@gmail.com.';
+    okEl.style.display='block';
+  }catch(e){
+    errEl.textContent='✗ Erreur : '+e.message;
+    errEl.style.display='block';
+  }
 }
 async function verifierLogo(){
   const url=getUrl(),pw=getAdminPw();
