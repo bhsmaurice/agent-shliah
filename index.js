@@ -34,23 +34,47 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-// Le raccourci "service: gmail" de nodemailer force le port 465, que certains
-// hébergeurs (dont Railway, par moments) bloquent en sortie -> "Connection
-// timeout". On utilise plutôt le port 587 (STARTTLS), plus souvent autorisé,
-// avec des délais explicites pour ne pas rester bloqué en silence.
-function getMailTransporter() {
-  const nodemailer = require('nodemailer');
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    auth: { user: 'bhsmaurice@gmail.com', pass: GMAIL_APP_PASSWORD },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-  });
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour l'envoi (conservé pour compat)
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
+// Envoi d'email via Resend (API HTTPS) au lieu de SMTP/nodemailer : Railway
+// bloque le SMTP sortant (port 465 ET 587 en timeout), mais l'HTTPS marche
+// toujours puisque c'est ce que le bot utilise déjà pour WhatsApp et Claude.
+async function envoyerEmail({ subject, html, attachments }) {
+  if (!RESEND_API_KEY) {
+    console.error('Email non envoyé : RESEND_API_KEY manquant');
+    return { ok: false, error: "La variable RESEND_API_KEY n'est pas configurée sur Railway." };
+  }
+  try {
+    const body = {
+      from: 'Shliah Bot <onboarding@resend.dev>',
+      to: [RESEND_TO_EMAIL],
+      subject,
+      html,
+    };
+    if (attachments && attachments.length) {
+      body.attachments = attachments.map((a) => ({
+        filename: a.filename,
+        content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(String(a.content)).toString('base64'),
+      }));
+    }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('Resend error:', data);
+      return { ok: false, error: data.message || `HTTP ${res.status}` };
+    }
+    return { ok: true, id: data.id };
+  } catch (e) {
+    const causeMsg = e.cause && e.cause.message ? ` (${e.cause.message})` : '';
+    console.error('Resend fetch error:', e.name, e.message, causeMsg);
+    return { ok: false, error: `[resend-v2] ${e.name}: ${e.message}${causeMsg}` };
+  }
 }
 
 // ─── ADMIN CERFA (génération automatique de reçus fiscaux) ────
@@ -787,37 +811,26 @@ async function sauvegarderDemande(type, phone, texteLibre) {
   } catch (e) { console.error('Demande save error:', e.message); }
 }
 async function envoyerEmailDemande(type, phone, texteLibre) {
-  if (!GMAIL_APP_PASSWORD) return;
-  try {
-    const transporter = getMailTransporter();
-    const config = TYPES_DEMANDES[type]; const label = config ? config.label : type;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    await transporter.sendMail({
-      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>', to: 'bhsmaurice@gmail.com',
-      subject: `📋 Nouvelle demande : ${label}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">📋 ${label}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Date</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${dateStr}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">WhatsApp</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>+${phone}</strong></td></tr><tr><td style="padding:8px;color:#666;vertical-align:top;">Message</td><td style="padding:8px;white-space:pre-wrap;"><strong>${texteLibre}</strong></td></tr></table></div>`
-    });
-  } catch (e) { console.error('Email error:', e.message); }
+  const config = TYPES_DEMANDES[type]; const label = config ? config.label : type;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const r = await envoyerEmail({
+    subject: `📋 Nouvelle demande : ${label}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">📋 ${label}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Date</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${dateStr}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">WhatsApp</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>+${phone}</strong></td></tr><tr><td style="padding:8px;color:#666;vertical-align:top;">Message</td><td style="padding:8px;white-space:pre-wrap;"><strong>${texteLibre}</strong></td></tr></table></div>`,
+  });
+  if (!r.ok) console.error('Email error:', r.error);
 }
 // Sauvegarde automatique : envoie chaque Cerfa généré par email (avec le PDF en
 // pièce jointe) sur bhsmaurice@gmail.com. C'est une copie indépendante de Railway
 // et GitHub — en cas de piratage ou de panne, les reçus restent consultables dans
 // la boîte mail.
 async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode, dateVersement, email }, pdfBuffer) {
-  if (!GMAIL_APP_PASSWORD) return;
-  try {
-    const transporter = getMailTransporter();
-    await transporter.sendMail({
-      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
-      to: 'bhsmaurice@gmail.com',
-      subject: `🧾 Sauvegarde Cerfa ${numero}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🧾 Sauvegarde automatique — Cerfa ${numero}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Donateur</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${prenom || ''} ${nom || ''}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Adresse</td><td style="padding:8px;border-bottom:1px solid #eee;">${adresse || ''}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Montant</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${montant} €</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Mode</td><td style="padding:8px;border-bottom:1px solid #eee;">${mode || ''}</td></tr><tr><td style="padding:8px;color:#666;">Date du don</td><td style="padding:8px;">${dateVersement || ''}</td></tr></table><p style="color:#999;font-size:12px;margin-top:16px;">Ce mail est généré automatiquement à chaque Cerfa créé, pour garder une copie de secours indépendante.</p></div>`,
-      attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
-    });
-  } catch (e) {
-    console.error('Backup Cerfa email error:', e.message);
-  }
+  const r = await envoyerEmail({
+    subject: `🧾 Sauvegarde Cerfa ${numero}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🧾 Sauvegarde automatique — Cerfa ${numero}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Donateur</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${prenom || ''} ${nom || ''}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Adresse</td><td style="padding:8px;border-bottom:1px solid #eee;">${adresse || ''}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Montant</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${montant} €</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Mode</td><td style="padding:8px;border-bottom:1px solid #eee;">${mode || ''}</td></tr><tr><td style="padding:8px;color:#666;">Date du don</td><td style="padding:8px;">${dateVersement || ''}</td></tr></table><p style="color:#999;font-size:12px;margin-top:16px;">Ce mail est généré automatiquement à chaque Cerfa créé, pour garder une copie de secours indépendante.</p></div>`,
+    attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
+  });
+  if (!r.ok) console.error('Backup Cerfa email error:', r.error);
 }
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
 // ─── WEBHOOK META ─────────────────────────────────────────────
@@ -998,21 +1011,17 @@ app.get('/admin/cerfa', async (req, res) => {
 app.get('/admin/email-check', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  if (!GMAIL_APP_PASSWORD) {
-    return res.json({ ok: false, configured: false, message: "La variable GMAIL_APP_PASSWORD n'est pas configurée sur Railway." });
+  if (!RESEND_API_KEY) {
+    return res.json({ ok: false, configured: false, message: "La variable RESEND_API_KEY n'est pas configurée sur Railway." });
   }
-  try {
-    const transporter = getMailTransporter();
-    await transporter.verify();
-    await transporter.sendMail({
-      from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
-      to: 'bhsmaurice@gmail.com',
-      subject: '✅ Test email de sauvegarde Shliah Bot',
-      html: '<p>Ceci est un email de test. Si tu le reçois, le système de sauvegarde par email fonctionne.</p>',
-    });
-    res.json({ ok: true, configured: true, message: 'Email de test envoyé avec succès à bhsmaurice@gmail.com. Vérifie ta boîte de réception (et les spams).' });
-  } catch (e) {
-    res.json({ ok: false, configured: true, message: "La variable est configurée mais l'envoi a échoué.", error: e.message });
+  const r = await envoyerEmail({
+    subject: '✅ Test email de sauvegarde Shliah Bot',
+    html: '<p>Ceci est un email de test. Si tu le reçois, le système de sauvegarde par email fonctionne.</p>',
+  });
+  if (r.ok) {
+    res.json({ ok: true, configured: true, message: `Email de test envoyé avec succès à ${RESEND_TO_EMAIL}. Vérifie ta boîte de réception (et les spams).` });
+  } else {
+    res.json({ ok: false, configured: true, message: "La variable est configurée mais l'envoi a échoué.", error: r.error });
   }
 });
 app.get('/admin/cerfa/export', async (req, res) => {
@@ -1032,18 +1041,11 @@ app.get('/admin/cerfa/export', async (req, res) => {
     const csv = '﻿' + csvLines.join('\n'); // ﻿ = BOM pour Excel
     // Envoie aussi une copie par email pour une sauvegarde indépendante
     if (email !== 'false') {
-      (async () => {
-        try {
-          const transporter = getMailTransporter();
-          await transporter.sendMail({
-            from: '"Shliah Bot 🤖" <bhsmaurice@gmail.com>',
-            to: 'bhsmaurice@gmail.com',
-            subject: `📦 Sauvegarde complète Cerfa (${rows.length} reçus)`,
-            html: `<p>Export complet de tous les reçus Cerfa, ${rows.length} au total, en pièce jointe (fichier CSV, s'ouvre avec Excel/Numbers).</p>`,
-            attachments: [{ filename: `Cerfa_export_${new Date().toISOString().slice(0, 10)}.csv`, content: csv }],
-          });
-        } catch (e) { console.error('Export email error:', e.message); }
-      })();
+      envoyerEmail({
+        subject: `📦 Sauvegarde complète Cerfa (${rows.length} reçus)`,
+        html: `<p>Export complet de tous les reçus Cerfa, ${rows.length} au total, en pièce jointe (fichier CSV, s'ouvre avec Excel/Numbers).</p>`,
+        attachments: [{ filename: `Cerfa_export_${new Date().toISOString().slice(0, 10)}.csv`, content: csv }],
+      }).then((r) => { if (!r.ok) console.error('Export email error:', r.error); });
     }
     res.set('Content-Type', 'text/csv; charset=utf-8');
     res.set('Content-Disposition', `attachment; filename="Cerfa_export_${new Date().toISOString().slice(0, 10)}.csv"`);
