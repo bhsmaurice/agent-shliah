@@ -557,6 +557,13 @@ Chabbat Chalom à toute la communauté ! 🌟
 <!-- EXPORT -->
 <div class="page" id="tab-export"><div class="inner">
   <div class="card">
+    <div class="card-title">🗄️ Sauvegarde complète du bot</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Sauvegarde TOUTES les données (infos, demandes, contacts, Cerfa, etc.) dans un fichier, envoyé aussi par email. Une sauvegarde automatique tourne déjà chaque jour sur le serveur.</p>
+    <button class="btn-main" onclick="sauvegarderTout()">🗄️ Sauvegarder tout maintenant</button>
+    <div class="alert ok" id="alert-backupall-ok"></div>
+    <div class="alert err" id="alert-backupall-err"></div>
+  </div>
+  <div class="card">
     <div class="card-title">📤 Exporter mes données</div>
     <button class="btn-main" onclick="exporterInfos()">📋 Exporter les infos (CSV)</button>
     <button class="btn-secondary" onclick="exporterQuestions()">💬 Exporter les questions (CSV)</button>
@@ -978,6 +985,20 @@ function sauvegarderConfig(){const pw=document.getElementById('admin-pw-config')
 function showOk(msg){const el=document.getElementById('alert-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
 function showErr(msg){const el=document.getElementById('alert-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
 // ══ EXPORT ══
+async function sauvegarderTout(){
+  const url=getUrl(),pw=getAdminPw();
+  const okEl=document.getElementById('alert-backupall-ok'), errEl=document.getElementById('alert-backupall-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if(!url||!pw){ errEl.textContent="Configure d'abord l'adresse Railway et le mot de passe admin dans ⚙️ Config."; errEl.style.display='block'; return; }
+  try{
+    window.open(`${url}/admin/backup-complete?password=${encodeURIComponent(pw)}`,'_blank');
+    okEl.textContent='✓ Téléchargement lancé, et une copie complète a aussi été envoyée par email.';
+    okEl.style.display='block';
+  }catch(e){
+    errEl.textContent='✗ Erreur : '+e.message;
+    errEl.style.display='block';
+  }
+}
 async function exporterInfos(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Catégorie,Titre,Contenu,Instruction,Date\n';data.rawInfos.forEach(row=>{const date=new Date(row.created_at).toLocaleDateString('fr-FR');csv+=`"${row.categorie}","${(row.titre||'').replace(/"/g,'""')}","${(row.contenu||'').replace(/"/g,'""')}","${(row.instruction||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-infos-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.rawInfos.length+' infos exportées !');}catch(e){showExportErr("Erreur de connexion");}}
 async function exporterQuestions(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Téléphone,Question,Réponse,Date\n';data.conversations.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"+${row.phone}","${(row.question||'').replace(/"/g,'""')}","${(row.reponse||'').replace(/"/g,'""')}","${date}"\n`;});telecharger(csv,'shliah-questions-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.conversations.length+' questions exportées !');}catch(e){showExportErr("Erreur de connexion");}}
 async function exporterDemandes(){const url=getUrl(),pw=getAdminPw();try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok)return showExportErr(data.message);let csv='Type,Téléphone,Message,Statut,Date\n';data.demandes.forEach(row=>{const date=new Date(row.created_at).toLocaleString('fr-FR');csv+=`"${row.type}","${row.data?.phone_whatsapp||''}","${(row.data?.texte_libre||'').replace(/"/g,'""')}","${row.statut}","${date}"\n`;});telecharger(csv,'shliah-demandes-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');showExportOk('✓ '+data.demandes.length+' demandes exportées !');}catch(e){showExportErr("Erreur de connexion");}}
