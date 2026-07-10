@@ -40,7 +40,7 @@ const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
 // Envoi d'email via Resend (API HTTPS) au lieu de SMTP/nodemailer : Railway
 // bloque le SMTP sortant (port 465 ET 587 en timeout), mais l'HTTPS marche
 // toujours puisque c'est ce que le bot utilise déjà pour WhatsApp et Claude.
-async function envoyerEmail({ subject, html, attachments }) {
+async function envoyerEmail({ to, subject, html, attachments }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
     return { ok: false, error: "La variable RESEND_API_KEY n'est pas configurée sur Railway." };
@@ -48,7 +48,7 @@ async function envoyerEmail({ subject, html, attachments }) {
   try {
     const body = {
       from: 'Shliah Bot <onboarding@resend.dev>',
-      to: [RESEND_TO_EMAIL],
+      to: [to || RESEND_TO_EMAIL],
       subject,
       html,
     };
@@ -1054,6 +1054,80 @@ app.get('/admin/cerfa/export', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+// Sauvegarde complète : dump JSON de toutes les tables importantes (infos,
+// demandes, contacts, histoires, musiques, cerfa...). Utilisée à la fois par
+// le bouton manuel du panel admin et par le cron automatique quotidien.
+const TABLES_BACKUP = ['infos', 'demandes', 'contacts', 'histoires', 'musiques', 'playlistes', 'playliste_musiques', 'cerfa_counters', 'cerfa_receipts'];
+async function exporterBaseComplete() {
+  const dump = { genere_le: new Date().toISOString(), tables: {} };
+  for (const table of TABLES_BACKUP) {
+    try {
+      const result = await pool.query(`SELECT * FROM ${table}`);
+      dump.tables[table] = result.rows;
+    } catch (e) {
+      dump.tables[table] = { erreur: e.message };
+    }
+  }
+  // Les conversations peuvent devenir volumineuses : on garde les 2000 plus récentes.
+  try {
+    const conv = await pool.query('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 2000');
+    dump.tables['conversations (2000 plus récentes)'] = conv.rows;
+  } catch (e) {
+    dump.tables['conversations (2000 plus récentes)'] = { erreur: e.message };
+  }
+  return dump;
+}
+async function sauvegarderBaseComplete() {
+  const dump = await exporterBaseComplete();
+  const json = JSON.stringify(dump, null, 2);
+  const counts = Object.entries(dump.tables).map(([t, rows]) => `${t} : ${Array.isArray(rows) ? rows.length : 'erreur'}`).join('<br>');
+  const r = await envoyerEmail({
+    subject: `🗄️ Sauvegarde complète Shliah Bot — ${new Date().toLocaleDateString('fr-FR')}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🗄️ Sauvegarde complète</h2><p>Toutes les données du bot, en pièce jointe (fichier JSON).</p><p style="color:#666;font-size:13px;">${counts}</p></div>`,
+    attachments: [{ filename: `shliah-backup-${new Date().toISOString().slice(0, 10)}.json`, content: json }],
+  });
+  if (!r.ok) console.error('Backup complète email error:', r.error);
+  return { json, ok: r.ok, error: r.error };
+}
+// Cron : sauvegarde automatique tous les jours à ~3h du matin (heure de Paris),
+// tant que le serveur Railway tourne. Suit le même principe que le cron Chabbat.
+function demarrerCronBackup() {
+  setInterval(async () => {
+    const now = new Date();
+    const heuresParis = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const jour = heuresParis.getDay(), heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
+    if (heure === 3 && minute < 5) {
+      const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
+      const cacheKey = `backup_envoye_${dateAujourdhui}`;
+      if (global[cacheKey]) return;
+      global[cacheKey] = true;
+      console.log('🗄️ Sauvegarde complète automatique...');
+      await sauvegarderBaseComplete();
+    }
+  }, 5 * 60 * 1000);
+  console.log('⏰ Cron sauvegarde démarré');
+}
+app.get('/admin/backup-complete', async (req, res) => {
+  const { password, email } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const dump = await exporterBaseComplete();
+    const json = JSON.stringify(dump, null, 2);
+    if (email !== 'false') {
+      const counts = Object.entries(dump.tables).map(([t, rows]) => `${t} : ${Array.isArray(rows) ? rows.length : 'erreur'}`).join('<br>');
+      envoyerEmail({
+        subject: `🗄️ Sauvegarde complète Shliah Bot — ${new Date().toLocaleDateString('fr-FR')}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🗄️ Sauvegarde complète (manuelle)</h2><p>Toutes les données du bot, en pièce jointe (fichier JSON).</p><p style="color:#666;font-size:13px;">${counts}</p></div>`,
+        attachments: [{ filename: `shliah-backup-${new Date().toISOString().slice(0, 10)}.json`, content: json }],
+      }).then((r) => { if (!r.ok) console.error('Backup complète email error:', r.error); });
+    }
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="shliah-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.send(json);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 app.get('/admin/logo-check', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -1353,4 +1427,5 @@ const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
   demarrerCronChabbat();
+  demarrerCronBackup();
 });
