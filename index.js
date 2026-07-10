@@ -37,6 +37,11 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour l'envoi (conservé pour compat)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
+// Une fois le domaine habadsmaurice.com vérifié sur Resend, configure
+// RESEND_FROM_EMAIL sur Railway (ex: "Beth Habad S. Maurice <cerfa@habadsmaurice.com>")
+// pour pouvoir envoyer aux donateurs. Tant que ce n'est pas configuré, on
+// reste sur l'adresse de test (envoi uniquement vers soi-même).
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Shliah Bot <onboarding@resend.dev>';
 // Envoi d'email via Resend (API HTTPS) au lieu de SMTP/nodemailer : Railway
 // bloque le SMTP sortant (port 465 ET 587 en timeout), mais l'HTTPS marche
 // toujours puisque c'est ce que le bot utilise déjà pour WhatsApp et Claude.
@@ -47,7 +52,7 @@ async function envoyerEmail({ to, subject, html, attachments }) {
   }
   try {
     const body = {
-      from: 'Shliah Bot <onboarding@resend.dev>',
+      from: RESEND_FROM_EMAIL,
       to: [to || RESEND_TO_EMAIL],
       subject,
       html,
@@ -161,15 +166,15 @@ function numberToFrenchWords(n) {
 
 /**
  * Format attendu après "Admin CERFA" (une info par ligne) :
- * montant / Nom Prénom / adresse / especes|cb|cheque
+ * montant / Nom Prénom / adresse / especes|cb|cheque / email (facultatif)
  */
 function parseAdminCerfaMessage(rawText) {
   const withoutTrigger = rawText.replace(/^admin\s+cerfa/i, '').trim();
   const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 4) {
-    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque");
+    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque (+ email facultatif en 5e ligne)");
   }
-  const [montantLine, nomPrenomLine, adresseLine, modeLine] = lines;
+  const [montantLine, nomPrenomLine, adresseLine, modeLine, emailLine] = lines;
   const montantMatch = montantLine.replace(',', '.').match(/(\d+(\.\d+)?)/);
   if (!montantMatch) throw new Error(`Montant introuvable dans : "${montantLine}"`);
   const montant = parseFloat(montantMatch[1]);
@@ -182,7 +187,8 @@ function parseAdminCerfaMessage(rawText) {
   if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) mode = 'Virement, prélèvement, carte bancaire';
   else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
   else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
-  return { montant, nom, prenom, adresse, mode };
+  const email = emailLine && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLine) ? emailLine : null;
+  return { montant, nom, prenom, adresse, mode, email };
 }
 
 async function getNextCerfaNumero() {
@@ -456,10 +462,11 @@ async function handleAdminCerfaCommand(from, text) {
     const pdfBuffer = await generateCerfaPDF({ numero, ...data });
     const filename = `Cerfa_${numero}.pdf`;
     await pool.query(
-      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)`,
-      [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode]
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE,$7)`,
+      [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode, data.email]
     );
     envoyerBackupCerfa({ numero, ...data, dateVersement: new Date().toLocaleDateString('fr-FR') }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
+    envoyerCerfaDonateur({ numero, ...data }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     await sendWhatsAppDocument(from, pdfBuffer, filename);
   } catch (e) {
     await sendWhatsApp(from, `Erreur génération Cerfa : ${e.message}`);
@@ -831,6 +838,38 @@ async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode,
     attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
   });
   if (!r.ok) console.error('Backup Cerfa email error:', r.error);
+}
+// Nom convivial du mode de paiement pour le message au donateur (le champ
+// "mode" stocké est parfois un intitulé combiné pour les besoins du Cerfa).
+function modeAffichageDonateur(mode) {
+  if (!mode) return 'votre don';
+  const m = mode.toLowerCase();
+  if (m.includes('espèce')) return 'espèces';
+  if (m.includes('chèque')) return 'chèque';
+  if (m.includes('carte') || m.includes('virement') || m.includes('prélèvement')) return 'carte bancaire';
+  return mode;
+}
+// Envoie au donateur lui-même son reçu Cerfa par email (avec un mot de
+// remerciement), si son adresse email a été renseignée. Nécessite que
+// RESEND_FROM_EMAIL soit configuré avec un domaine vérifié sur Resend
+// (habadsmaurice.com) : sans ça, Resend refuse d'envoyer à quelqu'un d'autre
+// que soi-même.
+async function envoyerCerfaDonateur({ numero, nom, prenom, montant, mode, email }, pdfBuffer) {
+  if (!email) return;
+  const montantAffiche = Number(montant).toLocaleString('fr-FR');
+  const r = await envoyerEmail({
+    to: email,
+    subject: `Votre reçu fiscal — ${ASSOCIATION.nom}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:500px;line-height:1.5;">
+      <p>Bonjour ${prenom || ''} ${nom || ''},</p>
+      <p>Votre don de ${montantAffiche} € par ${modeAffichageDonateur(mode)} en faveur de l'association ${ASSOCIATION.nom} est confirmé.</p>
+      <p>Nous vous remercions chaleureusement pour votre soutien et vous souhaitons le meilleur dans tous les domaines !</p>
+      <p>Vous trouverez ci-joint votre reçu fiscal.</p>
+      <p>Si vous rencontrez des difficultés pour consulter votre reçu, n'hésitez pas à nous contacter directement.</p>
+    </div>`,
+    attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
+  });
+  if (!r.ok) console.error('Email donateur error:', r.error);
 }
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
 // ─── WEBHOOK META ─────────────────────────────────────────────
@@ -1220,6 +1259,7 @@ app.post('/admin/cerfa/generer', async (req, res) => {
       [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, dateDon, emailFinal]
     );
     envoyerBackupCerfa({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal, dateVersement, email: emailFinal }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
+    envoyerCerfaDonateur({ numero, nom: nom.trim(), prenom: prenomFinal, montant: montantNum, mode: modeFinal, email: emailFinal }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
     res.send(pdfBuffer);
