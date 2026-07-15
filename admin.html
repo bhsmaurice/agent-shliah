@@ -479,23 +479,43 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert ok" id="alert-cerfa-ok"></div>
     <div class="alert err" id="alert-cerfa-err"></div>
   </div>
-  <div class="cerfa-actions-grid">
-    <div class="card"><button class="btn-main" onclick="verifierLogo()">🔍 Vérifier le logo Beth Habad</button>
-      <div class="alert ok" id="alert-logo-ok"></div>
-      <div class="alert err" id="alert-logo-err"></div>
-    </div>
-    <div class="card"><button class="btn-main" onclick="sauvegarderCerfa()">📦 Sauvegarder tous les Cerfa</button>
-      <div class="alert ok" id="alert-backup-ok"></div>
-      <div class="alert err" id="alert-backup-err"></div>
-    </div>
-    <div class="card"><button class="btn-main" onclick="testerEmail()">✉️ Tester l'envoi d'email</button>
-      <div class="alert ok" id="alert-email-ok"></div>
-      <div class="alert err" id="alert-email-err"></div>
-    </div>
-    <div class="card"><button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button></div>
-  </div>
+  <button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
-  <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Rechercher par nom, prénom ou numéro..." oninput="afficherCerfa()"></div>
+
+  <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Recherche rapide..." oninput="afficherCerfa()"></div>
+  <div class="filter-chips" id="cerfa-search-field-chips" style="display:none">
+    <div class="chip active" data-field="tout" onclick="selectCerfaSearchField(this)">Tout</div>
+    <div class="chip" data-field="nom" onclick="selectCerfaSearchField(this)">👤 Nom / Société</div>
+    <div class="chip" data-field="montant" onclick="selectCerfaSearchField(this)">💰 Montant</div>
+    <div class="chip" data-field="email" onclick="selectCerfaSearchField(this)">✉️ Email</div>
+    <div class="chip" data-field="numero" onclick="selectCerfaSearchField(this)">🧾 N° reçu</div>
+  </div>
+
+  <div class="card" id="cerfa-advanced-wrap" style="display:none">
+    <div class="card-title" onclick="toggleCerfaAdvanced()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <span>🔎 Recherche approfondie</span><span id="cerfa-advanced-arrow">▾</span>
+    </div>
+    <div id="cerfa-advanced-panel" style="display:none;margin-top:10px;">
+      <div class="field-row">
+        <div class="field"><label>Montant min (€)</label><input type="number" id="cerfa-f-montant-min" placeholder="Ex: 0" oninput="afficherCerfa()"></div>
+        <div class="field"><label>Montant max (€)</label><input type="number" id="cerfa-f-montant-max" placeholder="Ex: 5000" oninput="afficherCerfa()"></div>
+      </div>
+      <div class="field"><label>Mode de paiement</label>
+        <div class="cat-grid">
+          <button class="cat-btn active" data-mode="tous" onclick="selectCerfaFilterMode(this)">Tous</button>
+          <button class="cat-btn" data-mode="especes" onclick="selectCerfaFilterMode(this)">💵 Espèces</button>
+          <button class="cat-btn" data-mode="cb" onclick="selectCerfaFilterMode(this)">💳 CB</button>
+          <button class="cat-btn" data-mode="cheque" onclick="selectCerfaFilterMode(this)">📝 Chèque</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Date du don — du</label><input type="date" id="cerfa-f-date-min" onchange="afficherCerfa()"></div>
+        <div class="field"><label>Date du don — au</label><input type="date" id="cerfa-f-date-max" onchange="afficherCerfa()"></div>
+      </div>
+      <button class="btn-secondary" style="margin-top:6px" onclick="reinitialiserFiltresCerfa()">↺ Réinitialiser les filtres</button>
+    </div>
+  </div>
+
   <div id="cerfa-container"></div>
 </div></div>
 <!-- CORBEILLE -->
@@ -628,6 +648,19 @@ Chabbat Chalom à toute la communauté ! 🌟
     <button class="btn-main" onclick="changerPin('admin')">🔒 Changer le PIN admin</button>
     <div class="alert ok" id="alert-pin-ok"></div>
     <div class="alert err" id="alert-pin-err"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🧾 Outils Cerfa</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Vérifications et maintenance liées aux reçus Cerfa.</p>
+    <button class="btn-secondary" style="margin-top:0" onclick="verifierLogo()">🔍 Vérifier le logo Beth Habad</button>
+    <div class="alert ok" id="alert-logo-ok"></div>
+    <div class="alert err" id="alert-logo-err"></div>
+    <button class="btn-secondary" onclick="sauvegarderCerfa()">📦 Sauvegarder tous les Cerfa</button>
+    <div class="alert ok" id="alert-backup-ok"></div>
+    <div class="alert err" id="alert-backup-err"></div>
+    <button class="btn-secondary" onclick="testerEmail()">✉️ Tester l'envoi d'email</button>
+    <div class="alert ok" id="alert-email-ok"></div>
+    <div class="alert err" id="alert-email-err"></div>
   </div>
   <div class="card">
     <div class="card-title">👤 PIN 2ème utilisateur</div>
@@ -848,6 +881,13 @@ async function supprimerDefinitif(id){if(!confirm('Supprimer définitivement ? I
 // ══ CERFA ══
 let allCerfa = [];
 let cerfaModeSelected = 'especes';
+let cerfaSearchField = 'tout';
+let cerfaFilterMode = 'tous';
+function normModePaiement(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function selectCerfaSearchField(el){document.querySelectorAll('#cerfa-search-field-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');cerfaSearchField=el.dataset.field;afficherCerfa();}
+function toggleCerfaAdvanced(){const panel=document.getElementById('cerfa-advanced-panel'),arrow=document.getElementById('cerfa-advanced-arrow');const open=panel.style.display==='block';panel.style.display=open?'none':'block';arrow.textContent=open?'▾':'▴';}
+function selectCerfaFilterMode(btn){document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaFilterMode=btn.dataset.mode;afficherCerfa();}
+function reinitialiserFiltresCerfa(){document.getElementById('cerfa-f-montant-min').value='';document.getElementById('cerfa-f-montant-max').value='';document.getElementById('cerfa-f-date-min').value='';document.getElementById('cerfa-f-date-max').value='';document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#cerfa-advanced-panel .cat-grid .cat-btn[data-mode="tous"]').classList.add('active');cerfaFilterMode='tous';afficherCerfa();}
 function selectCerfaMode(btn){document.querySelectorAll('#tab-cerfa .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaModeSelected=btn.dataset.mode;}
 async function genererCerfa(){
   const url=getUrl(),pw=getAdminPw();
@@ -885,12 +925,30 @@ async function genererCerfa(){
 }
 function afficherCerfa(){
   const search=(document.getElementById('cerfa-search-input').value||'').toLowerCase();
+  const montantMin=document.getElementById('cerfa-f-montant-min').value!==''?parseFloat(document.getElementById('cerfa-f-montant-min').value):null;
+  const montantMax=document.getElementById('cerfa-f-montant-max').value!==''?parseFloat(document.getElementById('cerfa-f-montant-max').value):null;
+  const dateMin=document.getElementById('cerfa-f-date-min').value||'';
+  const dateMax=document.getElementById('cerfa-f-date-max').value||'';
   const container=document.getElementById('cerfa-container');
   const filtered=allCerfa.filter(c=>{
-    if(!search) return true;
-    return (c.nom||'').toLowerCase().includes(search) || (c.prenom||'').toLowerCase().includes(search) || (c.numero||'').toLowerCase().includes(search) || (c.email||'').toLowerCase().includes(search);
+    if(search){
+      const nomFull=((c.nom||'')+' '+(c.prenom||'')).toLowerCase();
+      let match=false;
+      if(cerfaSearchField==='tout') match = nomFull.includes(search) || (c.numero||'').toLowerCase().includes(search) || (c.email||'').toLowerCase().includes(search) || String(c.montant||'').includes(search);
+      else if(cerfaSearchField==='nom') match = nomFull.includes(search);
+      else if(cerfaSearchField==='montant') match = String(c.montant||'').includes(search);
+      else if(cerfaSearchField==='email') match = (c.email||'').toLowerCase().includes(search);
+      else if(cerfaSearchField==='numero') match = (c.numero||'').toLowerCase().includes(search);
+      if(!match) return false;
+    }
+    if(montantMin!==null && parseFloat(c.montant||0) < montantMin) return false;
+    if(montantMax!==null && parseFloat(c.montant||0) > montantMax) return false;
+    if(cerfaFilterMode!=='tous' && normModePaiement(c.mode_paiement)!==cerfaFilterMode) return false;
+    if(dateMin && c.date_don && c.date_don.slice(0,10) < dateMin) return false;
+    if(dateMax && c.date_don && c.date_don.slice(0,10) > dateMax) return false;
+    return true;
   });
-  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">🧾</div><p>Aucun reçu</p></div>';return;}
+  if(!filtered.length){container.innerHTML=allCerfa.length?'<div class="empty"><div class="icon">🔍</div><p>Aucun résultat pour cette recherche</p></div>':'<div class="empty"><div class="icon">🧾</div><p>Aucun reçu</p></div>';return;}
   container.innerHTML='';
   filtered.forEach(c=>{
     const date=new Date(c.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -974,6 +1032,8 @@ async function chargerCerfa(){
     document.getElementById('cerfa-stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Reçus</div></div><div class="stat-box" style="grid-column:span 2;"><div class="stat-num">${totalMontant.toLocaleString('fr-FR')} €</div><div class="stat-label">Total collecté</div></div>`;
     document.getElementById('cerfa-stats').style.display='block';
     document.getElementById('cerfa-search-wrap').style.display='block';
+    document.getElementById('cerfa-search-field-chips').style.display='flex';
+    document.getElementById('cerfa-advanced-wrap').style.display='block';
     afficherCerfa();
   }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
 }
