@@ -37,8 +37,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
 .header { background: var(--navy); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.header-left { display: flex; align-items: center; gap: 10px; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+.btn-hamburger { background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 18px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .header-right { display: flex; align-items: center; gap: 10px; }
 .header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
@@ -200,6 +202,33 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   #cerfa-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-items: start; }
   #cerfa-container .demande-card { margin-bottom: 0; }
 }
+/* ══ SIDEBAR (tiroir mobile + sticky desktop, façon mockup) ══ */
+.app-layout { display: flex; align-items: flex-start; }
+.tabs { display: none; }
+.main-content { width: 100%; min-width: 0; }
+.sidebar-cta { width: 100%; padding: 13px; margin-bottom: 18px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(124,92,252,0.35); transition: all 0.15s; }
+.sidebar-cta:active { transform: scale(0.98); }
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+.sidenav-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; font-size: 15px; color: var(--muted); cursor: pointer; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+.sidenav-item .sidenav-icon { font-size: 17px; width: 20px; text-align: center; }
+.sidenav-item:hover { background: #F7F6FC; color: var(--navy); }
+.sidenav-item.active { background: #F1EEFF; color: var(--c-purple-dark); font-weight: 600; border-left-color: var(--c-purple); }
+.sidenav-item.hidden { display: none; }
+.sidebar-divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.sidebar-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.sidebar-foot .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sidebar { display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; width: 260px; max-width: 82vw; background: var(--white); padding: 18px 14px; z-index: 300; transform: translateX(-105%); transition: transform 0.25s ease; box-shadow: 4px 0 24px rgba(0,0,0,0.18); overflow-y: auto; }
+.sidebar.mobile-open { transform: translateX(0); }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 290; opacity: 0; transition: opacity 0.25s ease; }
+.sidebar-overlay.active { display: block; opacity: 1; }
+@media (min-width: 900px) {
+  .btn-hamburger { display: none; }
+  .sidebar-overlay { display: none !important; }
+  .sidebar { position: sticky; top: 61px; left: auto; height: calc(100vh - 61px); width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); transform: none; box-shadow: none; z-index: auto; }
+  .main-content { flex: 1; min-width: 0; }
+  .main-content .inner { max-width: 760px; }
+  #tab-cerfa .inner { max-width: 1040px !important; }
+}
 </style>
 </head>
 <body>
@@ -230,8 +259,11 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div id="app">
 <div class="header">
   <div class="header-left">
-    <div class="site-name">Shliah Bot 🤖</div>
-    <div class="site-sub">Panneau d'administration</div>
+    <button class="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+    <div>
+      <div class="site-name">Shliah Bot 🤖</div>
+      <div class="site-sub">Panneau d'administration</div>
+    </div>
   </div>
   <div class="header-right">
     <span class="user-badge" id="header-user-badge">Admin</span>
@@ -239,20 +271,42 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
 </div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
 <div class="tabs" id="main-tabs">
-  <div class="tab active" onclick="showTab('ajouter',this)">➕<span class="tab-label">Ajouter</span></div>
-  <div class="tab" onclick="showTab('infos',this)">📋<span class="tab-label">Infos</span></div>
-  <div class="tab" onclick="showTab('histoires',this)">📖<span class="tab-label">Histoires</span></div>
-  <div class="tab" onclick="showTab('musiques',this)">🎵<span class="tab-label">Musiques</span></div>
-  <div class="tab" onclick="showTab('contacts',this)">👥<span class="tab-label">Contacts</span></div>
-  <div class="tab" onclick="showTab('demandes',this)">📩<span class="tab-label">Demandes</span></div>
-  <div class="tab" onclick="showTab('cerfa',this)">🧾<span class="tab-label">Cerfa</span></div>
-  <div class="tab" onclick="showTab('corbeille',this)">🗑️<span class="tab-label">Corbeille</span></div>
-  <div class="tab" onclick="showTab('questions',this)">💬<span class="tab-label">Questions</span></div>
-  <div class="tab tab-admin-only" onclick="showTab('broadcast',this)">📢<span class="tab-label">Broadcast</span></div>
-  <div class="tab" onclick="showTab('export',this)">📤<span class="tab-label">Export</span></div>
-  <div class="tab tab-admin-only" onclick="showTab('config',this)">⚙️<span class="tab-label">Config</span></div>
+  <div class="tab active" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
+  <div class="tab" data-tab="infos" onclick="showTab('infos')">📋<span class="tab-label">Infos</span></div>
+  <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
+  <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
+  <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
+  <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
+  <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>
+  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
+  <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
+  <div class="tab tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="tab-label">Broadcast</span></div>
+  <div class="tab" data-tab="export" onclick="showTab('export')">📤<span class="tab-label">Export</span></div>
+  <div class="tab tab-admin-only" data-tab="config" onclick="showTab('config')">⚙️<span class="tab-label">Config</span></div>
 </div>
+<div class="app-layout">
+<div class="sidebar" id="app-sidebar">
+  <button class="sidebar-cta" onclick="showTab('cerfa')">✦ Nouveau Cerfa</button>
+  <div class="sidebar-nav">
+    <div class="sidenav-item active" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
+    <div class="sidenav-item" data-tab="infos" onclick="showTab('infos')"><span class="sidenav-icon">📋</span>Infos</div>
+    <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
+    <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
+    <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
+    <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
+    <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
+    <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
+    <div class="sidenav-item" data-tab="questions" onclick="showTab('questions')"><span class="sidenav-icon">💬</span>Questions</div>
+    <hr class="sidebar-divider">
+    <div class="sidenav-item tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')"><span class="sidenav-icon">📢</span>Broadcast</div>
+    <div class="sidenav-item" data-tab="export" onclick="showTab('export')"><span class="sidenav-icon">📤</span>Export</div>
+    <div class="sidenav-item tab-admin-only" data-tab="config" onclick="showTab('config')"><span class="sidenav-icon">⚙️</span>Config</div>
+  </div>
+  <div class="sidebar-foot"><span class="dot"></span>Shliah Bot IA · En ligne</div>
+</div>
+<div class="main-content">
 <!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
   <div class="card">
@@ -681,6 +735,8 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="alert err" id="alert-pin2-err"></div>
   </div>
 </div></div>
+</div>
+</div>
 <!-- MODAL MODIFIER INFO -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal">
@@ -768,7 +824,8 @@ let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],all
 let selectModeActive=false,selectedIds=new Set(),corbeilleSelectMode=false,corbeilleSelectedIds=new Set();
 function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,'');}
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
-function showTab(name,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');el.classList.add('active');if(name==='broadcast')loadBroadcastContacts();if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}}
+function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
+function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);if(name==='broadcast')loadBroadcastContacts();if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}}
 function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
 function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
 function selectFilter(chip){document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterCat=chip.dataset.filter;afficherInfos();}
