@@ -36,7 +36,28 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
 .switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
-.header { background: linear-gradient(120deg, var(--navy) 0%, #2A2166 55%, var(--c-purple-dark) 100%); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
+.header { background: linear-gradient(120deg, var(--navy) 0%, #2A2166 55%, var(--c-purple-dark) 100%); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
+.header-left { order: 1; }
+.header-right { order: 3; margin-left: auto; }
+.header-search-wrap { position: relative; order: 4; flex: 1 1 100%; }
+@media (min-width: 860px) { .header-search-wrap { order: 2; flex: 1 1 auto; max-width: 380px; margin: 0; } }
+.header-search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 20px; padding: 8px 12px; }
+.header-search input { flex: 1; min-width: 0; background: none; border: none; outline: none; color: #fff; font-family: 'Heebo', sans-serif; font-size: 13px; }
+.header-search input::placeholder { color: rgba(255,255,255,0.55); }
+.header-search .kbd { font-size: 10px; color: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.25); border-radius: 5px; padding: 1px 5px; flex-shrink: 0; }
+.header-search-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--white); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.22); max-height: 320px; overflow-y: auto; z-index: 120; display: none; }
+.header-search-results.active { display: block; }
+.hsr-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); padding: 10px 14px 4px; font-weight: 600; }
+.hsr-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; }
+.hsr-item:hover { background: #F7F6FC; }
+.hsr-item-icon { width: 28px; height: 28px; border-radius: 50%; background: #F1EEFF; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.hsr-item-title { font-size: 13px; color: var(--navy); font-weight: 600; }
+.hsr-item-sub { font-size: 11px; color: var(--muted); }
+.hsr-empty { padding: 14px; text-align: center; font-size: 12px; color: var(--muted); }
+.header-bell { position: relative; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+.header-bell-badge { position: absolute; top: -4px; right: -4px; background: var(--c-pink); color: #fff; font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
+.header-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+@media (max-width: 480px) { .header-hebrew { display: none; } }
 .header-left { display: flex; align-items: center; gap: 10px; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
@@ -304,10 +325,20 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="site-sub">Panneau d'administration</div>
     </div>
   </div>
+  <div class="header-search-wrap" id="header-search-wrap">
+    <div class="header-search">
+      <span>🔍</span>
+      <input type="text" id="header-search-input" placeholder="Rechercher un reçu, un contact, un montant..." oninput="rechercheGlobale()" onfocus="rechercheGlobale()">
+      <span class="kbd">⌘K</span>
+    </div>
+    <div class="header-search-results" id="header-search-results"></div>
+  </div>
   <div class="header-right">
     <button class="header-cta" onclick="showTab('cerfa')">✦ <span class="header-cta-label">Nouveau Cerfa</span></button>
+    <div class="header-bell" onclick="showTab('demandes')" title="Demandes">🔔<span class="header-bell-badge" id="header-bell-badge">0</span></div>
     <span class="user-badge" id="header-user-badge">Admin</span>
     <span class="header-hebrew">בית חב"ד</span>
+    <div class="header-avatar" id="header-avatar">A</div>
     <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
 </div>
@@ -562,9 +593,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="cerfa-main">
   <div class="card">
     <div class="card-title">🧾 Générer un reçu Cerfa</div>
+    <div class="field"><label>Type de donateur</label>
+      <div class="cat-grid" id="cerfa-type-grid" style="grid-template-columns:1fr 1fr;">
+        <button class="cat-btn active" data-type="perso" onclick="selectCerfaType(this)">👤 Particulier</button>
+        <button class="cat-btn" data-type="societe" onclick="selectCerfaType(this)">🏢 Société</button>
+      </div>
+    </div>
     <div class="field-row">
-      <div class="field"><label>Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
-      <div class="field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
+      <div class="field"><label id="cerfa-nom-label">Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
+      <div class="field" id="cerfa-prenom-field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
     </div>
     <div class="field"><label>Adresse complète</label><input type="text" id="cerfa-adresse" placeholder="Ex: 4 rue d'Avignon, 94700 Maisons-Alfort"></div>
     <div class="field-row">
@@ -856,9 +893,15 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="modal-handle"></div>
     <div class="modal-title">✏️ Modifier le reçu Cerfa</div>
     <input type="hidden" id="edit-c-id">
+    <div class="field"><label>Type de donateur</label>
+      <div class="cat-grid" id="edit-c-type-grid" style="grid-template-columns:1fr 1fr;">
+        <button class="cat-btn active" data-type="perso" onclick="selectEditCerfaType(this)">👤 Particulier</button>
+        <button class="cat-btn" data-type="societe" onclick="selectEditCerfaType(this)">🏢 Société</button>
+      </div>
+    </div>
     <div class="field-row">
-      <div class="field"><label>Nom</label><input type="text" id="edit-c-nom"></div>
-      <div class="field"><label>Prénom</label><input type="text" id="edit-c-prenom"></div>
+      <div class="field"><label id="edit-c-nom-label">Nom</label><input type="text" id="edit-c-nom"></div>
+      <div class="field" id="edit-c-prenom-field"><label>Prénom</label><input type="text" id="edit-c-prenom"></div>
     </div>
     <div class="field"><label>Adresse complète</label><input type="text" id="edit-c-adresse"></div>
     <div class="field-row">
@@ -917,7 +960,7 @@ function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElem
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
-function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}}
+function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
 function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
 function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 // ══ UTILS ══
@@ -1031,7 +1074,7 @@ function toggleSelectDemande(id,cb){if(cb.checked)selectedIds.add(id);else selec
 function updateSelectCount(){document.getElementById('demandes-select-count').textContent=selectedIds.size+' sélectionnée(s)';}
 async function corbeilleSelection(){if(!selectedIds.size)return;if(!confirm(`Mettre ${selectedIds.size} demande(s) à la corbeille ?`))return;const url=getUrl(),pw=getAdminPw();for(const id of selectedIds){try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';}catch(e){}}annulerSelection();afficherDemandes();}
 function afficherDemandes(){const container=document.getElementById('demandes-container');let filtered=allDemandes.filter(d=>d.statut!=='corbeille');if(['nouveau','en_cours','urgent','termine'].includes(filterDemande))filtered=filtered.filter(d=>d.statut===filterDemande);else if(filterDemande!=='tous')filtered=filtered.filter(d=>d.type===filterDemande);if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">📭</div><p>Aucune demande</p></div>';return;}container.innerHTML='';const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;margin-bottom:10px;';btnRow.innerHTML='<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelection()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionner()">✅ Tout sélectionner</button>';container.appendChild(btnRow);filtered.forEach(d=>{const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const data=d.data||{},texte=data.texte_libre||JSON.stringify(data,null,2),phoneWa=data.phone_whatsapp||('+'+d.phone);const el=document.createElement('div');el.className='demande-card';el.id='demande-'+d.id;el.innerHTML=`<input type="checkbox" class="demande-checkbox" onchange="toggleSelectDemande(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="mettreCorbeille(${d.id})">🗑️</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${phoneWa.replace('+','')}')">${phoneWa}</span></div><div class="demande-texte">${texte}</div><div class="demande-statut-row"><select class="statut-select" onchange="changerStatut(${d.id},this.value)"><option value="nouveau" ${d.statut==='nouveau'?'selected':''}>🔴 Nouveau</option><option value="en_cours" ${d.statut==='en_cours'?'selected':''}>🟡 En cours</option><option value="urgent" ${d.statut==='urgent'?'selected':''}>🔥 Urgent</option><option value="termine" ${d.statut==='termine'?'selected':''}>✅ Terminé</option></select></div>`;container.appendChild(el);});}
-async function chargerDemandes(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('demandes-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allDemandes=data.demandes||[];const actives=allDemandes.filter(d=>d.statut!=='corbeille'),nouveaux=actives.filter(d=>d.statut==='nouveau').length,termines=actives.filter(d=>d.statut==='termine').length;document.getElementById('stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${actives.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-num">${nouveaux}</div><div class="stat-label">Nouveaux</div></div><div class="stat-box"><div class="stat-num">${termines}</div><div class="stat-label">Terminés</div></div>`;document.getElementById('demandes-stats').style.display='block';document.getElementById('demandes-filter-chips').style.display='flex';afficherDemandes();}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+async function chargerDemandes(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('demandes-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allDemandes=data.demandes||[];const actives=allDemandes.filter(d=>d.statut!=='corbeille'),nouveaux=actives.filter(d=>d.statut==='nouveau').length,termines=actives.filter(d=>d.statut==='termine').length;document.getElementById('stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${actives.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-num">${nouveaux}</div><div class="stat-label">Nouveaux</div></div><div class="stat-box"><div class="stat-num">${termines}</div><div class="stat-label">Terminés</div></div>`;const bellBadge=document.getElementById('header-bell-badge');if(bellBadge){bellBadge.textContent=nouveaux;bellBadge.style.display=nouveaux>0?'flex':'none';}document.getElementById('demandes-stats').style.display='block';document.getElementById('demandes-filter-chips').style.display='flex';afficherDemandes();}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
 async function changerStatut(id,statut){const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut=statut;}catch(e){}}
 async function mettreCorbeille(id){if(!confirm('Mettre à la corbeille ?'))return;const url=getUrl(),pw=getAdminPw();try{await fetch(url+'/admin/demandes/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut:'corbeille'})});const d=allDemandes.find(x=>x.id===id);if(d)d.statut='corbeille';afficherDemandes();}catch(e){alert('Erreur');}}
 async function chargerCorbeille(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('corbeille-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}const corbeille=(data.demandes||[]).filter(d=>d.statut==='corbeille');allDemandes=data.demandes||[];if(!corbeille.length){container.innerHTML='<div class="empty"><div class="icon">🗑️</div><p>La corbeille est vide</p></div>';return;}container.innerHTML='';const actionsDiv=document.createElement('div');actionsDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px;';actionsDiv.innerHTML=`<button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionCorbeille()">☑️ Sélection multiple</button><button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerCorbeille()">✅ Tout sélectionner</button><button class="btn-danger" style="margin:0;flex:1;" onclick="viderCorbeille()">🗑️ Vider</button>`;container.appendChild(actionsDiv);corbeille.forEach(d=>{const date=new Date(d.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const data2=d.data||{},texte=data2.texte_libre||JSON.stringify(data2,null,2),phoneWa=data2.phone_whatsapp||('+'+d.phone);const el=document.createElement('div');el.className='corbeille-card';el.id='corbeille-'+d.id;el.innerHTML=`<input type="checkbox" class="corbeille-checkbox" onchange="toggleSelectCorbeille(${d.id},this)"><div class="demande-header"><span class="demande-type ${typeBadgeClass(d.type)}">${typeLabel(d.type)}</span><span class="demande-date">${date}</span></div><div class="demande-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${phoneWa.replace('+','')}')">${phoneWa}</span></div><div class="demande-texte">${texte}</div><div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);"><button class="btn-restore" onclick="restaurerDemande(${d.id})">♻️ Restaurer</button><button class="btn-delete-perm" onclick="supprimerDefinitif(${d.id})">🗑️ Supprimer</button></div>`;container.appendChild(el);});}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
@@ -1047,6 +1090,17 @@ async function supprimerDefinitif(id){if(!confirm('Supprimer définitivement ? I
 // ══ CERFA ══
 let allCerfa = [];
 let cerfaModeSelected = 'especes';
+let cerfaTypeSelected = 'perso';
+function selectCerfaType(btn){
+  document.querySelectorAll('#cerfa-type-grid .cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  cerfaTypeSelected=btn.dataset.type;
+  const isSociete=cerfaTypeSelected==='societe';
+  document.getElementById('cerfa-nom-label').textContent=isSociete?'Nom de la société':'Nom';
+  document.getElementById('cerfa-nom').placeholder=isSociete?'Ex: Editions26':'Ex: Cohen';
+  document.getElementById('cerfa-prenom-field').style.display=isSociete?'none':'';
+  if(isSociete)document.getElementById('cerfa-prenom').value='';
+}
 let cerfaSearchField = 'tout';
 let cerfaFilterMode = 'tous';
 function normModePaiement(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
@@ -1085,6 +1139,7 @@ async function genererCerfa(){
     const a=document.createElement('a');a.href=dlUrl;a.download=filename;a.click();URL.revokeObjectURL(dlUrl);
     okEl.textContent='✓ Cerfa généré et téléchargé !';okEl.className='alert ok';okEl.style.display='block';
     document.getElementById('cerfa-nom').value='';document.getElementById('cerfa-prenom').value='';document.getElementById('cerfa-adresse').value='';document.getElementById('cerfa-email').value='';document.getElementById('cerfa-montant').value='';document.getElementById('cerfa-date').value=new Date().toISOString().slice(0,10);
+    document.querySelectorAll('#cerfa-type-grid .cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#cerfa-type-grid .cat-btn[data-type="perso"]').classList.add('active');cerfaTypeSelected='perso';document.getElementById('cerfa-nom-label').textContent='Nom';document.getElementById('cerfa-prenom-field').style.display='';
     chargerCerfa();
   }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
   btn.disabled=false;btn.textContent='✦ Générer le Cerfa';
@@ -1124,9 +1179,18 @@ function afficherCerfa(){
     el.id='cerfa-'+c.id;
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
+    const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
+    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
+}
+function selectEditCerfaType(btn){
+  document.querySelectorAll('#edit-c-type-grid .cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const isSociete=btn.dataset.type==='societe';
+  document.getElementById('edit-c-nom-label').textContent=isSociete?'Nom de la société':'Nom';
+  document.getElementById('edit-c-prenom-field').style.display=isSociete?'none':'';
+  if(isSociete)document.getElementById('edit-c-prenom').value='';
 }
 function ouvrirModifierCerfa(id){
   const c=allCerfa.find(x=>x.id===id);
@@ -1134,6 +1198,10 @@ function ouvrirModifierCerfa(id){
   document.getElementById('edit-c-id').value=c.id;
   document.getElementById('edit-c-nom').value=c.nom||'';
   document.getElementById('edit-c-prenom').value=(c.prenom&&c.prenom.trim()!=='-')?c.prenom:'';
+  const estSociete=!c.prenom||c.prenom.trim()===''||c.prenom.trim()==='-';
+  document.querySelectorAll('#edit-c-type-grid .cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===(estSociete?'societe':'perso')));
+  document.getElementById('edit-c-nom-label').textContent=estSociete?'Nom de la société':'Nom';
+  document.getElementById('edit-c-prenom-field').style.display=estSociete?'none':'';
   document.getElementById('edit-c-adresse').value=c.adresse||'';
   document.getElementById('edit-c-email').value=c.email||'';
   document.getElementById('edit-c-montant').value=c.montant||'';
@@ -1304,6 +1372,26 @@ async function telechargerCerfa(id){
     const filename=match?match[1]:'Cerfa.pdf';
     const dlUrl=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=dlUrl;a.download=filename;a.click();URL.revokeObjectURL(dlUrl);
+  }catch(e){alert('Erreur de connexion');}
+}
+async function partagerCerfaWhatsapp(id){
+  const c=allCerfa.find(x=>x.id===id);
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    const res=await fetch(url+'/admin/cerfa/'+id+'/pdf?password='+encodeURIComponent(pw));
+    if(!res.ok){alert('Erreur : reçu introuvable');return;}
+    const blob=await res.blob();
+    const filename=`Cerfa_${c?c.numero:id}.pdf`;
+    const texte=c?`Reçu Cerfa ${c.numero} — ${parseFloat(c.montant||0).toLocaleString('fr-FR')} €`:'Reçu Cerfa';
+    const file=new File([blob],filename,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:filename,text:texte});
+    }else{
+      const dlUrl=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=dlUrl;a.download=filename;a.click();URL.revokeObjectURL(dlUrl);
+      alert('Le PDF a été téléchargé. WhatsApp Web ne permet pas de joindre un fichier automatiquement : ouvre WhatsApp puis joins le fichier téléchargé.');
+      window.open('https://wa.me/?text='+encodeURIComponent(texte),'_blank');
+    }
   }catch(e){alert('Erreur de connexion');}
 }
 // ══ CONVERSATIONS ══
@@ -1677,6 +1765,51 @@ function setBroadcastMode(mode){broadcastMode=mode;document.getElementById('form
 function updateApercu(){const p=document.getElementById('bc-paracha').value||'[Paracha]';const d=document.getElementById('bc-date').value||'[Date]';const e=document.getElementById('bc-entree').value||'[Heure entrée]';const s=document.getElementById('bc-sortie').value||'[Heure sortie]';document.getElementById('apercu-chabbat').textContent=`🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${p}\nDate : ${d}\n\nEntrée de Chabbat : ${e}\nSortie de Chabbat : ${s}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;}
 async function envoyerContactUnique(){const url=getUrl(),pw=getAdminPw();const phone=document.getElementById('bc-phone-unique').value.trim();const message=document.getElementById('bc-message-unique').value.trim();const imageUrl=document.getElementById('bc-image-unique').value.trim()||null;const okEl=document.getElementById('unique-result-ok'),errEl=document.getElementById('unique-result-err');const btn=document.getElementById('btn-envoyer-unique');okEl.style.display='none';errEl.style.display='none';if(!phone){errEl.textContent='Entre un numéro de téléphone';errEl.style.display='block';return;}if(!message&&!imageUrl){errEl.textContent='Écris un message ou ajoute une image';errEl.style.display='block';return;}if(!confirm(`Envoyer à ${phone} ?`))return;btn.disabled=true;btn.textContent='⏳ Envoi...';try{const payload={password:pw,mode:'libre',texte_libre:message||' ',image_url:imageUrl,phone_unique:phone};const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok&&d.envoyes>0){okEl.textContent='✅ Envoyé !';okEl.style.display='block';document.getElementById('bc-phone-unique').value='';document.getElementById('bc-message-unique').value='';document.getElementById('bc-image-unique').value='';}else{errEl.textContent='❌ '+(d.message||"Erreur d'envoi");errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer';}
 async function envoyerBroadcast(){const url=getUrl(),pw=getAdminPw();const okEl=document.getElementById('broadcast-result-ok'),errEl=document.getElementById('broadcast-result-err');const btn=document.getElementById('btn-broadcast');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.style.display='block';return;}if(!confirm('Envoyer ce message à TOUS les contacts du bot ?'))return;btn.disabled=true;btn.textContent='⏳ Envoi en cours...';const payload={password:pw,mode:broadcastMode};if(broadcastMode==='chabbat'){payload.paracha=document.getElementById('bc-paracha').value;payload.date=document.getElementById('bc-date').value;payload.entree=document.getElementById('bc-entree').value;payload.sortie=document.getElementById('bc-sortie').value;if(!payload.paracha||!payload.date||!payload.entree||!payload.sortie){errEl.textContent='Remplis tous les champs !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}}else{payload.texte_libre=document.getElementById('bc-texte-libre').value;payload.image_url=document.getElementById('bc-image-url').value.trim()||null;if(!payload.texte_libre.trim()&&!payload.image_url){errEl.textContent='Écris un message ou ajoute une image !';errEl.style.display='block';btn.disabled=false;btn.textContent='📤 Envoyer à tous';return;}if(!payload.texte_libre.trim())payload.texte_libre=' ';}try{const r=await fetch(url+'/admin/broadcast/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(d.ok){okEl.textContent=`✅ ${d.envoyes} messages envoyés sur ${d.total} contacts${d.erreurs>0?' ('+d.erreurs+' erreurs)':''}.`;okEl.style.display='block';}else{errEl.textContent='❌ '+d.message;errEl.style.display='block';}}catch(e){errEl.textContent='❌ Erreur réseau : '+e.message;errEl.style.display='block';}btn.disabled=false;btn.textContent='📤 Envoyer à tous';}
+function rechercheGlobale(){
+  const q=(document.getElementById('header-search-input').value||'').trim().toLowerCase();
+  const box=document.getElementById('header-search-results');
+  if(q.length<2){box.classList.remove('active');box.innerHTML='';return;}
+  let html='';
+  const cerfaMatches=(typeof allCerfa!=='undefined'?allCerfa:[]).filter(c=>((c.nom||'')+' '+(c.prenom||'')).toLowerCase().includes(q)||(c.numero||'').toLowerCase().includes(q)||String(c.montant||'').includes(q)).slice(0,5);
+  const contactMatches=(typeof allContacts!=='undefined'?allContacts:[]).filter(c=>(c.phone||'').includes(q)).slice(0,5);
+  if(cerfaMatches.length){
+    html+='<div class="hsr-group-label">🧾 Reçus Cerfa</div>';
+    cerfaMatches.forEach(c=>{
+      const nom=`${c.prenom&&c.prenom!=='-'?c.prenom+' ':''}${c.nom||''}`;
+      html+=`<div class="hsr-item" onclick="allerVersCerfaDepuisRecherche('${c.numero}')"><div class="hsr-item-icon">🧾</div><div><div class="hsr-item-title">${c.numero} — ${nom}</div><div class="hsr-item-sub">${parseFloat(c.montant||0).toLocaleString('fr-FR')} €</div></div></div>`;
+    });
+  }
+  if(contactMatches.length){
+    html+='<div class="hsr-group-label">👥 Contacts</div>';
+    contactMatches.forEach(c=>{
+      html+=`<div class="hsr-item" onclick="allerVersContactDepuisRecherche('${c.phone}')"><div class="hsr-item-icon">👤</div><div><div class="hsr-item-title">+${c.phone}</div><div class="hsr-item-sub">${c.nb_messages||0} messages</div></div></div>`;
+    });
+  }
+  if(!html)html='<div class="hsr-empty">Aucun résultat. Astuce : ouvre d\'abord l\'onglet Cerfa ou Contacts pour charger les données.</div>';
+  box.innerHTML=html;
+  box.classList.add('active');
+}
+function selectCerfaSearchFieldByKey(key){const chip=document.querySelector('#cerfa-search-field-chips .chip[data-field="'+key+'"]');if(chip)selectCerfaSearchField(chip);}
+function allerVersCerfaDepuisRecherche(numero){
+  document.getElementById('header-search-results').classList.remove('active');
+  document.getElementById('header-search-input').value='';
+  showTab('cerfa');
+  setTimeout(()=>{const inp=document.getElementById('cerfa-search-input');if(inp){inp.value=numero;selectCerfaSearchFieldByKey('numero');afficherCerfa();}},50);
+}
+function allerVersContactDepuisRecherche(phone){
+  document.getElementById('header-search-results').classList.remove('active');
+  document.getElementById('header-search-input').value='';
+  showTab('contacts');
+  setTimeout(()=>{const el=document.getElementById('contact-'+phone);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.boxShadow='0 0 0 2px var(--c-purple)';setTimeout(()=>{el.style.boxShadow='';},2000);}},150);
+}
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();const inp=document.getElementById('header-search-input');if(inp)inp.focus();}
+  if(e.key==='Escape'){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
+});
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('header-search-wrap');
+  if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
+});
 function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
 </script>
