@@ -178,6 +178,20 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .histoire-card .histoire-image { font-size: 11px; color: var(--green); margin-top: 6px; }
 .histoire-card .histoire-date { font-size: 11px; color: var(--muted); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
 .histoire-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+/* ══ CERFA — mise en page responsive (mobile empilé, desktop en colonnes) ══ */
+.field-row { display: block; }
+.field-row .field { margin-bottom: 14px; }
+.cerfa-actions-grid { display: block; }
+.cerfa-actions-grid .card { margin-bottom: 14px; }
+@media (min-width: 860px) {
+  #tab-cerfa .inner { max-width: 1040px; }
+  .field-row { display: flex; gap: 14px; }
+  .field-row .field { flex: 1; margin-bottom: 14px; }
+  .cerfa-actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .cerfa-actions-grid .card { margin-bottom: 0; }
+  #cerfa-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-items: start; }
+  #cerfa-container .demande-card { margin-bottom: 0; }
+}
 </style>
 </head>
 <body>
@@ -444,11 +458,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="page" id="tab-cerfa"><div class="inner">
   <div class="card">
     <div class="card-title">🧾 Générer un reçu Cerfa</div>
-    <div class="field"><label>Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
-    <div class="field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
+    <div class="field-row">
+      <div class="field"><label>Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
+      <div class="field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
+    </div>
     <div class="field"><label>Adresse complète</label><input type="text" id="cerfa-adresse" placeholder="Ex: 4 rue d'Avignon, 94700 Maisons-Alfort"></div>
-    <div class="field"><label>Email (facultatif)</label><input type="email" id="cerfa-email" placeholder="Ex: israel.cohen@email.com"></div>
-    <div class="field"><label>Montant (€)</label><input type="number" id="cerfa-montant" placeholder="Ex: 1000"></div>
+    <div class="field-row">
+      <div class="field"><label>Email (facultatif)</label><input type="email" id="cerfa-email" placeholder="Ex: israel.cohen@email.com"></div>
+      <div class="field"><label>Montant (€)</label><input type="number" id="cerfa-montant" placeholder="Ex: 1000"></div>
+    </div>
     <div class="field"><label>Date du don</label><input type="date" id="cerfa-date"></div>
     <div class="field"><label>Mode de paiement</label>
       <div class="cat-grid">
@@ -461,19 +479,21 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert ok" id="alert-cerfa-ok"></div>
     <div class="alert err" id="alert-cerfa-err"></div>
   </div>
-  <div class="card"><button class="btn-main" onclick="verifierLogo()">🔍 Vérifier le logo Beth Habad</button>
-    <div class="alert ok" id="alert-logo-ok"></div>
-    <div class="alert err" id="alert-logo-err"></div>
+  <div class="cerfa-actions-grid">
+    <div class="card"><button class="btn-main" onclick="verifierLogo()">🔍 Vérifier le logo Beth Habad</button>
+      <div class="alert ok" id="alert-logo-ok"></div>
+      <div class="alert err" id="alert-logo-err"></div>
+    </div>
+    <div class="card"><button class="btn-main" onclick="sauvegarderCerfa()">📦 Sauvegarder tous les Cerfa</button>
+      <div class="alert ok" id="alert-backup-ok"></div>
+      <div class="alert err" id="alert-backup-err"></div>
+    </div>
+    <div class="card"><button class="btn-main" onclick="testerEmail()">✉️ Tester l'envoi d'email</button>
+      <div class="alert ok" id="alert-email-ok"></div>
+      <div class="alert err" id="alert-email-err"></div>
+    </div>
+    <div class="card"><button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button></div>
   </div>
-  <div class="card"><button class="btn-main" onclick="sauvegarderCerfa()">📦 Sauvegarder tous les Cerfa</button>
-    <div class="alert ok" id="alert-backup-ok"></div>
-    <div class="alert err" id="alert-backup-err"></div>
-  </div>
-  <div class="card"><button class="btn-main" onclick="testerEmail()">✉️ Tester l'envoi d'email</button>
-    <div class="alert ok" id="alert-email-ok"></div>
-    <div class="alert err" id="alert-email-err"></div>
-  </div>
-  <div class="card"><button class="btn-main" onclick="chargerCerfa()">🔄 Charger les Cerfa</button></div>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
   <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Rechercher par nom, prénom ou numéro..." oninput="afficherCerfa()"></div>
   <div id="cerfa-container"></div>
@@ -879,7 +899,8 @@ function afficherCerfa(){
     el.className='demande-card';
     el.id='cerfa-'+c.id;
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${c.prenom||''} ${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
+    const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
+    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
 }
