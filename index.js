@@ -166,15 +166,16 @@ function numberToFrenchWords(n) {
 
 /**
  * Format attendu après "Admin CERFA" (une info par ligne) :
- * montant / Nom Prénom / adresse / especes|cb|cheque / email (facultatif)
+ * montant / Nom Prénom / adresse / especes|cb|cheque / (email et/ou date, facultatifs, dans n'importe quel ordre)
+ * La date, si fournie, doit être au format JJ/MM/AAAA. Sinon la date du jour est utilisée.
  */
 function parseAdminCerfaMessage(rawText) {
   const withoutTrigger = rawText.replace(/^admin\s+cerfa/i, '').trim();
   const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 4) {
-    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque (+ email facultatif en 5e ligne)");
+    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque (+ email et/ou date JJ/MM/AAAA facultatifs, dans n'importe quel ordre)");
   }
-  const [montantLine, nomPrenomLine, adresseLine, modeLine, emailLine] = lines;
+  const [montantLine, nomPrenomLine, adresseLine, modeLine, ...extraLines] = lines;
   const montantMatch = montantLine.replace(',', '.').match(/(\d+(\.\d+)?)/);
   if (!montantMatch) throw new Error(`Montant introuvable dans : "${montantLine}"`);
   const montant = parseFloat(montantMatch[1]);
@@ -187,8 +188,26 @@ function parseAdminCerfaMessage(rawText) {
   if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) mode = 'Virement, prélèvement, carte bancaire';
   else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
   else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
-  const email = emailLine && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLine) ? emailLine : null;
-  return { montant, nom, prenom, adresse, mode, email };
+
+  // Les lignes restantes (facultatives) peuvent être l'email et/ou la date,
+  // dans n'importe quel ordre. On détecte chacune par son format.
+  let email = null;
+  let dateDon = null; // format YYYY-MM-DD, prêt pour la base de données
+  for (const line of extraLines) {
+    if (!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
+      email = line;
+      continue;
+    }
+    const dateMatch = line.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (!dateDon && dateMatch) {
+      const [, jour, moisNum, annee] = dateMatch;
+      const j = jour.padStart(2, '0'), m = moisNum.padStart(2, '0');
+      dateDon = `${annee}-${m}-${j}`;
+      continue;
+    }
+  }
+
+  return { montant, nom, prenom, adresse, mode, email, dateDon };
 }
 
 async function getNextCerfaNumero() {
@@ -459,13 +478,16 @@ async function handleAdminCerfaCommand(from, text) {
   try {
     const data = parseAdminCerfaMessage(text);
     const numero = await getNextCerfaNumero();
-    const pdfBuffer = await generateCerfaPDF({ numero, ...data });
+    // date fournie (JJ/MM/AAAA -> YYYY-MM-DD) sinon date du jour
+    const dateDon = data.dateDon || new Date().toISOString().slice(0, 10);
+    const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
+    const pdfBuffer = await generateCerfaPDF({ numero, ...data, dateVersement });
     const filename = `Cerfa_${numero}.pdf`;
     await pool.query(
-      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE,$7)`,
-      [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode, data.email]
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode, dateDon, data.email]
     );
-    envoyerBackupCerfa({ numero, ...data, dateVersement: new Date().toLocaleDateString('fr-FR') }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
+    envoyerBackupCerfa({ numero, ...data, dateVersement }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
     envoyerCerfaDonateur({ numero, ...data }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     await sendWhatsAppDocument(from, pdfBuffer, filename);
   } catch (e) {
