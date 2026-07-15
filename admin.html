@@ -850,6 +850,37 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="alert err" id="alert-edit-h-err"></div>
   </div>
 </div>
+<!-- MODAL MODIFIER CERFA -->
+<div class="modal-overlay" id="modal-cerfa" onclick="closeModalCerfa(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Modifier le reçu Cerfa</div>
+    <input type="hidden" id="edit-c-id">
+    <div class="field-row">
+      <div class="field"><label>Nom</label><input type="text" id="edit-c-nom"></div>
+      <div class="field"><label>Prénom</label><input type="text" id="edit-c-prenom"></div>
+    </div>
+    <div class="field"><label>Adresse complète</label><input type="text" id="edit-c-adresse"></div>
+    <div class="field-row">
+      <div class="field"><label>Email (facultatif)</label><input type="email" id="edit-c-email"></div>
+      <div class="field"><label>Montant (€)</label><input type="number" id="edit-c-montant"></div>
+    </div>
+    <div class="field"><label>Date du don</label><input type="date" id="edit-c-date"></div>
+    <div class="field"><label>Mode de paiement</label>
+      <div class="cat-grid" id="edit-c-mode-grid">
+        <button class="cat-btn" data-mode="especes" onclick="selectEditCerfaMode(this)">💵 Espèces</button>
+        <button class="cat-btn" data-mode="cb" onclick="selectEditCerfaMode(this)">💳 CB</button>
+        <button class="cat-btn" data-mode="cheque" onclick="selectEditCerfaMode(this)">📝 Chèque</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalCerfa()">Annuler</button>
+      <button class="modal-save" onclick="sauvegarderModifCerfa()">💾 Sauvegarder</button>
+    </div>
+    <div class="alert ok" id="alert-edit-c-ok"></div>
+    <div class="alert err" id="alert-edit-c-err"></div>
+  </div>
+</div>
 <!-- MODAL ENVOI RAPIDE (depuis numéro de téléphone) -->
 <div class="modal-overlay" id="modal-envoi-rapide" onclick="closeModalEnvoiRapide(event)">
   <div class="modal">
@@ -1093,9 +1124,66 @@ function afficherCerfa(){
     el.id='cerfa-'+c.id;
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})">🗑️</button><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
+    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">👤 ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
+}
+function ouvrirModifierCerfa(id){
+  const c=allCerfa.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('edit-c-id').value=c.id;
+  document.getElementById('edit-c-nom').value=c.nom||'';
+  document.getElementById('edit-c-prenom').value=(c.prenom&&c.prenom.trim()!=='-')?c.prenom:'';
+  document.getElementById('edit-c-adresse').value=c.adresse||'';
+  document.getElementById('edit-c-email').value=c.email||'';
+  document.getElementById('edit-c-montant').value=c.montant||'';
+  document.getElementById('edit-c-date').value=c.date_don?c.date_don.slice(0,10):'';
+  const mode=normModePaiement(c.mode_paiement);
+  const activeMode=['especes','cb','cheque'].includes(mode)?mode:'especes';
+  document.querySelectorAll('#edit-c-mode-grid .cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===activeMode));
+  document.getElementById('alert-edit-c-ok').style.display='none';
+  document.getElementById('alert-edit-c-err').style.display='none';
+  document.getElementById('modal-cerfa').classList.add('active');
+}
+function selectEditCerfaMode(btn){document.querySelectorAll('#edit-c-mode-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function fermerModalCerfa(){document.getElementById('modal-cerfa').classList.remove('active');}
+function closeModalCerfa(e){if(e.target.id==='modal-cerfa')fermerModalCerfa();}
+async function sauvegarderModifCerfa(){
+  const url=getUrl(),pw=getAdminPw();
+  const id=document.getElementById('edit-c-id').value;
+  const nom=document.getElementById('edit-c-nom').value.trim();
+  const prenom=document.getElementById('edit-c-prenom').value.trim();
+  const adresse=document.getElementById('edit-c-adresse').value.trim();
+  const email=document.getElementById('edit-c-email').value.trim();
+  const montant=document.getElementById('edit-c-montant').value.trim();
+  const date=document.getElementById('edit-c-date').value;
+  const modeBtn=document.querySelector('#edit-c-mode-grid .cat-btn.active');
+  const mode=modeBtn?modeBtn.dataset.mode:'especes';
+  const okEl=document.getElementById('alert-edit-c-ok'),errEl=document.getElementById('alert-edit-c-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!nom||!adresse||!montant||!date){errEl.textContent='Nom, adresse, montant et date obligatoires';errEl.style.display='block';return;}
+  try{
+    const res=await fetch(url+'/admin/cerfa/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,nom,prenom,adresse,email,montant,mode,date})});
+    const data=await res.json();
+    if(data.ok){
+      const idx=allCerfa.findIndex(c=>c.id==id);
+      if(idx!==-1)allCerfa[idx]=data.receipt;
+      fermerModalCerfa();
+      mettreAJourApercuCerfa();
+      afficherCerfa();
+    }else{errEl.textContent=data.message||'Erreur';errEl.style.display='block';}
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.style.display='block';}
+}
+async function renvoyerCerfa(id){
+  const c=allCerfa.find(x=>x.id===id);
+  if(!c||!c.email)return;
+  if(!confirm(`Renvoyer le reçu ${c.numero} par email à ${c.email} ?`))return;
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    const res=await fetch(url+'/admin/cerfa/'+id+'/renvoyer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const data=await res.json();
+    alert(data.ok?('✓ '+data.message):('✗ '+(data.message||'Erreur')));
+  }catch(e){alert('Erreur de connexion');}
 }
 async function sauvegarderCerfa(){
   const url=getUrl(),pw=getAdminPw();
