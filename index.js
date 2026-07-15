@@ -1258,6 +1258,49 @@ app.delete('/admin/cerfa/:id', async (req, res) => {
   await pool.query('DELETE FROM cerfa_receipts WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé" });
 });
+app.put('/admin/cerfa/:id', async (req, res) => {
+  const { password, nom, prenom, adresse, montant, mode, date, email } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!nom || !adresse || !montant || !date) return res.status(400).json({ ok: false, message: "Nom, adresse, montant et date requis" });
+  try {
+    const montantNum = parseFloat(String(montant).replace(',', '.'));
+    if (isNaN(montantNum)) return res.status(400).json({ ok: false, message: "Montant invalide" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, message: "Date invalide" });
+    const modeLower = (mode || '').toLowerCase();
+    let modeFinal = "Remise d'espèces";
+    if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) modeFinal = 'Virement, prélèvement, carte bancaire';
+    else if (/ch[eè]que/.test(modeLower)) modeFinal = 'Chèque';
+    const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
+    const emailFinal = email && email.trim() ? email.trim() : null;
+    const result = await pool.query(
+      `UPDATE cerfa_receipts SET nom=$1, prenom=$2, adresse=$3, montant=$4, mode_paiement=$5, date_don=$6, email=$7 WHERE id=$8 RETURNING *`,
+      [nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, date, emailFinal, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ ok: false, message: "Reçu introuvable" });
+    res.json({ ok: true, message: "Reçu mis à jour", receipt: result.rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+app.post('/admin/cerfa/:id/renvoyer', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false, message: "Reçu introuvable" });
+    const r = result.rows[0];
+    if (!r.email) return res.status(400).json({ ok: false, message: "Aucun email renseigné pour ce reçu" });
+    const dateVersement = new Date(r.date_don).toLocaleDateString('fr-FR');
+    const pdfBuffer = await generateCerfaPDF({
+      numero: r.numero, nom: r.nom, prenom: r.prenom, adresse: r.adresse,
+      montant: parseFloat(r.montant), mode: r.mode_paiement, dateVersement,
+    });
+    await envoyerCerfaDonateur({ numero: r.numero, nom: r.nom, prenom: r.prenom, montant: parseFloat(r.montant), mode: r.mode_paiement, email: r.email }, pdfBuffer);
+    res.json({ ok: true, message: `Reçu renvoyé à ${r.email}` });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 app.post('/admin/cerfa/generer', async (req, res) => {
   const { password, nom, prenom, adresse, montant, mode, email, date } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
