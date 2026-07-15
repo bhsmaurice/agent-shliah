@@ -41,6 +41,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 .btn-hamburger { background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 18px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.header-cta { border: none; border-radius: 20px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 12px; font-weight: 600; padding: 7px 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(124,92,252,0.4); }
+.header-cta-label { display: none; }
+@media (min-width: 480px) { .header-cta-label { display: inline; } }
 .header-right { display: flex; align-items: center; gap: 10px; }
 .header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
@@ -50,7 +53,8 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .tab { flex: 1; min-width: 50px; padding: 12px 4px; text-align: center; font-size: 20px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
 .tab-label { display: none; }
 @media (min-width: 640px) { .tab { font-size: 13px; font-weight: 500; padding: 12px 8px; } .tab-label { display: inline; margin-left: 4px; } }
-.tab.active { color: var(--navy); border-bottom-color: var(--gold); font-weight: 600; }
+.tab.active { color: var(--c-purple-dark); border-bottom-color: var(--c-purple); font-weight: 600; }
+.tab:hover { background: #F7F6FC; }
 .tab.hidden { display: none; }
 .page { display: none; min-height: calc(100vh - 120px); }
 .page.active { display: block; }
@@ -266,6 +270,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     </div>
   </div>
   <div class="header-right">
+    <button class="header-cta" onclick="showTab('cerfa')">✦ <span class="header-cta-label">Nouveau Cerfa</span></button>
     <span class="user-badge" id="header-user-badge">Admin</span>
     <span class="header-hebrew">בית חב"ד</span>
     <button class="btn-logout" onclick="logout()">🔒</button>
