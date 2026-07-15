@@ -63,15 +63,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
-.field input, .field textarea, .field select { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); background: #fff; }
+.field input, .field textarea, .field select { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid #E4E1EF; border-radius: 12px; background: var(--white); color: var(--text); outline: none; transition: all 0.2s; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--c-purple); box-shadow: 0 0 0 3px rgba(124,92,252,0.12); }
 .field textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
 .cat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.cat-btn { padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); font-family: 'Heebo', sans-serif; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
-.cat-btn.active { border-color: var(--gold); background: var(--gold-light); color: var(--gold-dark); font-weight: 600; }
-.btn-main { width: 100%; padding: 14px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
-.btn-main:active { background: var(--navy2); transform: scale(0.98); }
-.btn-main:disabled { background: var(--muted); cursor: not-allowed; }
+.cat-btn { padding: 10px 6px; border: 1.5px solid #E4E1EF; border-radius: 12px; background: var(--white); font-family: 'Heebo', sans-serif; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
+.cat-btn.active { border-color: var(--c-purple); background: #F1EEFF; color: var(--c-purple-dark); font-weight: 600; }
+.btn-main { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; box-shadow: 0 4px 14px rgba(124,92,252,0.32); }
+.btn-main:active { filter: brightness(0.94); transform: scale(0.98); }
+.btn-main:disabled { background: var(--muted); box-shadow: none; cursor: not-allowed; }
 .btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--navy); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 .btn-danger { width: 100%; padding: 12px; background: var(--red-bg); color: var(--red); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid #F5B7B1; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 .alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
