@@ -198,7 +198,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .cerfa-actions-grid { display: block; }
 .cerfa-actions-grid .card { margin-bottom: 14px; }
 @media (min-width: 860px) {
-  #tab-cerfa .inner { max-width: 1040px; }
+  #tab-cerfa .inner { max-width: 1280px; }
   .field-row { display: flex; gap: 14px; }
   .field-row .field { flex: 1; margin-bottom: 14px; }
   .cerfa-actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -230,9 +230,44 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   .sidebar { position: sticky; top: 61px; left: auto; height: calc(100vh - 61px); width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); transform: none; box-shadow: none; z-index: auto; }
   .main-content { flex: 1; min-width: 0; }
   .main-content .inner { max-width: 760px; }
-  #tab-cerfa .inner { max-width: 1040px !important; }
+  #tab-cerfa .inner { max-width: 1280px !important; }
 }
 .sidebar, .btn-hamburger, .sidebar-overlay { display: none !important; }
+/* ══ CERFA — panneau d'aperçu à droite ══ */
+.cerfa-insights { margin-top: 14px; }
+@media (min-width: 1000px) {
+  .cerfa-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; align-items: start; }
+  .cerfa-insights { margin-top: 0; position: sticky; top: 75px; }
+}
+.insight-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+.insight-title { display: flex; align-items: center; justify-content: space-between; font-family: 'Frank Ruhl Libre', serif; font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.live-badge { font-size: 10px; font-weight: 700; color: var(--green); background: var(--green-bg); padding: 3px 9px 3px 7px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+.live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.ring-wrap { position: relative; width: 150px; height: 150px; margin: 6px auto 18px; }
+.ring { position: absolute; inset: 0; border-radius: 50%; background: var(--border); }
+.ring-inner { position: absolute; inset: 13px; border-radius: 50%; background: var(--white); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--border); text-align: center; padding: 4px; }
+.ring-value { font-family: 'Frank Ruhl Libre', serif; font-size: 19px; font-weight: 700; color: var(--navy); }
+.ring-label { font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.6px; }
+.insight-mini-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.insight-mini { display: flex; align-items: center; gap: 8px; background: var(--bg); border-radius: 10px; padding: 10px; }
+.insight-mini-icon { width: 30px; height: 30px; border-radius: 50%; background: #F1EEFF; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.insight-mini-num { font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+.insight-mini-label { font-size: 10px; color: var(--muted); }
+.paiement-row { margin-bottom: 14px; }
+.paiement-row:last-child { margin-bottom: 0; }
+.paiement-label { font-size: 13px; color: var(--navy); font-weight: 500; margin-bottom: 6px; }
+.paiement-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.paiement-bar { flex: 1; height: 6px; border-radius: 4px; background: var(--bg); overflow: hidden; }
+.paiement-bar-fill { height: 100%; border-radius: 4px; }
+.paiement-pct { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 32px; text-align: right; }
+.activite-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.activite-item:last-child { border-bottom: none; }
+.activite-left { display: flex; align-items: center; gap: 10px; }
+.activite-icon { width: 32px; height: 32px; border-radius: 50%; background: #F1EEFF; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.activite-num { font-size: 13px; font-weight: 600; color: var(--navy); }
+.activite-date { font-size: 11px; color: var(--muted); }
+.activite-montant { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.voir-tout-link { display: block; text-align: center; font-size: 12px; color: var(--c-purple-dark); font-weight: 600; margin-top: 12px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -523,6 +558,8 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- CERFA -->
 <div class="page" id="tab-cerfa"><div class="inner">
+<div class="cerfa-layout">
+<div class="cerfa-main">
   <div class="card">
     <div class="card-title">🧾 Générer un reçu Cerfa</div>
     <div class="field-row">
@@ -584,6 +621,33 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
 
   <div id="cerfa-container"></div>
+</div>
+<div class="cerfa-insights" id="cerfa-insights" style="display:none">
+  <div class="insight-card">
+    <div class="insight-title"><span>📊 Aperçu en temps réel</span><span class="live-badge">LIVE</span></div>
+    <div class="ring-wrap">
+      <div class="ring" id="cerfa-ring"></div>
+      <div class="ring-inner">
+        <div class="ring-value" id="cerfa-ring-value">0 €</div>
+        <div class="ring-label">Total collecté</div>
+      </div>
+    </div>
+    <div class="insight-mini-row">
+      <div class="insight-mini"><div class="insight-mini-icon">👤</div><div><div class="insight-mini-num" id="cerfa-mini-count">0</div><div class="insight-mini-label">Reçu généré</div></div></div>
+      <div class="insight-mini"><div class="insight-mini-icon">💰</div><div><div class="insight-mini-num" id="cerfa-mini-montant">0 €</div><div class="insight-mini-label">Montant total</div></div></div>
+    </div>
+  </div>
+  <div class="insight-card">
+    <div class="insight-title"><span>🧭 Répartition paiement</span></div>
+    <div id="cerfa-repartition"></div>
+  </div>
+  <div class="insight-card">
+    <div class="insight-title"><span>⚡ Activité récente</span></div>
+    <div id="cerfa-activite"></div>
+    <div class="voir-tout-link" onclick="voirToutCerfa()">Voir toute l'activité →</div>
+  </div>
+</div>
+</div>
 </div></div>
 <!-- CORBEILLE -->
 <div class="page" id="tab-corbeille"><div class="inner">
@@ -1088,6 +1152,28 @@ async function verifierLogo(){
     errEl.style.display='block';
   }
 }
+function mettreAJourApercuCerfa(){
+  const insights=document.getElementById('cerfa-insights');
+  if(!allCerfa.length){insights.style.display='none';return;}
+  insights.style.display='block';
+  const total=allCerfa.length;
+  const totalMontant=allCerfa.reduce((s,c)=>s+parseFloat(c.montant||0),0);
+  document.getElementById('cerfa-ring-value').textContent=totalMontant.toLocaleString('fr-FR')+' €';
+  document.getElementById('cerfa-mini-count').textContent=total;
+  document.getElementById('cerfa-mini-montant').textContent=totalMontant.toLocaleString('fr-FR')+' €';
+  const groupes={especes:0,cb:0,cheque:0,autre:0};
+  allCerfa.forEach(c=>{const m=normModePaiement(c.mode_paiement);const montant=parseFloat(c.montant||0);if(groupes.hasOwnProperty(m))groupes[m]+=montant;else groupes.autre+=montant;});
+  const couleurs={especes:'var(--c-purple)',cb:'#4F8FFF',cheque:'var(--c-teal)',autre:'#B4B2A9'};
+  const labels={especes:'💵 Espèces',cb:'💳 CB',cheque:'📝 Chèque',autre:'❔ Autre'};
+  const ordre=['especes','cb','cheque','autre'].filter(k=>groupes[k]>0);
+  let cumul=0;
+  const segments=ordre.map(k=>{const pct=totalMontant>0?(groupes[k]/totalMontant*100):0;const seg=`${couleurs[k]} ${cumul}% ${cumul+pct}%`;cumul+=pct;return seg;});
+  document.getElementById('cerfa-ring').style.background=segments.length?`conic-gradient(from -90deg, ${segments.join(',')})`:'var(--border)';
+  document.getElementById('cerfa-repartition').innerHTML=ordre.length?ordre.map(k=>{const pct=totalMontant>0?Math.round(groupes[k]/totalMontant*100):0;return `<div class="paiement-row"><div class="paiement-label">${labels[k]}</div><div class="paiement-bar-wrap"><div class="paiement-bar"><div class="paiement-bar-fill" style="width:${pct}%;background:${couleurs[k]}"></div></div><div class="paiement-pct">${pct}%</div></div></div>`;}).join(''):'<p style="font-size:13px;color:var(--muted)">Aucune donnée</p>';
+  const recents=[...allCerfa].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,4);
+  document.getElementById('cerfa-activite').innerHTML=recents.length?recents.map(c=>{const d=new Date(c.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const m=parseFloat(c.montant||0).toLocaleString('fr-FR');return `<div class="activite-item"><div class="activite-left"><div class="activite-icon">🧾</div><div><div class="activite-num">${c.numero}</div><div class="activite-date">${d}</div></div></div><div class="activite-montant">${m} €</div></div>`;}).join(''):'<p style="font-size:13px;color:var(--muted)">Aucun reçu</p>';
+}
+function voirToutCerfa(){const el=document.getElementById('cerfa-container');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 async function chargerCerfa(){
   const url=getUrl(),pw=getAdminPw();
   if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
@@ -1105,6 +1191,7 @@ async function chargerCerfa(){
     document.getElementById('cerfa-search-wrap').style.display='block';
     document.getElementById('cerfa-search-field-chips').style.display='flex';
     document.getElementById('cerfa-advanced-wrap').style.display='block';
+    mettreAJourApercuCerfa();
     afficherCerfa();
   }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
 }
@@ -1114,6 +1201,7 @@ async function supprimerCerfa(id){
   try{
     await fetch(url+'/admin/cerfa/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
     allCerfa=allCerfa.filter(c=>c.id!==id);
+    mettreAJourApercuCerfa();
     afficherCerfa();
   }catch(e){alert('Erreur');}
 }
