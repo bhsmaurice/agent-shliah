@@ -204,7 +204,6 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 }
 /* ══ SIDEBAR (tiroir mobile + sticky desktop, façon mockup) ══ */
 .app-layout { display: flex; align-items: flex-start; }
-.tabs { display: none; }
 .main-content { width: 100%; min-width: 0; }
 .sidebar-cta { width: 100%; padding: 13px; margin-bottom: 18px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(124,92,252,0.35); transition: all 0.15s; }
 .sidebar-cta:active { transform: scale(0.98); }
@@ -229,6 +228,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   .main-content .inner { max-width: 760px; }
   #tab-cerfa .inner { max-width: 1040px !important; }
 }
+.sidebar, .btn-hamburger, .sidebar-overlay { display: none !important; }
 </style>
 </head>
 <body>
