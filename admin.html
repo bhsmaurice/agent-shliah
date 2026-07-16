@@ -201,6 +201,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .contact-card.selected { border-color: var(--gold); background: #FFFDF5; }
 .contact-card.select-mode .contact-checkbox { display: block !important; }
 .contact-phone { font-size: 13px; font-weight: 600; color: var(--navy); }
+.contact-nom { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
 .contact-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .contact-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .badge-abo { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
@@ -516,6 +517,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <!-- CONTACTS -->
 <div class="page" id="tab-contacts"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Charger les contacts</button></div>
+  <!-- Import noms/prénoms depuis un CSV (telephone,nom,prenom) -->
+  <div class="card">
+    <div class="card-title" style="font-size:15px;">📇 Importer les noms/prénoms</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Fichier CSV avec les colonnes <strong>telephone,nom,prenom</strong> (téléphone au format 33XXXXXXXXX). Associe le nom au numéro déjà en base, ou crée le contact s'il n'existe pas encore. N'écrase jamais les abonnements existants.</p>
+    <div class="field"><label>Fichier CSV</label><input type="file" id="import-noms-file" accept=".csv" style="padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;width:100%;font-size:13px;color:var(--muted);"></div>
+    <button class="btn-main" onclick="importerNomsContacts()">📇 Importer les noms</button>
+    <div class="alert ok" id="alert-import-noms-ok"></div>
+    <div class="alert err" id="alert-import-noms-err"></div>
+  </div>
   <div id="contacts-stats" style="display:none">
     <div class="stats-row" id="contacts-stats-row"></div>
   </div>
@@ -1424,6 +1434,41 @@ function telecharger(contenu,nom,type){const blob=new Blob(['﻿'+contenu],{type
 function showExportOk(msg){const el=document.getElementById('alert-export-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
 function showExportErr(msg){const el=document.getElementById('alert-export-err');el.textContent=msg;el.className='alert err';el.style.display='block';}
 async function importerInfos(){const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-file').files[0];const okEl=document.getElementById('alert-import-ok'),errEl=document.getElementById('alert-import-err');okEl.style.display='none';errEl.style.display='none';if(!url){errEl.textContent="Configurez l'adresse";errEl.className='alert err';errEl.style.display='block';return;}if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}const text=await file.text(),lines=text.split('\n').slice(1).filter(l=>l.trim());let imported=0,errors=0;for(const line of lines){const fields=[];let current='',inQuote=false;for(let i=0;i<line.length;i++){if(line[i]==='"')inQuote=!inQuote;else if(line[i]===','&&!inQuote){fields.push(current.replace(/""/g,'"'));current='';}else current+=line[i];}fields.push(current.replace(/""/g,'"'));if(fields.length<3)continue;const[categorie,titre,contenu,instruction]=fields;if(!titre||!contenu)continue;try{const res=await fetch(url+'/admin/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,categorie:categorie||'autre',titre,contenu,instruction:instruction||''})});const data=await res.json();if(data.ok)imported++;else errors++;}catch(e){errors++;}}if(imported>0){okEl.textContent='✓ '+imported+' info(s) importée(s)'+(errors?' ('+errors+' erreurs)':'');okEl.className='alert ok';okEl.style.display='block';}else{errEl.textContent='Aucune info importée.';errEl.className='alert err';errEl.style.display='block';}}
+// ══ IMPORT NOMS/PRÉNOMS CONTACTS (CSV : telephone,nom,prenom) ══
+async function importerNomsContacts(){
+  const url=getUrl(),pw=getAdminPw(),file=document.getElementById('import-noms-file').files[0];
+  const okEl=document.getElementById('alert-import-noms-ok'),errEl=document.getElementById('alert-import-noms-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.className='alert err';errEl.style.display='block';return;}
+  if(!file){errEl.textContent="Sélectionnez un fichier CSV";errEl.className='alert err';errEl.style.display='block';return;}
+  const text=await file.text();
+  const lines=text.split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l.trim());
+  if(!lines.length){errEl.textContent="Fichier vide";errEl.className='alert err';errEl.style.display='block';return;}
+  // Détecte l'en-tête (telephone,nom,prenom) et l'ignore
+  const header=lines[0].toLowerCase();
+  const dataLines=header.includes('telephone')?lines.slice(1):lines;
+  const contacts=[];
+  for(const line of dataLines){
+    const parts=line.split(',');
+    if(parts.length<1)continue;
+    const telephone=(parts[0]||'').trim();
+    const nom=(parts[1]||'').trim();
+    const prenom=(parts[2]||'').trim();
+    if(!telephone)continue;
+    contacts.push({telephone,nom,prenom});
+  }
+  if(!contacts.length){errEl.textContent="Aucune ligne valide trouvée dans le CSV";errEl.className='alert err';errEl.style.display='block';return;}
+  try{
+    const res=await fetch(url+'/admin/contacts/import-noms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,contacts})});
+    const data=await res.json();
+    if(data.ok){
+      okEl.textContent='✓ '+data.message;okEl.className='alert ok';okEl.style.display='block';
+      chargerContacts();
+    }else{
+      errEl.textContent=data.message||'Erreur';errEl.className='alert err';errEl.style.display='block';
+    }
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
+}
 // ══ MUSIQUES & PLAYLISTES ══
 let allMusiques = [], allPlaylistes = [];
 let ambianceMusiqueSelected = 'douce';
@@ -1699,10 +1744,12 @@ function afficherContacts() {
     if (c.abonne_chabbat) badges += '<span class="badge-abo badge-chabbat">🕯️ Chabbat</span>';
     if (c.abonne_evenements) badges += '<span class="badge-abo badge-evenements">📅 Événements</span>';
     if (!c.abonne_chabbat && !c.abonne_evenements) badges += '<span class="badge-abo badge-non">Non abonné</span>';
+    const nomComplet = [c.prenom, c.nom].filter(Boolean).join(' ').trim();
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;">
         <input type="checkbox" class="contact-checkbox" data-phone="${c.phone}" onchange="toggleSelectContact('${c.phone}',this)" style="width:18px;height:18px;display:none;">
         <div>
+          ${nomComplet ? `<div class="contact-nom">${nomComplet}</div>` : ''}
           <div class="contact-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${c.phone}')">+${c.phone}</span></div>
           <div class="contact-date">Depuis le ${date} · ${c.nb_messages || 0} msg</div>
         </div>
@@ -1771,7 +1818,7 @@ function rechercheGlobale(){
   if(q.length<2){box.classList.remove('active');box.innerHTML='';return;}
   let html='';
   const cerfaMatches=(typeof allCerfa!=='undefined'?allCerfa:[]).filter(c=>((c.nom||'')+' '+(c.prenom||'')).toLowerCase().includes(q)||(c.numero||'').toLowerCase().includes(q)||String(c.montant||'').includes(q)).slice(0,5);
-  const contactMatches=(typeof allContacts!=='undefined'?allContacts:[]).filter(c=>(c.phone||'').includes(q)).slice(0,5);
+  const contactMatches=(typeof allContacts!=='undefined'?allContacts:[]).filter(c=>(c.phone||'').includes(q)||((c.nom||'')+' '+(c.prenom||'')).toLowerCase().includes(q)).slice(0,5);
   if(cerfaMatches.length){
     html+='<div class="hsr-group-label">🧾 Reçus Cerfa</div>';
     cerfaMatches.forEach(c=>{
@@ -1782,7 +1829,8 @@ function rechercheGlobale(){
   if(contactMatches.length){
     html+='<div class="hsr-group-label">👥 Contacts</div>';
     contactMatches.forEach(c=>{
-      html+=`<div class="hsr-item" onclick="allerVersContactDepuisRecherche('${c.phone}')"><div class="hsr-item-icon">👤</div><div><div class="hsr-item-title">+${c.phone}</div><div class="hsr-item-sub">${c.nb_messages||0} messages</div></div></div>`;
+      const nomC=[c.prenom,c.nom].filter(Boolean).join(' ');
+      html+=`<div class="hsr-item" onclick="allerVersContactDepuisRecherche('${c.phone}')"><div class="hsr-item-icon">👤</div><div><div class="hsr-item-title">${nomC?nomC+' — ':''}+${c.phone}</div><div class="hsr-item-sub">${c.nb_messages||0} messages</div></div></div>`;
     });
   }
   if(!html)html='<div class="hsr-empty">Aucun résultat. Astuce : ouvre d\'abord l\'onglet Cerfa ou Contacts pour charger les données.</div>';
