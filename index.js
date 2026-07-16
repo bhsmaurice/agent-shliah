@@ -26,6 +26,8 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
+  await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
+  await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS prenom TEXT').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
@@ -37,14 +39,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour l'envoi (conservé pour compat)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
-// Une fois le domaine habadsmaurice.com vérifié sur Resend, configure
-// RESEND_FROM_EMAIL sur Railway (ex: "Beth Habad S. Maurice <cerfa@habadsmaurice.com>")
-// pour pouvoir envoyer aux donateurs. Tant que ce n'est pas configuré, on
-// reste sur l'adresse de test (envoi uniquement vers soi-même).
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Shliah Bot <onboarding@resend.dev>';
-// Envoi d'email via Resend (API HTTPS) au lieu de SMTP/nodemailer : Railway
-// bloque le SMTP sortant (port 465 ET 587 en timeout), mais l'HTTPS marche
-// toujours puisque c'est ce que le bot utilise déjà pour WhatsApp et Claude.
 async function envoyerEmail({ to, subject, html, attachments }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
@@ -82,14 +77,9 @@ async function envoyerEmail({ to, subject, html, attachments }) {
   }
 }
 
-// ─── ADMIN CERFA (génération automatique de reçus fiscaux) ────
-// Numéros WhatsApp autorisés à déclencher "Admin CERFA" (sans +, sans espace)
-// Ajoute-en d'autres en les séparant par une virgule, ou via la variable
-// d'environnement Railway ADMIN_WHATSAPP_NUMBERS (ex: "33770241746,33600000000")
 const ADMIN_WHATSAPP_NUMBERS = (process.env.ADMIN_WHATSAPP_NUMBERS || '33770241746')
   .split(',').map(n => n.trim()).filter(Boolean);
 
-// Infos fixes de l'association (reprises du modèle Cerfa officiel utilisé actuellement)
 const ASSOCIATION = {
   nom: 'Beth habad S. Maurice Plateau',
   rna: 'W941017037',
@@ -99,9 +89,6 @@ const ASSOCIATION = {
   articleCGI: '200 du CGI',
 };
 
-// Logo Beth Habad : récupéré une seule fois depuis une URL (variable d'env
-// BETH_HABAD_LOGO_URL) puis gardé en mémoire. Si l'URL n'est pas configurée
-// ou si le téléchargement échoue, le reçu est simplement généré sans logo.
 let bethHabadLogoBytesCache = null;
 async function getBethHabadLogoBytes() {
   if (bethHabadLogoBytesCache) return bethHabadLogoBytesCache;
@@ -127,7 +114,6 @@ function isAuthorizedAdminCerfa(fromNumber) {
   return ADMIN_WHATSAPP_NUMBERS.some((n) => clean.endsWith(n) || n.endsWith(clean));
 }
 
-// Conversion nombre -> lettres (français)
 function numberToFrenchWords(n) {
   const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
   const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
@@ -164,11 +150,6 @@ function numberToFrenchWords(n) {
   return convert(intPart) + (intPart > 1 ? ' euros' : ' euro');
 }
 
-/**
- * Format attendu après "Admin CERFA" (une info par ligne) :
- * montant / Nom Prénom / adresse / especes|cb|cheque / (email et/ou date, facultatifs, dans n'importe quel ordre)
- * La date, si fournie, doit être au format JJ/MM/AAAA. Sinon la date du jour est utilisée.
- */
 function parseAdminCerfaMessage(rawText) {
   const withoutTrigger = rawText.replace(/^admin\s+cerfa/i, '').trim();
   const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -189,10 +170,8 @@ function parseAdminCerfaMessage(rawText) {
   else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
   else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
 
-  // Les lignes restantes (facultatives) peuvent être l'email et/ou la date,
-  // dans n'importe quel ordre. On détecte chacune par son format.
   let email = null;
-  let dateDon = null; // format YYYY-MM-DD, prêt pour la base de données
+  let dateDon = null;
   for (const line of extraLines) {
     if (!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
       email = line;
@@ -298,8 +277,6 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   };
   const montantDisplay = formatMontantFr(montantNum);
 
-  // ── En-tête ──
-  // Logo "cerfa" (ovale bleu marine, dessiné directement, pas une image)
   drawLeft('2041-RD', 24, 8, font, black, marginX + 8);
   const cerfaOvalW = 58, cerfaOvalH = 25;
   const cerfaOvalCx = marginX + cerfaOvalW / 2 + 8;
@@ -333,7 +310,6 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
 
   hLine(100);
 
-  // ── Colonne gauche : logo + nom association / Colonne droite : donateur ──
   const logoBytes = await getBethHabadLogoBytes();
   let logoBottomY = 110;
   if (logoBytes) {
@@ -366,7 +342,6 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
 
   hLine(182);
 
-  // ── Bénéficiaire du don ──
   let top = 192;
   grayBar('BÉNÉFICIAIRE DU DON', top);
   top += 20;
@@ -395,7 +370,6 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   box(beneficiaireBoxStart, rowTop - beneficiaireBoxStart);
   top = rowTop;
 
-  // ── Donateur ──
   top += 18;
   grayBar('DONATEUR', top);
   top += 20;
@@ -405,7 +379,6 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   top += 50;
   box(donateurBoxStart, top - donateurBoxStart);
 
-  // ── Certification + cases à cocher ──
   top += 24;
   drawCentered("Le bénéficiaire certifie sur l'honneur que les dons et versements qu'il reçoit", top, 9.5, font);
   top += 14;
@@ -436,14 +409,12 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   top += 26;
   hLine(top);
 
-  // ── Mode de versement / date et signature ──
   top += 22;
   page.drawText('Mode de versement : ', { x: marginX + 10, y: Y(top), size: 10, font, color: black });
   page.drawText(mode, { x: marginX + 10 + font.widthOfTextAtSize('Mode de versement : ', 10), y: Y(top), size: 10, font: bold, color: black });
   drawRight('Date et signature', top - 10, 10.5, bold);
   drawRight(dateVersement, top + 8, 10, font);
 
-  // ── Pied de page ──
   drawCentered('Reçu cerfa généré par Shliah Bot', 760, 9, font);
 
   return Buffer.from(await pdfDoc.save());
@@ -469,16 +440,12 @@ async function sendWhatsAppDocument(to, pdfBuffer, filename) {
   });
 }
 
-/**
- * @returns {boolean} true si le message était une commande Admin CERFA (traité ou ignoré)
- */
 async function handleAdminCerfaCommand(from, text) {
   if (!isAdminCerfaTrigger(text)) return false;
-  if (!isAuthorizedAdminCerfa(from)) return true; // ignoré silencieusement
+  if (!isAuthorizedAdminCerfa(from)) return true;
   try {
     const data = parseAdminCerfaMessage(text);
     const numero = await getNextCerfaNumero();
-    // date fournie (JJ/MM/AAAA -> YYYY-MM-DD) sinon date du jour
     const dateDon = data.dateDon || new Date().toISOString().slice(0, 10);
     const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
     const pdfBuffer = await generateCerfaPDF({ numero, ...data, dateVersement });
@@ -575,7 +542,6 @@ async function getEvenements() {
     return "ÉVÉNEMENTS ACTUELS :\n" + texte.substring(0, 2000);
   } catch (e) { return null; }
 }
-// ─── SCRAPING CHABBAT ─────────────────────────────────────────
 async function getHorairesChabbat() {
   try {
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
@@ -639,7 +605,6 @@ async function getHorairesChabbatCached() {
   if (data) { chabbatCache.data = data; chabbatCache.lastFetch = now; }
   return data;
 }
-// ─── GESTION CONTACTS & ABONNEMENTS ──────────────────────────
 async function getOuCreerContact(phone) {
   try {
     const res = await pool.query('SELECT * FROM contacts WHERE phone=$1', [phone]);
@@ -688,7 +653,6 @@ async function getQuestionAbonnement(phone, contact) {
   }
   return null;
 }
-// ─── CRON CHABBAT ─────────────────────────────────────────────
 function demarrerCronChabbat() {
   setInterval(async () => {
     const now = new Date();
@@ -720,7 +684,6 @@ async function envoyerHorairesChabbatAbonnes() {
     console.log(`🕯️ Cron: ${envoyes}/${abonnes.rows.length} envoyés`);
   } catch (e) { console.error('Cron error:', e.message); }
 }
-// ─── MUSIQUE & PLAYLIST ───────────────────────────────────────
 function parlDeMusique(msg) {
   const lower = msg.toLowerCase();
   return ['musique', 'music', 'nigoun', 'nigoune', 'nigouns', 'nigounim', 'chant', 'chanson', 'melodie', 'mélodie', 'chantons', 'chanter'].some(m => lower.includes(m));
@@ -772,7 +735,6 @@ function parleDeChabbat(msg) {
   const lower = msg.toLowerCase();
   return ['chabbat', 'shabbat', 'allumage', 'bougie', 'havdalah', 'fin chabbat', 'rentre chabbat', 'entre chabbat', 'sortie chabbat', 'heure chabbat', 'quand chabbat', 'paracha', 'parasha'].some(m => lower.includes(m));
 }
-// ─── HISTOIRES DU RABBI ───────────────────────────────────────
 function parleDeHistoire(msg) {
   const lower = msg.toLowerCase();
   return ['histoire', 'histoires', 'rabbi', 'rebbie', 'rebbe', 'conte', 'récit', 'recit'].some(m => lower.includes(m));
@@ -808,7 +770,6 @@ async function sendWhatsAppImage(to, imageUrl, caption = '') {
     body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
   });
 }
-// ─── SYSTÈME DE DEMANDES ──────────────────────────────────────
 const TYPES_DEMANDES = {
   cerfa: {
     label: 'Reçu Fiscal (Cerfa)',
@@ -849,10 +810,6 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
   });
   if (!r.ok) console.error('Email error:', r.error);
 }
-// Sauvegarde automatique : envoie chaque Cerfa généré par email (avec le PDF en
-// pièce jointe) sur bhsmaurice@gmail.com. C'est une copie indépendante de Railway
-// et GitHub — en cas de piratage ou de panne, les reçus restent consultables dans
-// la boîte mail.
 async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode, dateVersement, email }, pdfBuffer) {
   const r = await envoyerEmail({
     subject: `🧾 Sauvegarde Cerfa ${numero}`,
@@ -861,8 +818,6 @@ async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode,
   });
   if (!r.ok) console.error('Backup Cerfa email error:', r.error);
 }
-// Nom convivial du mode de paiement pour le message au donateur (le champ
-// "mode" stocké est parfois un intitulé combiné pour les besoins du Cerfa).
 function modeAffichageDonateur(mode) {
   if (!mode) return 'votre don';
   const m = mode.toLowerCase();
@@ -871,11 +826,6 @@ function modeAffichageDonateur(mode) {
   if (m.includes('carte') || m.includes('virement') || m.includes('prélèvement')) return 'carte bancaire';
   return mode;
 }
-// Envoie au donateur lui-même son reçu Cerfa par email (avec un mot de
-// remerciement), si son adresse email a été renseignée. Nécessite que
-// RESEND_FROM_EMAIL soit configuré avec un domaine vérifié sur Resend
-// (habadsmaurice.com) : sans ça, Resend refuse d'envoyer à quelqu'un d'autre
-// que soi-même.
 async function envoyerCerfaDonateur({ numero, nom, prenom, montant, mode, email }, pdfBuffer) {
   if (!email) return;
   const montantAffiche = Number(montant).toLocaleString('fr-FR');
@@ -894,7 +844,6 @@ async function envoyerCerfaDonateur({ numero, nom, prenom, montant, mode, email 
   if (!r.ok) console.error('Email donateur error:', r.error);
 }
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
-// ─── WEBHOOK META ─────────────────────────────────────────────
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'], token = req.query['hub.verify_token'], challenge = req.query['hub.challenge'];
   if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
@@ -913,10 +862,8 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
-      // ── Commande Admin CERFA (prioritaire, avant tout le reste) ──
       if (await handleAdminCerfaCommand(from, text)) return;
 
-      // ── Réponse abonnement en cours ──
       if (sessionsAbonnement[from]) {
         const typeAbonnement = sessionsAbonnement[from];
         delete sessionsAbonnement[from];
@@ -1003,7 +950,6 @@ app.post('/webhook', async (req, res) => {
     }
   }
 });
-// ─── API ADMIN ────────────────────────────────────────────────
 app.post('/admin/add', async (req, res) => {
   const { password, categorie, titre, contenu, instruction } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -1059,7 +1005,6 @@ app.delete('/admin/demandes/:id', async (req, res) => {
   await pool.query('DELETE FROM demandes WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé définitivement" });
 });
-// ─── API ADMIN CERFA ───────────────────────────────────────────
 app.get('/admin/cerfa', async (req, res) => {
   const { password, search } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -1099,8 +1044,7 @@ app.get('/admin/cerfa/export', async (req, res) => {
     };
     const csvLines = [cols.join(';')];
     rows.forEach((r) => { csvLines.push(cols.map((c) => csvEscape(r[c])).join(';')); });
-    const csv = '﻿' + csvLines.join('\n'); // ﻿ = BOM pour Excel
-    // Envoie aussi une copie par email pour une sauvegarde indépendante
+    const csv = '﻿' + csvLines.join('\n');
     if (email !== 'false') {
       envoyerEmail({
         subject: `📦 Sauvegarde complète Cerfa (${rows.length} reçus)`,
@@ -1115,9 +1059,6 @@ app.get('/admin/cerfa/export', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
-// Sauvegarde complète : dump JSON de toutes les tables importantes (infos,
-// demandes, contacts, histoires, musiques, cerfa...). Utilisée à la fois par
-// le bouton manuel du panel admin et par le cron automatique quotidien.
 const TABLES_BACKUP = ['infos', 'demandes', 'contacts', 'histoires', 'musiques', 'playlistes', 'playliste_musiques', 'cerfa_counters', 'cerfa_receipts'];
 async function exporterBaseComplete() {
   const dump = { genere_le: new Date().toISOString(), tables: {} };
@@ -1129,7 +1070,6 @@ async function exporterBaseComplete() {
       dump.tables[table] = { erreur: e.message };
     }
   }
-  // Les conversations peuvent devenir volumineuses : on garde les 2000 plus récentes.
   try {
     const conv = await pool.query('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 2000');
     dump.tables['conversations (2000 plus récentes)'] = conv.rows;
@@ -1150,8 +1090,6 @@ async function sauvegarderBaseComplete() {
   if (!r.ok) console.error('Backup complète email error:', r.error);
   return { json, ok: r.ok, error: r.error };
 }
-// Cron : sauvegarde automatique tous les jours à ~3h du matin (heure de Paris),
-// tant que le serveur Railway tourne. Suit le même principe que le cron Chabbat.
 function demarrerCronBackup() {
   setInterval(async () => {
     const now = new Date();
@@ -1194,7 +1132,6 @@ app.get('/admin/logo-check', async (req, res) => {
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   const url = process.env.BETH_HABAD_LOGO_URL || null;
   if (!url) return res.json({ ok: true, configured: false, message: "La variable BETH_HABAD_LOGO_URL n'est pas configurée sur Railway." });
-  // Teste la fonction RÉELLEMENT utilisée par la génération de Cerfa (pas un fetch séparé)
   const realBytes = await getBethHabadLogoBytes();
   try {
     const r = await fetch(url);
@@ -1315,7 +1252,6 @@ app.post('/admin/cerfa/generer', async (req, res) => {
     const numero = await getNextCerfaNumero();
     const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
     const emailFinal = email && email.trim() ? email.trim() : null;
-    // date fournie au format YYYY-MM-DD (input type="date") ; sinon date du jour
     const dateDon = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().slice(0, 10);
     const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
     const pdfBuffer = await generateCerfaPDF({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal, dateVersement });
@@ -1419,6 +1355,32 @@ app.post('/admin/abonnes/envoyer', async (req, res) => {
   await envoyerHorairesChabbatAbonnes();
   res.json({ ok: true, message: 'Horaires envoyés aux abonnés !' });
 });
+// ─── IMPORT NOMS/PRÉNOMS DES CONTACTS (par téléphone) ─────────
+// Reçoit une liste { telephone, nom, prenom } (téléphone au format
+// international sans + ni espace, ex: "33612345678") et met à jour ou crée
+// les contacts correspondants avec leur nom/prénom. N'écrase jamais les
+// abonnements existants : seuls nom/prenom sont modifiés.
+app.post('/admin/contacts/import-noms', async (req, res) => {
+  const { password, contacts } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!Array.isArray(contacts) || contacts.length === 0) return res.status(400).json({ ok: false, message: "Liste de contacts vide" });
+  let importes = 0, erreurs = 0;
+  for (const c of contacts) {
+    const phone = (c.telephone || '').replace(/[^\d]/g, '');
+    const nom = (c.nom || '').trim() || null;
+    const prenom = (c.prenom || '').trim() || null;
+    if (!phone) { erreurs++; continue; }
+    try {
+      await pool.query(
+        `INSERT INTO contacts (phone, nom, prenom) VALUES ($1, $2, $3)
+         ON CONFLICT (phone) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom`,
+        [phone, nom, prenom]
+      );
+      importes++;
+    } catch (e) { erreurs++; console.error('Import contact error:', phone, e.message); }
+  }
+  res.json({ ok: true, importes, erreurs, total: contacts.length, message: `${importes} contact(s) importé(s)/mis à jour${erreurs ? `, ${erreurs} erreur(s)` : ''}` });
+});
 app.get('/admin/histoires', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -1444,7 +1406,6 @@ app.delete('/admin/histoires/:id', async (req, res) => {
   await pool.query('DELETE FROM histoires WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
-// ─── API ADMIN MUSIQUES ───────────────────────────────────────
 app.get('/admin/musiques', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -1470,7 +1431,6 @@ app.delete('/admin/musiques/:id', async (req, res) => {
   await pool.query('DELETE FROM musiques WHERE id=$1', [req.params.id]);
   res.json({ ok: true, message: 'Supprimée !' });
 });
-// ─── API ADMIN PLAYLISTES ─────────────────────────────────────
 app.get('/admin/playlistes', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
