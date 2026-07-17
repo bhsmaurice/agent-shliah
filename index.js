@@ -28,6 +28,7 @@ async function initDB() {
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS prenom TEXT').catch(()=>{});
+  await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS genre TEXT').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
@@ -981,15 +982,20 @@ app.delete('/admin/delete/:id', async (req, res) => {
 app.get('/admin/conversations', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  const result = await pool.query('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 50');
+  const result = await pool.query(`
+    SELECT conv.*, ct.nom, ct.prenom, ct.genre
+    FROM conversations conv
+    LEFT JOIN contacts ct ON ct.phone = conv.phone
+    ORDER BY conv.created_at DESC LIMIT 50
+  `);
   res.json({ ok: true, conversations: result.rows });
 });
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  let query = 'SELECT * FROM demandes'; const params = [];
-  if (type) { query += ' WHERE type = $1'; params.push(type); }
-  query += ' ORDER BY created_at DESC';
+  let query = 'SELECT d.*, ct.nom, ct.prenom, ct.genre FROM demandes d LEFT JOIN contacts ct ON ct.phone = d.phone'; const params = [];
+  if (type) { query += ' WHERE d.type = $1'; params.push(type); }
+  query += ' ORDER BY d.created_at DESC';
   const result = await pool.query(query, params);
   res.json({ ok: true, demandes: result.rows, types: Object.keys(TYPES_DEMANDES).map(k => ({ key: k, label: TYPES_DEMANDES[k].label })) });
 });
@@ -1369,12 +1375,14 @@ app.post('/admin/contacts/import-noms', async (req, res) => {
     const phone = (c.telephone || '').replace(/[^\d]/g, '');
     const nom = (c.nom || '').trim() || null;
     const prenom = (c.prenom || '').trim() || null;
+    const genreRaw = (c.genre || '').trim().toLowerCase();
+    const genre = ['homme', 'femme', 'enfant'].includes(genreRaw) ? genreRaw : null;
     if (!phone) { erreurs++; continue; }
     try {
       await pool.query(
-        `INSERT INTO contacts (phone, nom, prenom) VALUES ($1, $2, $3)
-         ON CONFLICT (phone) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom`,
-        [phone, nom, prenom]
+        `INSERT INTO contacts (phone, nom, prenom, genre) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (phone) DO UPDATE SET nom = EXCLUDED.nom, prenom = EXCLUDED.prenom, genre = EXCLUDED.genre`,
+        [phone, nom, prenom, genre]
       );
       importes++;
     } catch (e) { erreurs++; console.error('Import contact error:', phone, e.message); }
