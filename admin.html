@@ -416,7 +416,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- INFOS -->
 <div class="page" id="tab-infos"><div class="inner">
-  <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Charger les infos</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Rafraîchir les infos</button></div>
   <div class="search-box" id="search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()"></div>
   <div class="filter-chips" id="filter-chips" style="display:none">
     <div class="chip active" data-filter="tous" onclick="selectFilter(this)">Tous</div>
@@ -442,7 +442,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert err" id="alert-histoire-err"></div>
   </div>
   <!-- Liste des histoires -->
-  <div class="card"><button class="btn-main" onclick="chargerHistoires()">🔄 Charger les histoires</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerHistoires()">🔄 Rafraîchir les histoires</button></div>
   <div id="histoires-container"></div>
 </div></div>
 <!-- ══════════════ FIN HISTOIRES ══════════════ -->
@@ -470,7 +470,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="alert ok" id="alert-musique-ok"></div>
       <div class="alert err" id="alert-musique-err"></div>
     </div>
-    <div class="card"><button class="btn-main" onclick="chargerMusiques()">🔄 Charger les musiques</button></div>
+    <div class="card"><button class="btn-main" onclick="chargerMusiques()">🔄 Rafraîchir les musiques</button></div>
     <div class="filter-chips" id="musiques-filter-chips" style="display:none">
       <div class="chip active" data-filter="tous" onclick="selectMusiqueFilter(this)">Toutes</div>
       <div class="chip" data-filter="douce" onclick="selectMusiqueFilter(this)">🎶 Douce</div>
@@ -502,7 +502,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="alert ok" id="alert-playliste-ok"></div>
       <div class="alert err" id="alert-playliste-err"></div>
     </div>
-    <div class="card"><button class="btn-main" onclick="chargerPlaylistes()">🔄 Charger les playlistes</button></div>
+    <div class="card"><button class="btn-main" onclick="chargerPlaylistes()">🔄 Rafraîchir les playlistes</button></div>
     <div id="playlistes-container"></div>
   </div>
 </div></div>
@@ -529,7 +529,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 <!-- CONTACTS -->
 <div class="page" id="tab-contacts"><div class="inner">
-  <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Charger les contacts</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Rafraîchir les contacts</button></div>
   <div id="contacts-stats" style="display:none">
     <div class="stats-row" id="contacts-stats-row"></div>
   </div>
@@ -597,7 +597,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert ok" id="alert-paiement-ok"></div>
     <div class="alert err" id="alert-paiement-err"></div>
   </div>
-  <div class="card"><button class="btn-main" onclick="chargerPaiements()">🔄 Charger les paiements</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerPaiements()">🔄 Rafraîchir les paiements</button></div>
   <div id="paiements-stats" style="display:none"><div class="stats-row" id="paiements-stats-row"></div></div>
   <div class="filter-chips" id="paiements-filter-chips" style="display:none">
     <div class="chip active" data-filter="tous" onclick="selectPaiementFilter(this)">Tous</div>
@@ -609,7 +609,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- DEMANDES -->
 <div class="page" id="tab-demandes"><div class="inner">
-  <div class="card"><button class="btn-main" onclick="chargerDemandes()">🔄 Charger les demandes</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerDemandes()">🔄 Rafraîchir les demandes</button></div>
   <div id="demandes-stats" style="display:none"><div class="stats-row" id="stats-row"></div></div>
   <div class="filter-chips" id="demandes-filter-chips" style="display:none">
     <div class="chip active" data-filter="tous" onclick="selectDemandeFilter(this)">Toutes</div>
@@ -662,7 +662,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="alert ok" id="alert-cerfa-ok"></div>
     <div class="alert err" id="alert-cerfa-err"></div>
   </div>
-  <button class="btn-main" style="margin-bottom:14px" onclick="chargerCerfa()">🔄 Charger les Cerfa</button>
+  <button class="btn-main" style="margin-bottom:14px" onclick="chargerCerfa()">🔄 Rafraîchir les Cerfa</button>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
 
   <div class="search-box" id="cerfa-search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="cerfa-search-input" placeholder="Recherche rapide..." oninput="afficherCerfa()"></div>
@@ -730,7 +730,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- CORBEILLE -->
 <div class="page" id="tab-corbeille"><div class="inner">
-  <div class="card"><button class="btn-main" onclick="chargerCorbeille()">🔄 Charger la corbeille</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerCorbeille()">🔄 Rafraîchir la corbeille</button></div>
   <div class="select-bar" id="corbeille-select-bar">
     <div class="select-bar-left" id="corbeille-select-count">0 sélectionnée(s)</div>
     <div class="select-bar-right">
@@ -743,7 +743,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div></div>
 <!-- QUESTIONS -->
 <div class="page" id="tab-questions"><div class="inner">
-  <div class="card"><button class="btn-main" onclick="chargerConvs()">🔄 Charger les questions</button></div>
+  <div class="card"><button class="btn-main" onclick="chargerConvs()">🔄 Rafraîchir les questions</button></div>
   <div id="convs-container"></div>
 </div></div>
 <!-- BROADCAST -->
@@ -1031,7 +1031,18 @@ let selectModeActive=false,selectedIds=new Set(),corbeilleSelectMode=false,corbe
 function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,'');}
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
-function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);if(name==='broadcast')loadBroadcastContacts();if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}}
+function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
+  if(name==='broadcast')loadBroadcastContacts();
+  else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
+  else if(name==='infos')chargerListe();
+  else if(name==='histoires')chargerHistoires();
+  else if(name==='musiques'){chargerMusiques();chargerPlaylistes();}
+  else if(name==='contacts')chargerContacts();
+  else if(name==='demandes')chargerDemandes();
+  else if(name==='corbeille')chargerCorbeille();
+  else if(name==='questions')chargerConvs();
+  else if(name==='paiements')chargerPaiements();
+}
 function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
 function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
 function selectFilter(chip){document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterCat=chip.dataset.filter;afficherInfos();}
