@@ -367,6 +367,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
   <div class="tab tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="tab-label">Broadcast</span></div>
+  <div class="tab tab-admin-only" data-tab="prive" onclick="showTab('prive')">🔒<span class="tab-label">Privé</span></div>
   <div class="tab" data-tab="export" onclick="showTab('export')">📤<span class="tab-label">Export</span></div>
   <div class="tab tab-admin-only" data-tab="config" onclick="showTab('config')">⚙️<span class="tab-label">Config</span></div>
 </div>
@@ -386,6 +387,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="sidenav-item" data-tab="questions" onclick="showTab('questions')"><span class="sidenav-icon">💬</span>Questions</div>
     <hr class="sidebar-divider">
     <div class="sidenav-item tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')"><span class="sidenav-icon">📢</span>Broadcast</div>
+    <div class="sidenav-item tab-admin-only" data-tab="prive" onclick="showTab('prive')"><span class="sidenav-icon">🔒</span>Privé</div>
     <div class="sidenav-item" data-tab="export" onclick="showTab('export')"><span class="sidenav-icon">📤</span>Export</div>
     <div class="sidenav-item tab-admin-only" data-tab="config" onclick="showTab('config')"><span class="sidenav-icon">⚙️</span>Config</div>
   </div>
@@ -804,6 +806,20 @@ Chabbat Chalom à toute la communauté ! 🌟
   <div class="alert ok" id="broadcast-result-ok" style="display:none;"></div>
   <div class="alert err" id="broadcast-result-err" style="display:none;"></div>
 </div></div>
+<!-- PRIVÉ -->
+<div class="page" id="tab-prive"><div class="inner">
+  <div class="config-note">🔒 Ces infos ne sont visibles que par toi. Depuis WhatsApp, envoie <strong>Prive770</strong> pour voir la liste, ou <strong>Prive770 rib</strong> (par exemple) pour recevoir directement le contenu d'un titre.</div>
+  <div class="card">
+    <div class="card-title">🔒 Ajouter une info privée</div>
+    <div class="field"><label>Titre (mot-clé pour la retrouver)</label><input type="text" id="priv-titre" placeholder="Ex: RIB"></div>
+    <div class="field"><label>Contenu</label><textarea id="priv-contenu" placeholder="Ex: IBAN FR76... / BIC ..."></textarea></div>
+    <button class="btn-main" onclick="ajouterInfoPrivee()">✦ Ajouter</button>
+    <div class="alert ok" id="alert-priv-ok"></div>
+    <div class="alert err" id="alert-priv-err"></div>
+  </div>
+  <div class="card"><button class="btn-main" onclick="chargerInfosPrivees()">🔄 Rafraîchir les infos privées</button></div>
+  <div id="prive-container"></div>
+</div></div>
 <!-- EXPORT -->
 <div class="page" id="tab-export"><div class="inner">
   <div class="card">
@@ -1042,6 +1058,7 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='corbeille')chargerCorbeille();
   else if(name==='questions')chargerConvs();
   else if(name==='paiements')chargerPaiements();
+  else if(name==='prive')chargerInfosPrivees();
 }
 function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
 function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
@@ -2004,6 +2021,54 @@ async function supprimerPaiement(id){
   }catch(e){alert('Erreur de connexion');}
 }
 
+// ══ INFOS PRIVÉES (déclencheur WhatsApp Prive770) ══
+let allInfosPrivees = [];
+async function ajouterInfoPrivee(){
+  const url=getUrl(),pw=getAdminPw();
+  const titre=document.getElementById('priv-titre').value.trim();
+  const contenu=document.getElementById('priv-contenu').value.trim();
+  const okEl=document.getElementById('alert-priv-ok'),errEl=document.getElementById('alert-priv-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.className='alert err';errEl.style.display='block';return;}
+  if(!titre||!contenu){errEl.textContent='Titre et contenu obligatoires';errEl.className='alert err';errEl.style.display='block';return;}
+  try{
+    const res=await fetch(url+'/admin/infos-privees',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,titre,contenu})});
+    const data=await res.json();
+    if(data.ok){
+      okEl.textContent='✓ Ajouté !';okEl.className='alert ok';okEl.style.display='block';
+      document.getElementById('priv-titre').value='';document.getElementById('priv-contenu').value='';
+      chargerInfosPrivees();
+    }else{errEl.textContent=data.message||'Erreur';errEl.className='alert err';errEl.style.display='block';}
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
+}
+async function chargerInfosPrivees(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return;
+  const container=document.getElementById('prive-container');
+  container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try{
+    const res=await fetch(url+'/admin/infos-privees?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur</p></div>';return;}
+    allInfosPrivees=data.infos||[];
+    if(!allInfosPrivees.length){container.innerHTML='<div class="empty"><div class="icon">🔒</div><p>Aucune info privée pour le moment</p></div>';return;}
+    container.innerHTML='';
+    allInfosPrivees.forEach(i=>{
+      const el=document.createElement('div');el.className='info-card';
+      el.innerHTML=`<div class="info-title">🔒 ${i.titre}</div><div class="info-preview">${i.contenu}</div><div class="card-actions"><button class="btn-icon del" onclick="supprimerInfoPrivee(${i.id})">✕</button></div>`;
+      container.appendChild(el);
+    });
+  }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
+}
+async function supprimerInfoPrivee(id){
+  if(!confirm('Supprimer cette info privée ?'))return;
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    await fetch(url+'/admin/infos-privees/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    allInfosPrivees=allInfosPrivees.filter(i=>i.id!==id);
+    chargerInfosPrivees();
+  }catch(e){alert('Erreur de connexion');}
+}
 let broadcastMode='chabbat';
 // == ENVOI RAPIDE (depuis numero cliquable) ==
 let envoiRapidePhone = '';
