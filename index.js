@@ -990,6 +990,35 @@ app.get('/admin/conversations', async (req, res) => {
   `);
   res.json({ ok: true, conversations: result.rows });
 });
+app.get('/admin/conversations/liste', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const result = await pool.query(`
+    SELECT conv.phone,
+           COUNT(*)::int AS nb_messages,
+           MAX(conv.created_at) AS derniere_date,
+           (ARRAY_AGG(conv.question ORDER BY conv.created_at DESC))[1] AS derniere_question,
+           ct.nom, ct.prenom, ct.genre
+    FROM conversations conv
+    LEFT JOIN contacts ct ON ct.phone = conv.phone
+    GROUP BY conv.phone, ct.nom, ct.prenom, ct.genre
+    ORDER BY derniere_date DESC
+  `);
+  res.json({ ok: true, contacts: result.rows });
+});
+app.get('/admin/conversations/thread', async (req, res) => {
+  const { password, phone } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!phone) return res.status(400).json({ ok: false, message: "Numéro requis" });
+  const result = await pool.query(`
+    SELECT conv.*, ct.nom, ct.prenom, ct.genre
+    FROM conversations conv
+    LEFT JOIN contacts ct ON ct.phone = conv.phone
+    WHERE conv.phone = $1
+    ORDER BY conv.created_at ASC
+  `, [phone]);
+  res.json({ ok: true, messages: result.rows });
+});
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
