@@ -208,6 +208,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .badge-chabbat { background: #FEF3C7; color: #92400E; }
 .badge-evenements { background: #ECFDF5; color: #065F46; }
 .badge-non { background: #F1F5F9; color: #94A3B8; }
+.genre-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; margin-right: 6px; vertical-align: middle; }
+.genre-homme { background: #E3F0FF; }
+.genre-femme { background: #FCE4EC; }
+.genre-enfant { background: #FFF3E0; }
 .histoire-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 70px; }
 .histoire-card .histoire-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; }
@@ -531,6 +535,8 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   </div>
   <div class="filter-chips" id="contacts-filter-chips" style="display:none">
     <div class="chip active" data-filter="tous" onclick="selectContactFilter(this)">Tous</div>
+    <div class="chip" data-filter="hommes" onclick="selectContactFilter(this)">👨 Hommes</div>
+    <div class="chip" data-filter="femmes" onclick="selectContactFilter(this)">👩 Femmes</div>
     <div class="chip" data-filter="chabbat" onclick="selectContactFilter(this)">🕯️ Chabbat</div>
     <div class="chip" data-filter="evenements" onclick="selectContactFilter(this)">📅 Événements</div>
     <div class="chip" data-filter="aucun" onclick="selectContactFilter(this)">❌ Non abonnés</div>
@@ -989,7 +995,7 @@ function badgeClass(cat){return{priere:'badge-priere',horaire:'badge-horaire',co
 function catLabel(cat){return{priere:'🙏 Prière',horaire:'🕐 Horaire',cours:'📚 Cours',service:'🔧 Service',evenement:'✡️ Événement',autre:'📝 Autre'}[cat]||cat;}
 function typeLabel(type){return{cerfa:'📋 Cerfa',sefer_torah:'📜 Sefer Torah',location_salle:'🏠 Location Salle'}[type]||'📩 '+type;}
 function typeBadgeClass(type){return{cerfa:'type-cerfa',sefer_torah:'type-sefer_torah',location_salle:'type-location_salle'}[type]||'type-autre';}
-function genreIcon(g){return{homme:'👨',femme:'👩',enfant:'🧒'}[g]||'';}
+function genreIcon(g){return{homme:'<span class="genre-badge genre-homme">👨</span>',femme:'<span class="genre-badge genre-femme">👩</span>',enfant:'<span class="genre-badge genre-enfant">🧒</span>'}[g]||'';}
 // ══ INFOS ══
 function afficherInfos(){const search=(document.getElementById('search-input').value||'').toLowerCase();const container=document.getElementById('liste-container');const filtered=allInfos.filter(item=>{const mc=filterCat==='tous'||item.categorie===filterCat;const ms=!search||item.titre.toLowerCase().includes(search)||item.contenu.toLowerCase().includes(search);return mc&&ms;});if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">🔍</div><p>Aucun résultat</p></div>';return;}container.innerHTML='';filtered.forEach(item=>{const el=document.createElement('div');el.className='info-card';el.innerHTML=`<span class="badge ${badgeClass(item.categorie)}">${catLabel(item.categorie)}</span><div class="info-title">${item.titre}</div><div class="info-preview">${item.contenu}</div><div class="info-date">📅 ${new Date(item.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div><div class="card-actions"><button class="btn-icon edit" onclick="ouvrirModal(${item.id})">✏️</button><button class="btn-icon del" onclick="supprimer(${item.id})">✕</button></div>`;container.appendChild(el);});}
 async function chargerListe(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('liste-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/list?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}allInfos=data.rawInfos||[];document.getElementById('search-wrap').style.display='block';document.getElementById('filter-chips').style.display='flex';afficherInfos();}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
@@ -1730,6 +1736,8 @@ function afficherContacts() {
   if (filterContact === 'chabbat') filtered = allContacts.filter(c => c.abonne_chabbat);
   else if (filterContact === 'evenements') filtered = allContacts.filter(c => c.abonne_evenements);
   else if (filterContact === 'aucun') filtered = allContacts.filter(c => !c.abonne_chabbat && !c.abonne_evenements);
+  else if (filterContact === 'hommes') filtered = allContacts.filter(c => c.genre === 'homme');
+  else if (filterContact === 'femmes') filtered = allContacts.filter(c => c.genre === 'femme');
   if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="icon">👥</div><p>Aucun contact</p></div>'; return; }
   container.innerHTML = '';
   // Boutons sélection
