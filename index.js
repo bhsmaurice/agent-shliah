@@ -24,6 +24,8 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_counters (year INT PRIMARY KEY, last_number INT NOT NULL DEFAULT 0)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS paiements (id SERIAL PRIMARY KEY, phone TEXT NOT NULL, montant NUMERIC(10,2) NOT NULL, description TEXT, lien_paiement TEXT, statut TEXT DEFAULT 'en_attente', nb_relances INTEGER DEFAULT 0, derniere_relance TIMESTAMP, delai_relance_jours INTEGER DEFAULT 3, max_relances INTEGER DEFAULT 3, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS infos_privees (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, contenu TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
@@ -108,6 +110,35 @@ async function getBethHabadLogoBytes() {
 
 function isAdminCerfaTrigger(text) {
   return /^admin\s+cerfa/i.test(text.trim());
+}
+function isPriveTrigger(text) {
+  return /^prive770/i.test(text.trim());
+}
+async function handlePriveCommand(from, text) {
+  if (!isPriveTrigger(text)) return false;
+  if (!isAuthorizedAdminCerfa(from)) return true; // ignoré silencieusement
+  try {
+    const query = text.replace(/^prive770/i, '').trim();
+    if (!query) {
+      const result = await pool.query('SELECT titre FROM infos_privees ORDER BY titre ASC');
+      if (result.rows.length === 0) {
+        await sendWhatsApp(from, "🔒 Aucune info privée enregistrée pour le moment.\n\nAjoute-en depuis le panneau admin, onglet 🔒 Privé.");
+      } else {
+        const liste = result.rows.map(r => `• ${r.titre}`).join('\n');
+        await sendWhatsApp(from, `🔒 Infos privées disponibles :\n\n${liste}\n\nEnvoie "Prive770 [mot-clé]" pour recevoir le contenu.`);
+      }
+    } else {
+      const result = await pool.query('SELECT * FROM infos_privees WHERE titre ILIKE $1 ORDER BY created_at DESC LIMIT 1', [`%${query}%`]);
+      if (result.rows.length === 0) {
+        await sendWhatsApp(from, `🔒 Aucune info privée trouvée pour "${query}".`);
+      } else {
+        await sendWhatsApp(from, `🔒 ${result.rows[0].titre}\n\n${result.rows[0].contenu}`);
+      }
+    }
+  } catch (e) {
+    await sendWhatsApp(from, `Erreur : ${e.message}`);
+  }
+  return true;
 }
 
 function isAuthorizedAdminCerfa(fromNumber) {
@@ -845,6 +876,56 @@ async function envoyerCerfaDonateur({ numero, nom, prenom, montant, mode, email 
   if (!r.ok) console.error('Email donateur error:', r.error);
 }
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
+async function envoyerRelancePaiement(p) {
+  let prenom = null;
+  try {
+    const c = await pool.query('SELECT prenom FROM contacts WHERE phone=$1', [p.phone]);
+    if (c.rows.length > 0) prenom = c.rows[0].prenom;
+  } catch (e) {}
+  const salutation = prenom ? `Chalom ${prenom} !` : `Chalom !`;
+  const montantAffiche = parseFloat(p.montant).toLocaleString('fr-FR');
+  let message = `${salutation} 🙏\n\nPetit rappel amical : il reste ${montantAffiche}€ à régler`;
+  if (p.description) message += ` pour ${p.description}`;
+  message += `.`;
+  if (p.lien_paiement) message += `\n\nVoici le lien pour régler en ligne :\n${p.lien_paiement}`;
+  message += `\n\nMerci beaucoup !\n\n${getSignature()}`;
+  await sendWhatsApp(p.phone, message);
+  await pool.query(
+    `UPDATE paiements SET nb_relances = nb_relances + 1, derniere_relance = NOW(), statut = CASE WHEN statut = 'en_attente' THEN 'relance' ELSE statut END WHERE id = $1`,
+    [p.id]
+  );
+}
+function demarrerCronRelancesPaiements() {
+  setInterval(async () => {
+    const now = new Date();
+    const heuresParis = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
+    if (heure === 10 && minute < 5) {
+      const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
+      const cacheKey = `relances_envoyees_${dateAujourdhui}`;
+      if (global[cacheKey]) return;
+      global[cacheKey] = true;
+      console.log('🔔 Vérification des relances de paiement automatiques...');
+      try {
+        const result = await pool.query(`
+          SELECT * FROM paiements
+          WHERE statut IN ('en_attente', 'relance')
+            AND nb_relances < max_relances
+            AND (
+              (derniere_relance IS NULL AND created_at <= NOW() - (delai_relance_jours || ' days')::interval)
+              OR (derniere_relance IS NOT NULL AND derniere_relance <= NOW() - (delai_relance_jours || ' days')::interval)
+            )
+        `);
+        for (const p of result.rows) {
+          try { await envoyerRelancePaiement(p); await new Promise(r => setTimeout(r, 300)); }
+          catch (e) { console.error('Relance paiement erreur:', p.id, e.message); }
+        }
+        console.log(`🔔 ${result.rows.length} relance(s) automatique(s) envoyée(s)`);
+      } catch (e) { console.error('Cron relances error:', e.message); }
+    }
+  }, 5 * 60 * 1000);
+  console.log('⏰ Cron relances paiements démarré');
+}
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'], token = req.query['hub.verify_token'], challenge = req.query['hub.challenge'];
   if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
@@ -864,6 +945,7 @@ app.post('/webhook', async (req, res) => {
       } catch(e) { console.error('Dedup error:', e.message); }
 
       if (await handleAdminCerfaCommand(from, text)) return;
+      if (await handlePriveCommand(from, text)) return;
 
       if (sessionsAbonnement[from]) {
         const typeAbonnement = sessionsAbonnement[from];
@@ -1424,6 +1506,80 @@ app.get('/admin/histoires', async (req, res) => {
   const result = await pool.query('SELECT * FROM histoires ORDER BY created_at DESC');
   res.json({ ok: true, histoires: result.rows });
 });
+// ─── API ADMIN INFOS PRIVÉES ───────────────────────────────────
+app.get('/admin/infos-privees', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const result = await pool.query('SELECT * FROM infos_privees ORDER BY titre ASC');
+  res.json({ ok: true, infos: result.rows });
+});
+app.post('/admin/infos-privees', async (req, res) => {
+  const { password, titre, contenu } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!titre || !contenu) return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
+  await pool.query('INSERT INTO infos_privees (titre, contenu) VALUES ($1, $2)', [titre, contenu]);
+  res.json({ ok: true, message: "Info privée ajoutée !" });
+});
+app.put('/admin/infos-privees/:id', async (req, res) => {
+  const { password, titre, contenu } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('UPDATE infos_privees SET titre=$1, contenu=$2 WHERE id=$3', [titre, contenu, req.params.id]);
+  res.json({ ok: true, message: "Info privée mise à jour !" });
+});
+app.delete('/admin/infos-privees/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('DELETE FROM infos_privees WHERE id=$1', [req.params.id]);
+  res.json({ ok: true, message: "Supprimée !" });
+});
+// ─── API ADMIN PAIEMENTS (suivi et relance) ───────────────────
+app.get('/admin/paiements', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const result = await pool.query(`
+    SELECT p.*, ct.nom, ct.prenom, ct.genre
+    FROM paiements p
+    LEFT JOIN contacts ct ON ct.phone = p.phone
+    ORDER BY p.created_at DESC
+  `);
+  res.json({ ok: true, paiements: result.rows });
+});
+app.post('/admin/paiements', async (req, res) => {
+  const { password, phone, montant, description, lien_paiement, delai_relance_jours, max_relances } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  const phoneClean = (phone || '').replace(/[^\d]/g, '');
+  const montantNum = parseFloat(String(montant).replace(',', '.'));
+  if (!phoneClean || isNaN(montantNum)) return res.status(400).json({ ok: false, message: "Numéro et montant requis" });
+  const result = await pool.query(
+    `INSERT INTO paiements (phone, montant, description, lien_paiement, delai_relance_jours, max_relances) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [phoneClean, montantNum, description || null, lien_paiement || null, delai_relance_jours || 3, max_relances || 3]
+  );
+  res.json({ ok: true, message: "Paiement ajouté !", paiement: result.rows[0] });
+});
+app.put('/admin/paiements/:id/statut', async (req, res) => {
+  const { password, statut } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('UPDATE paiements SET statut=$1 WHERE id=$2', [statut, req.params.id]);
+  res.json({ ok: true, message: "Statut mis à jour" });
+});
+app.post('/admin/paiements/:id/relancer', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query('SELECT * FROM paiements WHERE id=$1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false, message: "Paiement introuvable" });
+    await envoyerRelancePaiement(result.rows[0]);
+    res.json({ ok: true, message: "Relance envoyée !" });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+app.delete('/admin/paiements/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  await pool.query('DELETE FROM paiements WHERE id=$1', [req.params.id]);
+  res.json({ ok: true, message: "Supprimé" });
+});
 app.post('/admin/histoires', async (req, res) => {
   const { password, titre, texte, image_url } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
@@ -1530,4 +1686,5 @@ initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
   demarrerCronChabbat();
   demarrerCronBackup();
+  demarrerCronRelancesPaiements();
 });
