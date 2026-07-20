@@ -212,6 +212,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .genre-homme { background: #E3F0FF; }
 .genre-femme { background: #FCE4EC; }
 .genre-enfant { background: #FFF3E0; }
+.chat-thread { display: flex; flex-direction: column; gap: 8px; }
+.bubble-q { align-self: flex-end; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.bubble-r { align-self: flex-start; background: var(--bg); color: var(--text); padding: 10px 14px; border-radius: 14px 14px 14px 4px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.bubble-date { align-self: center; font-size: 11px; color: var(--muted); background: var(--white); border: 1px solid var(--border); padding: 2px 10px; border-radius: 10px; margin: 8px 0; }
 .histoire-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 70px; }
 .histoire-card .histoire-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; }
@@ -940,6 +944,18 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="alert err" id="alert-edit-c-err"></div>
   </div>
 </div>
+<!-- MODAL CONVERSATION COMPLETE -->
+<div class="modal-overlay" id="modal-thread" onclick="closeModalThread(event)">
+  <div class="modal" style="max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="thread-title">Conversation</div>
+    <div id="thread-container" class="chat-thread" style="flex:1;overflow-y:auto;padding:6px 2px;"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalThread()" style="flex:1;">Fermer</button>
+      <button class="modal-save" onclick="envoyerDepuisThread()" style="flex:1;">📤 Message</button>
+    </div>
+  </div>
+</div>
 <!-- MODAL ENVOI RAPIDE (depuis numéro de téléphone) -->
 <div class="modal-overlay" id="modal-envoi-rapide" onclick="closeModalEnvoiRapide(event)">
   <div class="modal">
@@ -1412,7 +1428,58 @@ async function partagerCerfaWhatsapp(id){
   }catch(e){alert('Erreur de connexion');}
 }
 // ══ CONVERSATIONS ══
-async function chargerConvs(){const url=getUrl(),pw=getAdminPw();if(!url)return alert("Configurez l'adresse dans ⚙️ Config");const container=document.getElementById('convs-container');container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';try{const res=await fetch(url+'/admin/conversations?password='+encodeURIComponent(pw));const data=await res.json();if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}if(!data.conversations.length){container.innerHTML='<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>';return;}container.innerHTML='';data.conversations.forEach(conv=>{const date=new Date(conv.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});const nomConv=[conv.prenom,conv.nom].filter(Boolean).join(' ').trim();const iconConv=genreIcon(conv.genre);const el=document.createElement('div');el.className='conv-card';el.innerHTML=`${nomConv?`<div class="contact-nom">${iconConv?iconConv+' ':''}${nomConv}</div>`:''}<div class="conv-meta"><span class="conv-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${conv.phone}')" >+${conv.phone}</span></span><span class="conv-date">${date}</span></div><div class="conv-q">${conv.question}</div><div class="conv-r">${conv.reponse}</div>`;container.appendChild(el);});}catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}}
+let threadPhoneActuel='';
+async function chargerConvs(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
+  const container=document.getElementById('convs-container');
+  container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try{
+    const res=await fetch(url+'/admin/conversations/liste?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+data.message+'</p></div>';return;}
+    if(!data.contacts.length){container.innerHTML='<div class="empty"><div class="icon">💬</div><p>Aucune conversation</p></div>';return;}
+    container.innerHTML='';
+    data.contacts.forEach(c=>{
+      const date=new Date(c.derniere_date).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const nomC=[c.prenom,c.nom].filter(Boolean).join(' ').trim();
+      const icon=genreIcon(c.genre);
+      const el=document.createElement('div');el.className='conv-card';el.style.cursor='pointer';
+      el.onclick=()=>ouvrirThread(c.phone,nomC);
+      el.innerHTML=`<div class="conv-meta"><span class="conv-phone">📱 +${c.phone}</span><span class="conv-date">${date}</span></div>${nomC?`<div class="contact-nom">${icon?icon+' ':''}${nomC}</div>`:''}<div class="conv-q" style="margin-top:6px;">${c.derniere_question}</div><div style="font-size:11px;color:var(--muted);margin-top:6px;">${c.nb_messages} message(s) · toucher pour voir toute la conversation →</div>`;
+      container.appendChild(el);
+    });
+  }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
+}
+async function ouvrirThread(phone,nomAffiche){
+  const url=getUrl(),pw=getAdminPw();
+  threadPhoneActuel=phone;
+  document.getElementById('thread-title').textContent=nomAffiche?nomAffiche+' — +'+phone:'+'+phone;
+  document.getElementById('thread-container').innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  document.getElementById('modal-thread').classList.add('active');
+  try{
+    const res=await fetch(url+'/admin/conversations/thread?phone='+encodeURIComponent(phone)+'&password='+encodeURIComponent(pw));
+    const data=await res.json();
+    const container=document.getElementById('thread-container');
+    if(!data.ok||!data.messages.length){container.innerHTML='<div class="empty"><p>Aucun message</p></div>';return;}
+    container.innerHTML='';
+    let lastDate='';
+    data.messages.forEach(m=>{
+      const d=new Date(m.created_at);
+      const dateLabel=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+      if(dateLabel!==lastDate){
+        const sep=document.createElement('div');sep.className='bubble-date';sep.textContent=dateLabel;container.appendChild(sep);
+        lastDate=dateLabel;
+      }
+      const q=document.createElement('div');q.className='bubble-q';q.textContent=m.question;container.appendChild(q);
+      const r=document.createElement('div');r.className='bubble-r';r.textContent=m.reponse;container.appendChild(r);
+    });
+    container.scrollTop=container.scrollHeight;
+  }catch(e){document.getElementById('thread-container').innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
+}
+function fermerModalThread(){document.getElementById('modal-thread').classList.remove('active');}
+function closeModalThread(e){if(e.target===document.getElementById('modal-thread'))fermerModalThread();}
+function envoyerDepuisThread(){fermerModalThread();ouvrirEnvoiRapide(threadPhoneActuel);}
 // ══ CONFIG ══
 function sauvegarderConfig(){const pw=document.getElementById('admin-pw-config').value.trim();if(pw)localStorage.setItem('railway_admin_pw',pw);const url=document.getElementById('server-url').value.trim().replace(/\/$/,'');if(!url)return;localStorage.setItem('railway_url',url);document.getElementById('current-url').textContent=url;const al=document.getElementById('alert-config');al.className='alert ok';al.style.display='block';al.textContent='✓ Adresse sauvegardée !';setTimeout(()=>al.style.display='none',2000);}
 function showOk(msg){const el=document.getElementById('alert-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
