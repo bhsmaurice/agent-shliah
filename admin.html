@@ -216,6 +216,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .bubble-q { align-self: flex-end; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 .bubble-r { align-self: flex-start; background: var(--bg); color: var(--text); padding: 10px 14px; border-radius: 14px 14px 14px 4px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 .bubble-date { align-self: center; font-size: 11px; color: var(--muted); background: var(--white); border: 1px solid var(--border); padding: 2px 10px; border-radius: 10px; margin: 8px 0; }
+.statut-en_attente { background: #FDECEA; color: #C0392B; }
+.statut-relance { background: #FEF3C7; color: #92400E; }
+.statut-paye { background: #E8F5EE; color: #2D7A4F; }
 .histoire-card { background: var(--white); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
 .histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; padding-right: 70px; }
 .histoire-card .histoire-preview { font-size: 12px; color: var(--muted); line-height: 1.6; max-height: 52px; overflow: hidden; }
@@ -358,6 +361,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
   <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
+  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💰<span class="tab-label">Paiements</span></div>
   <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>
   <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
@@ -375,6 +379,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
     <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
     <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
+    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💰</span>Paiements</div>
     <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
     <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
     <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
@@ -525,15 +530,6 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <!-- CONTACTS -->
 <div class="page" id="tab-contacts"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Charger les contacts</button></div>
-  <!-- Import noms/prénoms depuis un CSV (telephone,nom,prenom) -->
-  <div class="card">
-    <div class="card-title" style="font-size:15px;">📇 Importer les noms/prénoms</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Fichier CSV avec les colonnes <strong>telephone,nom,prenom,genre</strong> (téléphone au format 33XXXXXXXXX ; genre = homme/femme, facultatif). Associe le nom au numéro déjà en base, ou crée le contact s'il n'existe pas encore. N'écrase jamais les abonnements existants.</p>
-    <div class="field"><label>Fichier CSV</label><input type="file" id="import-noms-file" accept=".csv" style="padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;width:100%;font-size:13px;color:var(--muted);"></div>
-    <button class="btn-main" onclick="importerNomsContacts()">📇 Importer les noms</button>
-    <div class="alert ok" id="alert-import-noms-ok"></div>
-    <div class="alert err" id="alert-import-noms-err"></div>
-  </div>
   <div id="contacts-stats" style="display:none">
     <div class="stats-row" id="contacts-stats-row"></div>
   </div>
@@ -584,6 +580,32 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="alert err" id="envoi-contacts-err"></div>
     </div>
   </div>
+</div></div>
+<!-- PAIEMENTS -->
+<div class="page" id="tab-paiements"><div class="inner">
+  <div class="card">
+    <div class="card-title">💰 Ajouter un paiement en attente</div>
+    <div class="field"><label>Numéro WhatsApp</label><input type="tel" id="p-phone" placeholder="ex: 0612345678 ou +33612345678"></div>
+    <div class="field-row">
+      <div class="field"><label>Montant (€)</label><input type="number" id="p-montant" placeholder="Ex: 20"></div>
+      <div class="field"><label>Relancer après (jours)</label><input type="number" id="p-delai" value="3" min="1"></div>
+    </div>
+    <div class="field"><label>Description</label><input type="text" id="p-description" placeholder="Ex: Repas Chabbat du 18/07"></div>
+    <div class="field"><label>Lien de paiement (facultatif)</label><input type="url" id="p-lien" placeholder="https://habad-s-maurice.kehila.io/don/..."></div>
+    <div class="field"><label>Nombre max de relances automatiques</label><input type="number" id="p-max-relances" value="3" min="1"></div>
+    <button class="btn-main" onclick="ajouterPaiement()">✦ Ajouter le paiement</button>
+    <div class="alert ok" id="alert-paiement-ok"></div>
+    <div class="alert err" id="alert-paiement-err"></div>
+  </div>
+  <div class="card"><button class="btn-main" onclick="chargerPaiements()">🔄 Charger les paiements</button></div>
+  <div id="paiements-stats" style="display:none"><div class="stats-row" id="paiements-stats-row"></div></div>
+  <div class="filter-chips" id="paiements-filter-chips" style="display:none">
+    <div class="chip active" data-filter="tous" onclick="selectPaiementFilter(this)">Tous</div>
+    <div class="chip" data-filter="en_attente" onclick="selectPaiementFilter(this)">🔴 En attente</div>
+    <div class="chip" data-filter="relance" onclick="selectPaiementFilter(this)">🟡 Relancé</div>
+    <div class="chip" data-filter="paye" onclick="selectPaiementFilter(this)">✅ Payé</div>
+  </div>
+  <div id="paiements-container"></div>
 </div></div>
 <!-- DEMANDES -->
 <div class="page" id="tab-demandes"><div class="inner">
@@ -810,6 +832,14 @@ Chabbat Chalom à toute la communauté ! 🌟
     <button class="btn-main" onclick="importerInfos()">📥 Importer</button>
     <div class="alert ok" id="alert-import-ok"></div>
     <div class="alert err" id="alert-import-err"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📇 Importer les noms/prénoms des contacts</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Fichier CSV avec les colonnes <strong>telephone,nom,prenom,genre</strong> (téléphone au format 33XXXXXXXXX ; genre = homme/femme, facultatif). Associe le nom au numéro déjà en base, ou crée le contact s'il n'existe pas encore. N'écrase jamais les abonnements existants.</p>
+    <div class="field"><label>Fichier CSV</label><input type="file" id="import-noms-file" accept=".csv" style="padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;width:100%;font-size:13px;color:var(--muted);"></div>
+    <button class="btn-main" onclick="importerNomsContacts()">📇 Importer les noms</button>
+    <div class="alert ok" id="alert-import-noms-ok"></div>
+    <div class="alert err" id="alert-import-noms-err"></div>
   </div>
   <div class="card" id="analyse-card" style="display:none">
     <div class="card-title">🧠 Questions fréquentes</div>
@@ -1855,6 +1885,114 @@ async function chargerContacts() {
     afficherContacts();
   } catch (e) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>'; }
 }
+
+// ══ PAIEMENTS (suivi et relance) ══
+let allPaiements = [], filterPaiement = 'tous';
+function selectPaiementFilter(chip){
+  document.querySelectorAll('#paiements-filter-chips .chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  filterPaiement=chip.dataset.filter;
+  afficherPaiements();
+}
+function statutPaiementLabel(s){return{en_attente:'🔴 En attente',relance:'🟡 Relancé',paye:'✅ Payé'}[s]||s;}
+async function ajouterPaiement(){
+  const url=getUrl(),pw=getAdminPw();
+  const phone=document.getElementById('p-phone').value.trim();
+  const montant=document.getElementById('p-montant').value.trim();
+  const description=document.getElementById('p-description').value.trim();
+  const lien_paiement=document.getElementById('p-lien').value.trim();
+  const delai_relance_jours=document.getElementById('p-delai').value.trim()||3;
+  const max_relances=document.getElementById('p-max-relances').value.trim()||3;
+  const okEl=document.getElementById('alert-paiement-ok'),errEl=document.getElementById('alert-paiement-err');
+  okEl.style.display='none';errEl.style.display='none';
+  if(!url){errEl.textContent="Configurez l'adresse dans ⚙️ Config";errEl.className='alert err';errEl.style.display='block';return;}
+  if(!phone||!montant){errEl.textContent='Numéro et montant obligatoires';errEl.className='alert err';errEl.style.display='block';return;}
+  try{
+    const res=await fetch(url+'/admin/paiements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,phone,montant,description,lien_paiement,delai_relance_jours,max_relances})});
+    const data=await res.json();
+    if(data.ok){
+      okEl.textContent='✓ Paiement ajouté !';okEl.className='alert ok';okEl.style.display='block';
+      document.getElementById('p-phone').value='';document.getElementById('p-montant').value='';document.getElementById('p-description').value='';document.getElementById('p-lien').value='';
+      chargerPaiements();
+    }else{errEl.textContent=data.message||'Erreur';errEl.className='alert err';errEl.style.display='block';}
+  }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
+}
+async function chargerPaiements(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return alert("Configurez l'adresse dans ⚙️ Config");
+  const container=document.getElementById('paiements-container');
+  container.innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  try{
+    const res=await fetch(url+'/admin/paiements?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(!data.ok){container.innerHTML='<div class="empty"><p style="color:var(--red)">'+(data.message||'Erreur')+'</p></div>';return;}
+    allPaiements=data.paiements||[];
+    const enAttente=allPaiements.filter(p=>p.statut!=='paye');
+    const totalDu=enAttente.reduce((s,p)=>s+parseFloat(p.montant||0),0);
+    const payes=allPaiements.filter(p=>p.statut==='paye').length;
+    document.getElementById('paiements-stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${enAttente.length}</div><div class="stat-label">En attente</div></div><div class="stat-box"><div class="stat-num">${totalDu.toLocaleString('fr-FR')} €</div><div class="stat-label">Total dû</div></div><div class="stat-box"><div class="stat-num">${payes}</div><div class="stat-label">Payés</div></div>`;
+    document.getElementById('paiements-stats').style.display='block';
+    document.getElementById('paiements-filter-chips').style.display='flex';
+    afficherPaiements();
+  }catch(e){container.innerHTML='<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';}
+}
+function afficherPaiements(){
+  const container=document.getElementById('paiements-container');
+  let filtered=allPaiements;
+  if(filterPaiement!=='tous')filtered=allPaiements.filter(p=>p.statut===filterPaiement);
+  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">💰</div><p>Aucun paiement</p></div>';return;}
+  container.innerHTML='';
+  filtered.forEach(p=>{
+    const date=new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const nomP=[p.prenom,p.nom].filter(Boolean).join(' ').trim();
+    const icon=genreIcon(p.genre);
+    const montant=parseFloat(p.montant||0).toLocaleString('fr-FR');
+    const derniereRelance=p.derniere_relance?new Date(p.derniere_relance).toLocaleDateString('fr-FR'):null;
+    const el=document.createElement('div');
+    el.className='demande-card';
+    el.innerHTML=`
+      <div class="demande-header">
+        <span class="demande-type" style="background:var(--bg);color:var(--navy);">${statutPaiementLabel(p.statut)}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn-trash" onclick="supprimerPaiement(${p.id})" title="Supprimer">🗑️</button>
+          <span class="demande-date">${date}</span>
+        </div>
+      </div>
+      ${nomP?`<div class="contact-nom">${icon?icon+' ':''}${nomP}</div>`:''}
+      <div class="demande-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${p.phone}')">+${p.phone}</span></div>
+      <div class="demande-texte">💰 <strong>${montant} €</strong>${p.description?' — '+p.description:''}${p.lien_paiement?'<br>🔗 '+p.lien_paiement:''}<br><span style="font-size:11px;color:var(--muted);">${p.nb_relances||0} relance(s) envoyée(s)${derniereRelance?' · dernière le '+derniereRelance:''}</span></div>
+      <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        ${p.statut!=='paye'?`<button class="btn-restore" onclick="relancerPaiement(${p.id})" style="border-color:var(--gold);background:var(--gold-light);color:var(--gold-dark);">🔔 Relancer</button><button class="btn-restore" onclick="changerStatutPaiement(${p.id},'paye')">✅ Marquer payé</button>`:`<button class="btn-restore" onclick="changerStatutPaiement(${p.id},'en_attente')">↺ Remettre en attente</button>`}
+      </div>`;
+    container.appendChild(el);
+  });
+}
+async function relancerPaiement(id){
+  if(!confirm('Envoyer la relance WhatsApp maintenant ?'))return;
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    const res=await fetch(url+'/admin/paiements/'+id+'/relancer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const data=await res.json();
+    if(data.ok){chargerPaiements();}else{alert(data.message||'Erreur');}
+  }catch(e){alert('Erreur de connexion');}
+}
+async function changerStatutPaiement(id,statut){
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    await fetch(url+'/admin/paiements/'+id+'/statut',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,statut})});
+    chargerPaiements();
+  }catch(e){alert('Erreur de connexion');}
+}
+async function supprimerPaiement(id){
+  if(!confirm('Supprimer ce paiement ?'))return;
+  const url=getUrl(),pw=getAdminPw();
+  try{
+    await fetch(url+'/admin/paiements/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    allPaiements=allPaiements.filter(p=>p.id!==id);
+    afficherPaiements();
+  }catch(e){alert('Erreur de connexion');}
+}
+
 let broadcastMode='chabbat';
 // == ENVOI RAPIDE (depuis numero cliquable) ==
 let envoiRapidePhone = '';
