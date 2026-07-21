@@ -729,6 +729,67 @@ const AMBIANCES = {
   '2': { label: '🔥 Qui bouge', key: 'bouge' },
   '3': { label: '🕯️ Nigounim / Chabbat', key: 'chabbat' }
 };
+
+// ─── AJOUT RAPIDE DE MUSIQUE PAR L'ADMIN (via WhatsApp) ─────────
+// L'admin envoie un lien (YouTube ou autre) au bot -> le bot propose
+// des boutons pour choisir l'ambiance -> demande le titre -> enregistre.
+function extraireUrlMusique(text) {
+  const match = text.match(/(https?:\/\/[^\s]+)/i);
+  return match ? match[1] : null;
+}
+const AMBIANCES_AJOUT = {
+  musique_douce: { key: 'douce', label: '🎶 Douce et relaxante' },
+  musique_bouge: { key: 'bouge', label: '🔥 Qui bouge' },
+  musique_chabbat: { key: 'chabbat', label: '🕯️ Nigounim / Chabbat' }
+};
+let sessionsAjoutMusique = {};
+async function sendWhatsAppButtons(to, bodyText, buttons) {
+  await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: bodyText },
+        action: { buttons: buttons.map(b => ({ type: 'reply', reply: { id: b.id, title: b.title } })) }
+      }
+    })
+  });
+}
+async function demarrerAjoutMusique(from, lien) {
+  sessionsAjoutMusique[from] = { etape: 'categorie', lien };
+  await sendWhatsAppButtons(from, "🎵 Lien détecté !\n\nC'est quel style ?", [
+    { id: 'musique_douce', title: 'Douce' },
+    { id: 'musique_bouge', title: 'Qui bouge' },
+    { id: 'musique_chabbat', title: 'Chabbat' }
+  ]);
+}
+async function gererChoixAmbianceAjout(from, buttonId) {
+  const session = sessionsAjoutMusique[from];
+  if (!session || session.etape !== 'categorie') return false;
+  const ambiance = AMBIANCES_AJOUT[buttonId];
+  if (!ambiance) return false;
+  session.etape = 'titre';
+  session.ambiance = ambiance.key;
+  session.ambianceLabel = ambiance.label;
+  await sendWhatsApp(from, `C'est noté : ${ambiance.label}\n\nQuel est le titre de cette musique ?`);
+  return true;
+}
+async function gererTitreAjoutMusique(from, text) {
+  const session = sessionsAjoutMusique[from];
+  if (!session || session.etape !== 'titre') return null;
+  delete sessionsAjoutMusique[from];
+  try {
+    const titre = text.trim();
+    await pool.query('INSERT INTO musiques (titre, lien, ambiance) VALUES ($1, $2, $3)', [titre, session.lien, session.ambiance]);
+    return `✅ Ajouté à ${session.ambianceLabel} !\n\n🎵 ${titre}`;
+  } catch (e) {
+    return `Erreur lors de l'ajout : ${e.message}`;
+  }
+}
 let sessionsMusiqueType = {};
 async function gererMusique(from, text, type) {
   const session = sessionsMusiqueType[from];
@@ -936,6 +997,21 @@ app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'whatsapp_business_account') {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
+    if (message && message.type === 'interactive') {
+      const from = message.from, msgId = message.id;
+      try {
+        const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
+        if (already.rows.length > 0) return;
+        await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
+      } catch (e) { console.error('Dedup error:', e.message); }
+      const buttonId = message.interactive?.button_reply?.id;
+      if (buttonId && isAuthorizedAdminCerfa(from)) {
+        await gererChoixAmbianceAjout(from, buttonId);
+      }
+      return;
+    }
+
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
       try {
@@ -946,6 +1022,20 @@ app.post('/webhook', async (req, res) => {
 
       if (await handleAdminCerfaCommand(from, text)) return;
       if (await handlePriveCommand(from, text)) return;
+
+      if (isAuthorizedAdminCerfa(from)) {
+        const sessionAjout = sessionsAjoutMusique[from];
+        if (sessionAjout && sessionAjout.etape === 'titre') {
+          const reponse = await gererTitreAjoutMusique(from, text);
+          await sendWhatsApp(from, reponse);
+          return;
+        }
+        const lienDetecte = extraireUrlMusique(text);
+        if (lienDetecte && !sessionAjout) {
+          await demarrerAjoutMusique(from, lienDetecte);
+          return;
+        }
+      }
 
       if (sessionsAbonnement[from]) {
         const typeAbonnement = sessionsAbonnement[from];
