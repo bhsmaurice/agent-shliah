@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -1229,6 +1229,23 @@ app.post('/webhook', async (req, res) => {
         try { await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]); } catch (e) {}
       }
     }
+  }
+});
+// ─── UPLOAD D'IMAGE DEPUIS L'ADMIN PANEL (drag-and-drop / choix de fichier) ──
+// Reçoit l'image encodée en base64, la stocke dans la table `medias` (la même
+// que pour le flux WhatsApp) et renvoie l'URL publique /media/:id à utiliser
+// comme image_url pour une info, une histoire, etc.
+app.post('/admin/upload-image', async (req, res) => {
+  const { password, image_base64, mime_type } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!image_base64) return res.status(400).json({ ok: false, message: "Aucune image reçue" });
+  if (!PUBLIC_BASE_URL) return res.status(400).json({ ok: false, message: "La variable PUBLIC_BASE_URL n'est pas configurée sur Railway." });
+  try {
+    const buffer = Buffer.from(image_base64, 'base64');
+    const idMedia = await enregistrerMedia(buffer, mime_type || 'image/jpeg');
+    res.json({ ok: true, url: `${PUBLIC_BASE_URL}/media/${idMedia}` });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
   }
 });
 app.post('/admin/add', async (req, res) => {
