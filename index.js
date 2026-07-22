@@ -837,15 +837,23 @@ async function demarrerAjoutInfo(from, mediaId) {
 async function gererTitreAjoutInfo(from, text) {
   const session = sessionsAjoutInfo[from];
   if (!session || session.etape !== 'titre') return null;
+  session.titre = text.trim();
+  session.etape = 'contenu';
+  return `C'est noté !\n\nMaintenant envoie le texte complet de cette information (ce que le bot doit savoir/répondre). Si tu veux laisser vide, écris "non".`;
+}
+async function gererContenuAjoutInfo(from, text) {
+  const session = sessionsAjoutInfo[from];
+  if (!session || session.etape !== 'contenu') return null;
   delete sessionsAjoutInfo[from];
   try {
-    const titre = text.trim();
-    // Par défaut le contenu reprend le titre (modifiable ensuite depuis l'admin panel, onglet Infos)
+    const texte = text.trim();
+    const estVide = /^(non|aucun|rien|-)$/i.test(texte);
+    const contenu = estVide ? session.titre : texte;
     await pool.query(
       'INSERT INTO infos (categorie, titre, contenu, image_url) VALUES ($1, $2, $3, $4)',
-      ['autre', titre, titre, session.imageUrl]
+      ['autre', session.titre, contenu, session.imageUrl]
     );
-    return `✅ Ajouté dans les Infos !\n\n🖼️ ${titre}`;
+    return `✅ Ajouté dans les Infos !\n\n🖼️ ${session.titre}`;
   } catch (e) {
     return `Erreur lors de l'ajout : ${e.message}`;
   }
@@ -1112,10 +1120,15 @@ app.post('/webhook', async (req, res) => {
       if (await handlePriveCommand(from, text)) return;
 
       if (isAuthorizedAdminCerfa(from)) {
-        // AJOUT — étape "titre" du flux Infos avec image (prioritaire sur le flux musique)
+        // AJOUT — étapes "titre" puis "contenu" du flux Infos avec image (prioritaire sur le flux musique)
         const sessionInfo = sessionsAjoutInfo[from];
         if (sessionInfo && sessionInfo.etape === 'titre') {
           const reponse = await gererTitreAjoutInfo(from, text);
+          await sendWhatsApp(from, reponse);
+          return;
+        }
+        if (sessionInfo && sessionInfo.etape === 'contenu') {
+          const reponse = await gererContenuAjoutInfo(from, text);
           await sendWhatsApp(from, reponse);
           return;
         }
