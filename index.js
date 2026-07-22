@@ -514,6 +514,8 @@ N'utilise jamais d'astérisques * pour mettre en gras. Écris normalement sans f
 Laisse toujours une ligne vide entre chaque information dans le message.
 Pour la signature de fin : le vendredi uniquement écris "Chabbat Chalom !", tous les autres jours écris "Kol Touv !". Aucune autre formule.
 Si tu ne connais pas la réponse, dis : "Je n'ai pas cette information. Contacte le Rav Levi au 07 70 24 17 46." Ne jamais inventer.
+REGLE IMPORTANTE - MARQUEUR D'INFO UTILISEE :
+Chaque bloc d'information ci-dessous porte un identifiant entre crochets, par exemple [id:12]. Si ta réponse utilise le contenu d'un ou plusieurs de ces blocs, termine TOUJOURS ta réponse par une ligne supplémentaire, après ta signature, au format exact [[INFO:12]] (un par bloc utilisé). Cette ligne est un marqueur technique invisible pour l'utilisateur : ne l'explique jamais, ne dis jamais que tu l'ajoutes. Si tu n'utilises aucun bloc d'information, n'ajoute rien.
 REGLE IMPORTANTE - HORAIRES DE CHABBAT :
 Quand quelquun demande les "horaires de Chabbat" ou "heure de Chabbat" sans preciser, tu DOIS toujours poser cette question avant de repondre :
 "Tu veux les horaires dallumage des bougies (entree/sortie de Chabbat) ou les horaires des offices au Beth Habad ?"
@@ -556,7 +558,7 @@ async function getFullPrompt(extra = null) {
     if (result.rows.length > 0) {
       const labels = { priere: 'PRIÈRE', horaire: 'HORAIRE', cours: 'COURS DE TORAH', service: 'SERVICE', evenement: 'ÉVÉNEMENT', autre: 'INFORMATION' };
       const extras = result.rows.map(row => {
-        let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} ---\n${row.contenu}`;
+        let bloc = `--- ${labels[row.categorie] || 'INFO'} : ${row.titre.toUpperCase()} [id:${row.id}] ---\n${row.contenu}`;
         if (row.instruction) bloc += `\nInstruction : ${row.instruction}`;
         return bloc;
       });
@@ -925,6 +927,34 @@ async function gererHistoire(from, text) {
   const liste = result.rows.map((h, i) => `${i + 1}. ${h.titre}`).join('\n');
   return `📖 Histoires du Rabbi\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
 }
+// ─── ENVOI AUTOMATIQUE DE L'IMAGE D'UNE INFO QUAND LE BOT L'UTILISE ──────
+// Claude ajoute un marqueur invisible [[INFO:id]] à la fin de sa réponse
+// quand il utilise le contenu d'une info. On extrait ces ids, on nettoie
+// le texte visible, et on envoie l'image de chaque info concernée (si elle en a une).
+function extraireIdsInfoUtilisees(texte) {
+  if (!texte) return [];
+  const ids = new Set();
+  const regex = /\[\[INFO:(\d+)\]\]/g;
+  let m;
+  while ((m = regex.exec(texte)) !== null) ids.add(parseInt(m[1]));
+  return Array.from(ids);
+}
+function nettoyerReponseInfoTags(texte) {
+  if (!texte) return texte;
+  return texte.replace(/\s*\[\[INFO:\d+\]\]\s*/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+async function envoyerImagesInfos(to, ids) {
+  if (!ids || !ids.length) return;
+  try {
+    const result = await pool.query('SELECT image_url FROM infos WHERE id = ANY($1) AND image_url IS NOT NULL', [ids]);
+    for (const row of result.rows) {
+      if (row.image_url) {
+        await sendWhatsAppImage(to, row.image_url);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  } catch (e) { console.error('Erreur envoi images infos:', e.message); }
+}
 async function sendWhatsAppImage(to, imageUrl, caption = '') {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -1166,7 +1196,7 @@ app.post('/webhook', async (req, res) => {
         }
         return;
       }
-      let reply, estUneDemande = false;
+      let reply, estUneDemande = false, idsInfosAEnvoyer = [];
       const contact = await getOuCreerContact(from);
       await incrementerMessages(from);
       const contactMaj = await pool.query('SELECT * FROM contacts WHERE phone=$1', [from]).then(r => r.rows[0]).catch(() => null);
@@ -1217,6 +1247,8 @@ app.post('/webhook', async (req, res) => {
           let historique = [];
           try { const hist = await pool.query('SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5', [from]); historique = hist.rows.reverse(); } catch (e) {}
           reply = await askClaude(text, extra, historique);
+          idsInfosAEnvoyer = extraireIdsInfoUtilisees(reply);
+          reply = nettoyerReponseInfoTags(reply);
         }
       }
       const replyContientQuestion = reply && reply.trim().endsWith("?");
@@ -1225,6 +1257,7 @@ app.post('/webhook', async (req, res) => {
         if (questionAbonnement) reply = reply + questionAbonnement;
       }
       await sendWhatsApp(from, reply);
+      if (idsInfosAEnvoyer.length) await envoyerImagesInfos(from, idsInfosAEnvoyer);
       if (!estUneDemande) {
         try { await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [from, text, reply]); } catch (e) {}
       }
