@@ -955,6 +955,36 @@ async function envoyerImagesInfos(to, ids) {
     }
   } catch (e) { console.error('Erreur envoi images infos:', e.message); }
 }
+function normaliserMot(mot) {
+  return (mot || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/(.)\1+/g, '$1'); // colle les lettres doublées (ex: houppa -> houpa) pour tolérer les variantes d'écriture
+}
+const MOTS_VIDES_INFO = new Set(['sous', 'la', 'le', 'les', 'de', 'des', 'du', 'et', 'a', 'au', 'aux', 'un', 'une', 'sur', 'pour', 'dans', 'avec', 'ce', 'cette', 'ces']);
+function motsSignificatifs(texte) {
+  return (texte || '').split(/[^a-zA-Zà-ÿÀ-Ÿ']+/).map(normaliserMot).filter(m => m.length >= 3 && !MOTS_VIDES_INFO.has(m));
+}
+// Cherche une info qui n'a pas de vrai contenu (contenu vide ou identique au titre) mais
+// qui a une image, en comparant les mots du titre à ceux du message (tolérant aux fautes/variantes).
+async function trouverInfoImageSansContenu(text) {
+  try {
+    const result = await pool.query(
+      `SELECT id, titre, image_url FROM infos WHERE image_url IS NOT NULL AND (contenu IS NULL OR contenu = '' OR lower(trim(contenu)) = lower(trim(titre)))`
+    );
+    if (!result.rows.length) return null;
+    const motsMessage = new Set(motsSignificatifs(text));
+    if (!motsMessage.size) return null;
+    for (const row of result.rows) {
+      const motsTitre = motsSignificatifs(row.titre);
+      if (!motsTitre.length) continue;
+      const trouves = motsTitre.filter(m => motsMessage.has(m));
+      if (trouves.length >= Math.max(1, Math.ceil(motsTitre.length / 2))) return row;
+    }
+    return null;
+  } catch (e) { console.error('Erreur recherche info image:', e.message); return null; }
+}
 async function sendWhatsAppImage(to, imageUrl, caption = '') {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -1203,6 +1233,7 @@ app.post('/webhook', async (req, res) => {
       let session = null;
       try { const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]); if (sr.rows.length > 0) session = sr.rows[0]; } catch(e) {}
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
+      const infoImageMatch = !session ? await trouverInfoImageSansContenu(text) : null;
       if (session) {
         estUneDemande = true;
         const config = TYPES_DEMANDES[session.type];
@@ -1229,6 +1260,9 @@ app.post('/webhook', async (req, res) => {
         reply = await gererMusique(from, text, 'musique');
       } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
         reply = await gererHistoire(from, text);
+      } else if (infoImageMatch) {
+        reply = `📋 ${infoImageMatch.titre}`;
+        idsInfosAEnvoyer = [infoImageMatch.id];
       } else {
         const typeDemande = detecterTypeDemande(text);
         if (typeDemande) {
