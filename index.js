@@ -26,11 +26,15 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS paiements (id SERIAL PRIMARY KEY, phone TEXT NOT NULL, montant NUMERIC(10,2) NOT NULL, description TEXT, lien_paiement TEXT, statut TEXT DEFAULT 'en_attente', nb_relances INTEGER DEFAULT 0, derniere_relance TIMESTAMP, delai_relance_jours INTEGER DEFAULT 3, max_relances INTEGER DEFAULT 3, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS infos_privees (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, contenu TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  // AJOUT — stockage des images uploadées depuis WhatsApp (servies via /media/:id)
+  await pool.query(`CREATE TABLE IF NOT EXISTS medias (id SERIAL PRIMARY KEY, data BYTEA NOT NULL, mime_type TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS prenom TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS genre TEXT').catch(()=>{});
+  // AJOUT — colonne image pour les Infos
+  await pool.query('ALTER TABLE infos ADD COLUMN IF NOT EXISTS image_url TEXT').catch(()=>{});
   await pool.query('DELETE FROM sessions_demande').catch(()=>{});
   console.log('Base de données prête');
 }
@@ -43,6 +47,10 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Shliah Bot <onboarding@resend.dev>';
+// AJOUT — URL publique du serveur Railway, nécessaire pour générer les liens d'images (/media/:id)
+// Va dans Railway > Variables et ajoute PUBLIC_BASE_URL = https://TON-APP.up.railway.app
+// (Railway fournit aussi automatiquement RAILWAY_PUBLIC_DOMAIN, utilisé en secours ci-dessous)
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
 async function envoyerEmail({ to, subject, html, attachments }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
@@ -790,6 +798,59 @@ async function gererTitreAjoutMusique(from, text) {
     return `Erreur lors de l'ajout : ${e.message}`;
   }
 }
+
+// ─── AJOUT RAPIDE D'UNE INFO AVEC IMAGE PAR L'ADMIN (via WhatsApp) ──
+// L'admin envoie une IMAGE au bot -> le bot la télécharge et l'héberge
+// lui-même (table `medias`, servie via /media/:id) -> demande le titre
+// -> enregistre directement dans la table `infos` avec image_url rempli.
+// Catégorie par défaut : "autre" (modifiable ensuite depuis l'admin panel).
+async function telechargerMediaWhatsApp(mediaId) {
+  const infoRes = await fetch(`https://graph.facebook.com/v25.0/${mediaId}`, {
+    headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+  });
+  const info = await infoRes.json();
+  if (!info.url) throw new Error('Média WhatsApp introuvable : ' + JSON.stringify(info));
+  const fileRes = await fetch(info.url, { headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` } });
+  const buffer = Buffer.from(await fileRes.arrayBuffer());
+  return { buffer, mimeType: info.mime_type || 'image/jpeg' };
+}
+async function enregistrerMedia(buffer, mimeType) {
+  const result = await pool.query('INSERT INTO medias (data, mime_type) VALUES ($1, $2) RETURNING id', [buffer, mimeType]);
+  return result.rows[0].id;
+}
+let sessionsAjoutInfo = {};
+async function demarrerAjoutInfo(from, mediaId) {
+  try {
+    const { buffer, mimeType } = await telechargerMediaWhatsApp(mediaId);
+    const idMedia = await enregistrerMedia(buffer, mimeType);
+    if (!PUBLIC_BASE_URL) {
+      await sendWhatsApp(from, "⚠️ Impossible de générer le lien de l'image : la variable PUBLIC_BASE_URL n'est pas configurée sur Railway (mets l'URL de ton app, ex: https://ton-app.up.railway.app).");
+      return;
+    }
+    const imageUrl = `${PUBLIC_BASE_URL}/media/${idMedia}`;
+    sessionsAjoutInfo[from] = { etape: 'titre', imageUrl };
+    await sendWhatsApp(from, "🖼️ Image reçue !\n\nQuel est le titre de cette information ?");
+  } catch (e) {
+    await sendWhatsApp(from, `Erreur lors de la réception de l'image : ${e.message}`);
+  }
+}
+async function gererTitreAjoutInfo(from, text) {
+  const session = sessionsAjoutInfo[from];
+  if (!session || session.etape !== 'titre') return null;
+  delete sessionsAjoutInfo[from];
+  try {
+    const titre = text.trim();
+    // Par défaut le contenu reprend le titre (modifiable ensuite depuis l'admin panel, onglet Infos)
+    await pool.query(
+      'INSERT INTO infos (categorie, titre, contenu, image_url) VALUES ($1, $2, $3, $4)',
+      ['autre', titre, titre, session.imageUrl]
+    );
+    return `✅ Ajouté dans les Infos !\n\n🖼️ ${titre}`;
+  } catch (e) {
+    return `Erreur lors de l'ajout : ${e.message}`;
+  }
+}
+
 let sessionsMusiqueType = {};
 async function gererMusique(from, text, type) {
   const session = sessionsMusiqueType[from];
@@ -992,6 +1053,18 @@ app.get('/webhook', (req, res) => {
   if (mode === 'subscribe' && token === VERIFY_TOKEN) res.status(200).send(challenge);
   else res.sendStatus(403);
 });
+// ─── AJOUT — route publique servant les images uploadées via WhatsApp ──
+app.get('/media/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data, mime_type FROM medias WHERE id=$1', [req.params.id]);
+    if (result.rows.length === 0) return res.sendStatus(404);
+    res.set('Content-Type', result.rows[0].mime_type);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(result.rows[0].data);
+  } catch (e) {
+    res.sendStatus(500);
+  }
+});
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
   const body = req.body;
@@ -1012,6 +1085,21 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
+    // AJOUT — l'admin envoie une image -> on démarre le flux d'ajout dans les Infos
+    if (message && message.type === 'image') {
+      const from = message.from, msgId = message.id;
+      try {
+        const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
+        if (already.rows.length > 0) return;
+        await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
+      } catch (e) { console.error('Dedup error:', e.message); }
+      if (isAuthorizedAdminCerfa(from)) {
+        const mediaId = message.image?.id;
+        if (mediaId) await demarrerAjoutInfo(from, mediaId);
+      }
+      return;
+    }
+
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
       try {
@@ -1024,6 +1112,13 @@ app.post('/webhook', async (req, res) => {
       if (await handlePriveCommand(from, text)) return;
 
       if (isAuthorizedAdminCerfa(from)) {
+        // AJOUT — étape "titre" du flux Infos avec image (prioritaire sur le flux musique)
+        const sessionInfo = sessionsAjoutInfo[from];
+        if (sessionInfo && sessionInfo.etape === 'titre') {
+          const reponse = await gererTitreAjoutInfo(from, text);
+          await sendWhatsApp(from, reponse);
+          return;
+        }
         const sessionAjout = sessionsAjoutMusique[from];
         if (sessionAjout && sessionAjout.etape === 'titre') {
           const reponse = await gererTitreAjoutMusique(from, text);
@@ -1124,10 +1219,10 @@ app.post('/webhook', async (req, res) => {
   }
 });
 app.post('/admin/add', async (req, res) => {
-  const { password, categorie, titre, contenu, instruction } = req.body;
+  const { password, categorie, titre, contenu, instruction, image_url } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   if (!titre || !contenu) return res.status(400).json({ ok: false, message: "Titre et contenu requis" });
-  await pool.query('INSERT INTO infos (categorie, titre, contenu, instruction) VALUES ($1, $2, $3, $4)', [categorie, titre, contenu, instruction || null]);
+  await pool.query('INSERT INTO infos (categorie, titre, contenu, instruction, image_url) VALUES ($1, $2, $3, $4, $5)', [categorie, titre, contenu, instruction || null, image_url || null]);
   const count = await pool.query('SELECT COUNT(*) FROM infos');
   res.json({ ok: true, message: "Information ajoutée avec succès !", total: parseInt(count.rows[0].count) });
 });
@@ -1140,9 +1235,9 @@ app.get('/admin/list', async (req, res) => {
   res.json({ ok: true, infos, rawInfos: result.rows, ids: result.rows.map(r => r.id), total: result.rows.length });
 });
 app.put('/admin/update/:id', async (req, res) => {
-  const { password, categorie, titre, contenu, instruction } = req.body;
+  const { password, categorie, titre, contenu, instruction, image_url } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  await pool.query('UPDATE infos SET categorie=$1, titre=$2, contenu=$3, instruction=$4 WHERE id=$5', [categorie, titre, contenu, instruction || null, req.params.id]);
+  await pool.query('UPDATE infos SET categorie=$1, titre=$2, contenu=$3, instruction=$4, image_url=$5 WHERE id=$6', [categorie, titre, contenu, instruction || null, image_url || null, req.params.id]);
   res.json({ ok: true, message: "Information mise à jour !" });
 });
 app.delete('/admin/delete/:id', async (req, res) => {
