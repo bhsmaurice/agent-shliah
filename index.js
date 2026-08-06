@@ -206,8 +206,11 @@ function parseAdminCerfaMessage(rawText) {
   const adresse = adresseLine;
   const modeLower = modeLine.toLowerCase();
   let mode = "Remise d'espèces";
-  if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) mode = 'Virement, prélèvement, carte bancaire';
+  if (/cb|carte/.test(modeLower)) mode = 'Carte bancaire';
+  else if (/virement/.test(modeLower)) mode = 'Virement';
+  else if (/pr[eé]l[eè]vement/.test(modeLower)) mode = 'Prélèvement';
   else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
+  else if (/autre/.test(modeLower)) mode = 'Autre';
   else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
 
   let email = null;
@@ -1646,8 +1649,11 @@ app.post('/admin/cerfa/generer', async (req, res) => {
     if (isNaN(montantNum)) return res.status(400).json({ ok: false, message: "Montant invalide" });
     const modeLower = (mode || '').toLowerCase();
     let modeFinal = "Remise d'espèces";
-    if (/cb|carte|virement|pr[eé]l[eè]vement/.test(modeLower)) modeFinal = 'Virement, prélèvement, carte bancaire';
+    if (/cb|carte/.test(modeLower)) modeFinal = 'Carte bancaire';
+    else if (/virement/.test(modeLower)) modeFinal = 'Virement';
+    else if (/pr[eé]l[eè]vement/.test(modeLower)) modeFinal = 'Prélèvement';
     else if (/ch[eè]que/.test(modeLower)) modeFinal = 'Chèque';
+    else if (/autre/.test(modeLower)) modeFinal = 'Autre';
     const numero = await getNextCerfaNumero();
     const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
     const emailFinal = email && email.trim() ? email.trim() : null;
