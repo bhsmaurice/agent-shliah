@@ -2089,6 +2089,18 @@ app.post('/test/chabbat', async (req, res) => {
   }
 });
 
+app.get('/test/chabbat/:password', async (req, res) => {
+  const { password } = req.params;
+  if (password !== ADMIN_PASSWORD) return res.send('❌ Mot de passe incorrect');
+  try {
+    console.log('🕯️ Test cron Chabbat déclenché');
+    await preparerValidationChabbat();
+    res.send('✅ Message de validation Chabbat envoyé! Regarde ton WhatsApp 👍');
+  } catch (e) {
+    res.send('❌ Erreur: ' + e.message);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
