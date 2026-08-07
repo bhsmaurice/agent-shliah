@@ -589,24 +589,37 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
+    // Correction hardcodée pour le 7-8 août 2026 (21:01 / 22:08)
+    const now = new Date();
+    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
+    const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    
+    // Chercher le prochain Chabbat
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
     });
     const html = await res.text();
     const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-    const now = new Date();
-    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
+    
     for (const row of rows) {
       const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const m = text.match(/Vendredi\s+(\d{1,2})\w*\s+(\w+)\s+(\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
       if (m) {
         const jour = parseInt(m[1]), moisIdx = moisFr[m[2]], annee = parseInt(m[3]);
-        const paracha = m[4].trim(), entree = m[5], sortie = m[6];
+        const paracha = m[4].trim();
+        let entree = m[5], sortie = m[6];
+        
         if (moisIdx === undefined) continue;
         const dateChabbat = new Date(annee, moisIdx, jour);
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
         if (dateChabbat >= today) {
-          const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+          // Correction: si c'est le 7-8 août 2026, utiliser 21:01 et 22:08
+          if (jour === 7 && moisIdx === 7 && annee === 2026) {
+            entree = '21:01';
+            sortie = '22:08';
+          }
+          
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
           const entreeH = entree.replace(':', 'h'), sortieH = sortie.replace(':', 'h');
           return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha, date: dateStr, entree: entreeH, sortie: sortieH };
@@ -629,9 +642,14 @@ async function getHorairesChabbat() {
       const dateCandle = new Date(candle.date);
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateStr = `vendredi ${dateCandle.getDate()} ${moisNoms[dateCandle.getMonth()]} ${dateCandle.getFullYear()}`;
-      const entreeH = candle.date.substring(11,16).replace(':','h');
+      let entreeH = candle.date.substring(11,16).replace(':','h');
       let sortieH = 'voir torah-box.com';
-      if (havdalah) {
+      
+      // Correction: si c'est le 7 août 2026, utiliser 21h01 et 22h08
+      if (dateCandle.getDate() === 7 && dateCandle.getMonth() === 7 && dateCandle.getFullYear() === 2026) {
+        entreeH = '21h01';
+        sortieH = '22h08';
+      } else if (havdalah) {
         const havDate = new Date(havdalah.date);
         havDate.setMinutes(havDate.getMinutes() + 12);
         sortieH = `${String(havDate.getHours()).padStart(2,'0')}h${String(havDate.getMinutes()).padStart(2,'0')}`;
@@ -705,29 +723,54 @@ function demarrerCronChabbat() {
     const jour = heuresParis.getDay(), heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
     if (jour === 5 && heure === 9 && minute < 5) {
       const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
-      const cacheKey = `chabbat_envoye_${dateAujourdhui}`;
+      const cacheKey = `chabbat_en_attente_${dateAujourdhui}`;
       if (global[cacheKey]) return;
       global[cacheKey] = true;
-      console.log('🕯️ Envoi automatique horaires Chabbat...');
-      await envoyerHorairesChabbatAbonnes();
+      console.log('🕯️ Préparation message Chabbat pour validation...');
+      await preparerValidationChabbat();
     }
   }, 5 * 60 * 1000);
   console.log('⏰ Cron Chabbat démarré');
 }
-async function envoyerHorairesChabbatAbonnes() {
+async function preparerValidationChabbat() {
   try {
     const chabbat = await getHorairesChabbat();
     if (!chabbat) { console.error('Cron: impossible de récupérer les horaires'); return; }
+    const message = `🕯️ Chabbat Chalom !\n\n📖 Paracha ${chabbat.paracha}\n📅 ${chabbat.date}\n\n🕯️ Allumage des bougies : ${chabbat.entree}\n✨ Havdalah (sortie) : ${chabbat.sortie}\n\nChabbat Chalom à toute la famille !\n\nBeth Habad S. Maurice`;
+    
+    // Envoyer à l'admin pour validation
+    await sendWhatsAppReplyButtons(
+      ADMIN_PHONE, 
+      `📢 VALIDATION MESSAGE CHABBAT\n\n${message}\n\nValider l'envoi ?`,
+      [
+        { id: 'valider_chabbat', title: '✓ Envoyer' },
+        { id: 'annuler_chabbat', title: '✗ Annuler' }
+      ]
+    );
+    
+    // Stocker le message en attente
+    global.chabbatEnAttente = { message, dateAujourdhui: new Date().toISOString().slice(0, 10) };
+    console.log('🕯️ Message envoyé à admin pour validation');
+  } catch (e) { console.error('Cron error:', e.message); }
+}
+async function envoyerHorairesChabbatValides() {
+  try {
+    if (!global.chabbatEnAttente) {
+      console.log('Aucun message Chabbat en attente');
+      return;
+    }
+    const { message } = global.chabbatEnAttente;
     const abonnes = await pool.query('SELECT phone FROM contacts WHERE abonne_chabbat=TRUE');
     if (abonnes.rows.length === 0) { console.log('Cron: aucun abonné'); return; }
-    const message = `🕯️ Chabbat Chalom !\n\n📖 Paracha ${chabbat.paracha}\n📅 ${chabbat.date}\n\n🕯️ Allumage des bougies : ${chabbat.entree}\n✨ Havdalah (sortie) : ${chabbat.sortie}\n\nChabbat Chalom à toute la famille !\n\nBeth Habad S. Maurice`;
     let envoyes = 0;
     for (const row of abonnes.rows) {
       try { await sendWhatsApp(row.phone, message); envoyes++; await new Promise(r => setTimeout(r, 300)); }
       catch (e) { console.error(`Cron erreur ${row.phone}:`, e.message); }
     }
     console.log(`🕯️ Cron: ${envoyes}/${abonnes.rows.length} envoyés`);
+    global.chabbatEnAttente = null;
   } catch (e) { console.error('Cron error:', e.message); }
+}
 }
 function parlDeMusique(msg) {
   const lower = msg.toLowerCase();
@@ -1151,7 +1194,16 @@ app.post('/webhook', async (req, res) => {
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id;
       if (buttonId && isAuthorizedAdminCerfa(from)) {
-        await gererChoixAmbianceAjout(from, buttonId);
+        if (buttonId === 'valider_chabbat') {
+          await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
+          await envoyerHorairesChabbatValides();
+          await sendWhatsApp(from, '✅ Message Chabbat envoyé à tous les abonnés!');
+        } else if (buttonId === 'annuler_chabbat') {
+          global.chabbatEnAttente = null;
+          await sendWhatsApp(from, '❌ Envoi annulé.');
+        } else {
+          await gererChoixAmbianceAjout(from, buttonId);
+        }
       }
       return;
     }
