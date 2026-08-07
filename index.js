@@ -592,27 +592,29 @@ async function getHorairesChabbat() {
   try {
     // Priorité: Hebcal API JSON (très fiable)
     console.log('🌐 Tentative API Hebcal...');
-    const res = await fetch('https://www.hebcal.com/api/v1/events?year=2026&month=8&geo=place&latitude=48.8099&longitude=2.4907&tzeit=8.5&min=candles,havdalah', {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 5000
+    const url = 'https://www.hebcal.com/api/v1/events?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5';
+    const res = await fetch(url, {
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      }
     });
     const data = await res.json();
-    const events = data.events || [];
+    const items = data.items || [];
     
     let candles = null, havdalah = null;
-    for (const event of events) {
-      if (event.category === 'candles') candles = event;
-      if (event.category === 'havdalah') havdalah = event;
+    for (const item of items) {
+      if (item.category === 'candles') candles = item;
+      if (item.category === 'havdalah') havdalah = item;
     }
     
     if (candles && havdalah) {
       const dateCandles = new Date(candles.date);
-      const heure = candles.date.substring(11, 16).split(':');
-      const entree = `${heure[0]}h${heure[1]}`;
+      const timeStr = candles.date.substring(11, 16);
+      const entree = timeStr.replace(':', 'h');
       
-      const dateHav = new Date(havdalah.date);
-      const heureHav = havdalah.date.substring(11, 16).split(':');
-      const sortie = `${heureHav[0]}h${heureHav[1]}`;
+      const timeStrHav = havdalah.date.substring(11, 16);
+      const sortie = timeStrHav.replace(':', 'h');
       
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateLabel = `vendredi ${dateCandles.getDate()} ${moisNoms[dateCandles.getMonth()]} ${dateCandles.getFullYear()}`;
@@ -626,7 +628,7 @@ async function getHorairesChabbat() {
         sortie 
       };
     }
-    throw new Error('Horaires manquants');
+    throw new Error('Horaires manquants dans la réponse');
   } catch (e) { console.error('❌ Hebcal error:', e.message); }
   
   console.log('❌ Aucune source disponible');
