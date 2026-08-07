@@ -590,34 +590,26 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
-    // Scraper Chabad.org en priorité (source fiable avec contenu statique)
-    console.log('🌐 Tentative scraping Chabad.org...');
-    const res = await fetch('https://www.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
+    // Scraper Chabad.org FR en priorité (source fiable - version française)
+    console.log('🌐 Tentative scraping fr.chabad.org...');
+    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
       timeout: 5000
     });
     const html = await res.text();
     console.log('✓ HTML reçu:', html.length, 'caractères');
     
-    // Chercher "Light Shabbat candles at 9:36 PM in Paris, France; Shabbat ends at 11:01 PM"
-    const match = html.match(/Light Shabbat candles at\s+(\d{1,2}):(\d{2})\s+(AM|PM).*?Shabbat ends at\s+(\d{1,2}):(\d{2})\s+(AM|PM)/i);
+    // Chercher "Allumez les bougies le Vendredi à21:02 à Paris, France"
+    const match = html.match(/Allumez les bougies le Vendredi à(\d{1,2}):(\d{2}).*?Chabbat finit à\s*(\d{1,2}):(\d{2})/i);
     
     if (match) {
-      let entreeHour = parseInt(match[1]);
+      const entreeHour = match[1];
       const entreeMins = match[2];
-      const entreePeriod = match[3].toUpperCase();
-      let sortieHour = parseInt(match[4]);
-      const sortieMins = match[5];
-      const sortiePeriod = match[6].toUpperCase();
+      const sortieHour = match[3];
+      const sortieMins = match[4];
       
-      // Convertir en format 24h
-      if (entreePeriod === 'PM' && entreeHour !== 12) entreeHour += 12;
-      if (entreePeriod === 'AM' && entreeHour === 12) entreeHour = 0;
-      if (sortiePeriod === 'PM' && sortieHour !== 12) sortieHour += 12;
-      if (sortiePeriod === 'AM' && sortieHour === 12) sortieHour = 0;
-      
-      const entree = `${String(entreeHour).padStart(2,'0')}h${entreeMins}`;
-      const sortie = `${String(sortieHour).padStart(2,'0')}h${sortieMins}`;
+      const entree = `${entreeHour}h${entreeMins}`;
+      const sortie = `${sortieHour}h${sortieMins}`;
       
       // Chercher la date (vendredi prochain)
       const now = new Date();
@@ -629,7 +621,7 @@ async function getHorairesChabbat() {
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
       
-      console.log('✅ Chabad.org OK:', dateLabel, entree, sortie);
+      console.log('✅ fr.chabad.org OK:', dateLabel, entree, sortie);
       
       return { 
         texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
@@ -639,44 +631,49 @@ async function getHorairesChabbat() {
         sortie 
       };
     }
-    console.log('⚠️ Regex ne match pas sur Chabad.org');
-    throw new Error('Horaires non trouvés sur Chabad.org');
-  } catch (e) { console.error('❌ Chabad.org error:', e.message); }
+    console.log('⚠️ Regex ne match pas sur fr.chabad.org');
+    throw new Error('Horaires non trouvés sur fr.chabad.org');
+  } catch (e) { console.error('❌ fr.chabad.org error:', e.message); }
   
   try {
-    // Fallback Torah-Box
-    console.log('🌐 Fallback: Torah-Box...');
-    const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
+    // Fallback Chabad.org EN
+    console.log('🌐 Fallback: chabad.org EN...');
+    const res = await fetch('https://www.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
     const html = await res.text();
-    const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-    const now = new Date();
-    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
-    const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    const match = html.match(/Light Shabbat candles at\s+(\d{1,2}):(\d{2})\s+(AM|PM).*?Shabbat ends at\s+(\d{1,2}):(\d{2})\s+(AM|PM)/i);
     
-    for (const row of rows) {
-      const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      const m = text.match(/Vendredi\s+(\d{1,2})\w*\s+(\w+)\s+(\d{4})\s+(.*?)\s+(\d{1,2}:\d{2})\s+(\d{1,2}:\d{2})/i);
-      if (m) {
-        const jour = parseInt(m[1]), moisIdx = moisFr[m[2]], annee = parseInt(m[3]);
-        const paracha = m[4].trim();
-        const entree = m[5], sortie = m[6];
-        
-        if (moisIdx === undefined) continue;
-        const dateChabbat = new Date(annee, moisIdx, jour);
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        if (dateChabbat >= today) {
-          const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
-          const entreeH = entree.replace(':', 'h'), sortieH = sortie.replace(':', 'h');
-          console.log('✅ Torah-Box OK:', dateStr, entreeH, sortieH);
-          return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha, date: dateStr, entree: entreeH, sortie: sortieH };
-        }
-      }
+    if (match) {
+      let entreeHour = parseInt(match[1]);
+      const entreeMins = match[2];
+      const entreePeriod = match[3].toUpperCase();
+      let sortieHour = parseInt(match[4]);
+      const sortieMins = match[5];
+      const sortiePeriod = match[6].toUpperCase();
+      
+      if (entreePeriod === 'PM' && entreeHour !== 12) entreeHour += 12;
+      if (entreePeriod === 'AM' && entreeHour === 12) entreeHour = 0;
+      if (sortiePeriod === 'PM' && sortieHour !== 12) sortieHour += 12;
+      if (sortiePeriod === 'AM' && sortieHour === 12) sortieHour = 0;
+      
+      const entree = `${String(entreeHour).padStart(2,'0')}h${entreeMins}`;
+      const sortie = `${String(sortieHour).padStart(2,'0')}h${sortieMins}`;
+      
+      const now = new Date();
+      const jour = now.getDay();
+      const daysUntilFriday = (5 - jour + 7) % 7 || 7;
+      const fridayDate = new Date(now);
+      fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
+      
+      const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
+      
+      console.log('✅ chabad.org EN OK:', dateLabel, entree, sortie);
+      return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, paracha: 'N/A', date: dateLabel, entree, sortie };
     }
-    throw new Error('Aucun Chabbat trouvé');
-  } catch (e) { console.error('❌ Torah-Box error:', e.message); }
+    throw new Error('Horaires non trouvés');
+  } catch (e) { console.error('❌ chabad.org EN error:', e.message); }
   
   console.log('❌ Aucune source disponible');
   return null;
