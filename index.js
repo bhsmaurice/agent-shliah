@@ -591,28 +591,35 @@ async function getEvenements() {
 async function getHorairesChabbat() {
   try {
     // Scraper calj.net en priorité (source fiable)
+    console.log('🌐 Tentative scraping calj.net...');
     const res = await fetch('https://www.calj.net/', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      timeout: 5000
     });
     const html = await res.text();
+    console.log('✓ HTML reçu:', html.length, 'caractères');
     
     // Chercher les horaires: "21h02 | 22h14"
     const horaireMatch = html.match(/(\d{1,2}h\d{2})\s*\|\s*(\d{1,2}h\d{2})/);
     // Chercher la date: "(8/8/2026)"
     const dateMatch = html.match(/\((\d{1,2})\/(\d{1,2})\/(\d{4})\)/);
-    // Chercher la Paracha: "Re'eh ראה" (avant le "שבת מברכים")
+    // Chercher la Paracha
     const parashaMatch = html.match(/-\s*([A-Za-zéè\']+(?:\s+[A-Za-zéè\']+)?)\s*[\u0590-\u05FF]+/);
     
-    if (horaireMatch && dateMatch && parashaMatch) {
+    console.log('🔍 Regex matches:', { horaire: !!horaireMatch, date: !!dateMatch, paracha: !!parashaMatch });
+    
+    if (horaireMatch && dateMatch) {
       const entree = horaireMatch[1];
       const sortie = horaireMatch[2];
       const jour = parseInt(dateMatch[1]);
       const mois = parseInt(dateMatch[2]);
       const annee = parseInt(dateMatch[3]);
-      const paracha = parashaMatch[1].trim();
+      const paracha = parashaMatch ? parashaMatch[1].trim() : 'N/A';
       
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dateLabel = `vendredi ${jour} ${moisNoms[mois - 1]} ${annee}`;
+      
+      console.log('✅ calj.net OK:', dateLabel, entree, sortie);
       
       return { 
         texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
@@ -622,11 +629,13 @@ async function getHorairesChabbat() {
         sortie 
       };
     }
+    console.log('⚠️ Regex ne match pas sur calj.net');
     throw new Error('Horaires non trouvés sur calj.net');
-  } catch (e) { console.error('calj.net error:', e.message); }
+  } catch (e) { console.error('❌ calj.net error:', e.message); }
   
   try {
     // Fallback Torah-Box
+    console.log('🌐 Fallback: Torah-Box...');
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
     });
@@ -651,40 +660,15 @@ async function getHorairesChabbat() {
         if (dateChabbat >= today) {
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
           const entreeH = entree.replace(':', 'h'), sortieH = sortie.replace(':', 'h');
+          console.log('✅ Torah-Box OK:', dateStr, entreeH, sortieH);
           return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha, date: dateStr, entree: entreeH, sortie: sortieH };
         }
       }
     }
     throw new Error('Aucun Chabbat trouvé');
-  } catch (e) { console.error('Torah-Box error:', e.message); }
+  } catch (e) { console.error('❌ Torah-Box error:', e.message); }
   
-  try {
-    // Fallback Hebcal
-    const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    const data = await res.json();
-    const items = data.items || [];
-    let candle = null, havdalah = null, parasha = null;
-    for (const item of items) {
-      if (item.category === 'candles') candle = item;
-      if (item.category === 'havdalah') havdalah = item;
-      if (item.category === 'parashat') parasha = item;
-    }
-    if (candle) {
-      const dateCandle = new Date(candle.date);
-      const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      const dateStr = `vendredi ${dateCandle.getDate()} ${moisNoms[dateCandle.getMonth()]} ${dateCandle.getFullYear()}`;
-      let entreeH = candle.date.substring(11,16).replace(':','h');
-      let sortieH = 'voir torah-box.com';
-      
-      if (havdalah) {
-        const havDate = new Date(havdalah.date);
-        havDate.setMinutes(havDate.getMinutes() + 12);
-        sortieH = `${String(havDate.getHours()).padStart(2,'0')}h${String(havDate.getMinutes()).padStart(2,'0')}`;
-      }
-      const parashaName = parasha ? parasha.title.replace('Paracha ','').replace('Parashat ','') : '';
-      return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${parashaName}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha: parashaName, date: dateStr, entree: entreeH, sortie: sortieH };
-    }
-  } catch (e) { console.error('Hebcal error:', e.message); }
+  console.log('❌ Aucune source disponible');
   return null;
 }
 let chabbatCache = { data: null, lastFetch: 0 };
