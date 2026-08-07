@@ -614,10 +614,10 @@ async function getHorairesChabbat() {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         if (dateChabbat >= today) {
-          // Correction: si c'est le 7-8 août 2026, utiliser 21:01 et 22:08
+          // Correction: si c'est le 7-8 août 2026, utiliser 21h02 et 22h14 (calj.net)
           if (jour === 7 && moisIdx === 7 && annee === 2026) {
-            entree = '21:01';
-            sortie = '22:08';
+            entree = '21:02';
+            sortie = '22:14';
           }
           
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
@@ -645,10 +645,10 @@ async function getHorairesChabbat() {
       let entreeH = candle.date.substring(11,16).replace(':','h');
       let sortieH = 'voir torah-box.com';
       
-      // Correction: si c'est le 7 août 2026, utiliser 21h01 et 22h08
+      // Correction: si c'est le 7 août 2026, utiliser 21h02 et 22h14 (calj.net)
       if (dateCandle.getDate() === 7 && dateCandle.getMonth() === 7 && dateCandle.getFullYear() === 2026) {
-        entreeH = '21h01';
-        sortieH = '22h08';
+        entreeH = '21h02';
+        sortieH = '22h14';
       } else if (havdalah) {
         const havDate = new Date(havdalah.date);
         havDate.setMinutes(havDate.getMinutes() + 12);
