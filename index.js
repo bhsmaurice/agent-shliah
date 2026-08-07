@@ -600,7 +600,7 @@ async function getHorairesChabbat() {
     console.log('✓ HTML reçu:', html.length, 'caractères');
     
     // Chercher "Allumez les bougies le Vendredi à21:02 à Paris, France"
-    const match = html.match(/Allumez les bougies le Vendredi à(\d{1,2}):(\d{2}).*?Chabbat finit à\s*(\d{1,2}):(\d{2})/i);
+    const match = html.match(/Allumez les bougies le Vendredi à(\d{1,2}):?(\d{2}).*?Chabbat finit à\s*(\d{1,2}):?(\d{2})/i);
     // Chercher la Paracha: "[Chabbat, paracha: Réeh]"
     const parashaMatch = html.match(/paracha:\s*([A-Za-zéè]+(?:\s+[A-Za-zéè]+)?)/i);
     
