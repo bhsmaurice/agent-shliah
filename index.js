@@ -771,7 +771,6 @@ async function envoyerHorairesChabbatValides() {
     global.chabbatEnAttente = null;
   } catch (e) { console.error('Cron error:', e.message); }
 }
-}
 function parlDeMusique(msg) {
   const lower = msg.toLowerCase();
   return ['musique', 'music', 'nigoun', 'nigoune', 'nigouns', 'nigounim', 'chant', 'chanson', 'melodie', 'mélodie', 'chantons', 'chanter'].some(m => lower.includes(m));
