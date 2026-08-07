@@ -744,6 +744,7 @@ async function preparerValidationChabbat() {
       `📢 VALIDATION MESSAGE CHABBAT\n\n${message}\n\nValider l'envoi ?`,
       [
         { id: 'valider_chabbat', title: '✓ Envoyer' },
+        { id: 'editer_chabbat', title: '✎ Éditer' },
         { id: 'annuler_chabbat', title: '✗ Annuler' }
       ]
     );
@@ -1197,8 +1198,12 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
           await envoyerHorairesChabbatValides();
           await sendWhatsApp(from, '✅ Message Chabbat envoyé à tous les abonnés!');
+        } else if (buttonId === 'editer_chabbat') {
+          global.chabbatEnEdition = true;
+          await sendWhatsApp(from, '✎ Envoie-moi le message modifié (ou réponds avec le texte complet que tu veux envoyer)');
         } else if (buttonId === 'annuler_chabbat') {
           global.chabbatEnAttente = null;
+          global.chabbatEnEdition = false;
           await sendWhatsApp(from, '❌ Envoi annulé.');
         } else {
           await gererChoixAmbianceAjout(from, buttonId);
@@ -1234,6 +1239,22 @@ app.post('/webhook', async (req, res) => {
       if (await handlePriveCommand(from, text)) return;
 
       if (isAuthorizedAdminCerfa(from)) {
+        // ÉDITION — l'admin modifie le message Chabbat
+        if (global.chabbatEnEdition) {
+          global.chabbatEnEdition = false;
+          global.chabbatEnAttente.message = text;
+          await sendWhatsAppButtons(
+            from, 
+            `📢 VALIDATION MESSAGE MODIFIÉ\n\n${text}\n\nValider l'envoi ?`,
+            [
+              { id: 'valider_chabbat', title: '✓ Envoyer' },
+              { id: 'editer_chabbat', title: '✎ Éditer à nouveau' },
+              { id: 'annuler_chabbat', title: '✗ Annuler' }
+            ]
+          );
+          return;
+        }
+        
         // AJOUT — étapes "titre" puis "contenu" du flux Infos avec image (prioritaire sur le flux musique)
         const sessionInfo = sessionsAjoutInfo[from];
         if (sessionInfo && sessionInfo.etape === 'titre') {
