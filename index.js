@@ -590,48 +590,58 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
-    // Scraper calj.net en priorité (source fiable)
-    console.log('🌐 Tentative scraping calj.net...');
-    const res = await fetch('https://www.calj.net/', {
+    // Scraper Chabad.org en priorité (source fiable avec contenu statique)
+    console.log('🌐 Tentative scraping Chabad.org...');
+    const res = await fetch('https://www.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
       timeout: 5000
     });
     const html = await res.text();
     console.log('✓ HTML reçu:', html.length, 'caractères');
     
-    // Chercher les horaires: "21h02 | 22h14"
-    const horaireMatch = html.match(/(\d{1,2}h\d{2})\s*\|\s*(\d{1,2}h\d{2})/);
-    // Chercher la date: "(8/8/2026)"
-    const dateMatch = html.match(/\((\d{1,2})\/(\d{1,2})\/(\d{4})\)/);
-    // Chercher la Paracha
-    const parashaMatch = html.match(/-\s*([A-Za-zéè\']+(?:\s+[A-Za-zéè\']+)?)\s*[\u0590-\u05FF]+/);
+    // Chercher "Light Shabbat candles at 9:36 PM in Paris, France; Shabbat ends at 11:01 PM"
+    const match = html.match(/Light Shabbat candles at\s+(\d{1,2}):(\d{2})\s+(AM|PM).*?Shabbat ends at\s+(\d{1,2}):(\d{2})\s+(AM|PM)/i);
     
-    console.log('🔍 Regex matches:', { horaire: !!horaireMatch, date: !!dateMatch, paracha: !!parashaMatch });
-    
-    if (horaireMatch && dateMatch) {
-      const entree = horaireMatch[1];
-      const sortie = horaireMatch[2];
-      const jour = parseInt(dateMatch[1]);
-      const mois = parseInt(dateMatch[2]);
-      const annee = parseInt(dateMatch[3]);
-      const paracha = parashaMatch ? parashaMatch[1].trim() : 'N/A';
+    if (match) {
+      let entreeHour = parseInt(match[1]);
+      const entreeMins = match[2];
+      const entreePeriod = match[3].toUpperCase();
+      let sortieHour = parseInt(match[4]);
+      const sortieMins = match[5];
+      const sortiePeriod = match[6].toUpperCase();
+      
+      // Convertir en format 24h
+      if (entreePeriod === 'PM' && entreeHour !== 12) entreeHour += 12;
+      if (entreePeriod === 'AM' && entreeHour === 12) entreeHour = 0;
+      if (sortiePeriod === 'PM' && sortieHour !== 12) sortieHour += 12;
+      if (sortiePeriod === 'AM' && sortieHour === 12) sortieHour = 0;
+      
+      const entree = `${String(entreeHour).padStart(2,'0')}h${entreeMins}`;
+      const sortie = `${String(sortieHour).padStart(2,'0')}h${sortieMins}`;
+      
+      // Chercher la date (vendredi prochain)
+      const now = new Date();
+      const jour = now.getDay();
+      const daysUntilFriday = (5 - jour + 7) % 7 || 7;
+      const fridayDate = new Date(now);
+      fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
       
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      const dateLabel = `vendredi ${jour} ${moisNoms[mois - 1]} ${annee}`;
+      const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
       
-      console.log('✅ calj.net OK:', dateLabel, entree, sortie);
+      console.log('✅ Chabad.org OK:', dateLabel, entree, sortie);
       
       return { 
-        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
-        paracha, 
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
+        paracha: 'N/A',
         date: dateLabel, 
         entree, 
         sortie 
       };
     }
-    console.log('⚠️ Regex ne match pas sur calj.net');
-    throw new Error('Horaires non trouvés sur calj.net');
-  } catch (e) { console.error('❌ calj.net error:', e.message); }
+    console.log('⚠️ Regex ne match pas sur Chabad.org');
+    throw new Error('Horaires non trouvés sur Chabad.org');
+  } catch (e) { console.error('❌ Chabad.org error:', e.message); }
   
   try {
     // Fallback Torah-Box
