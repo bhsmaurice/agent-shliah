@@ -590,95 +590,44 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
-    // Scraper Chabad.org FR en priorité (source fiable - version française)
-    console.log('🌐 Tentative scraping fr.chabad.org...');
-    const res = await fetch('https://fr.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+    // Priorité: Hebcal API JSON (très fiable)
+    console.log('🌐 Tentative API Hebcal...');
+    const res = await fetch('https://www.hebcal.com/api/v1/events?year=2026&month=8&geo=place&latitude=48.8099&longitude=2.4907&tzeit=8.5&min=candles,havdalah', {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
       timeout: 5000
     });
-    const html = await res.text();
-    console.log('✓ HTML reçu:', html.length, 'caractères');
+    const data = await res.json();
+    const events = data.events || [];
     
-    // Chercher "Allumez les bougies le Vendredi à21:02 à Paris, France"
-    const match = html.match(/Allumez les bougies le Vendredi à(\d{1,2}):?(\d{2}).*?Chabbat finit à\s*(\d{1,2}):?(\d{2})/i);
-    // Chercher la Paracha: "[Chabbat, paracha: Réeh]"
-    const parashaMatch = html.match(/paracha:\s*([A-Za-zéè]+(?:\s+[A-Za-zéè]+)?)/i);
+    let candles = null, havdalah = null;
+    for (const event of events) {
+      if (event.category === 'candles') candles = event;
+      if (event.category === 'havdalah') havdalah = event;
+    }
     
-    if (match) {
-      const entreeHour = match[1];
-      const entreeMins = match[2];
-      const sortieHour = match[3];
-      const sortieMins = match[4];
+    if (candles && havdalah) {
+      const dateCandles = new Date(candles.date);
+      const heure = candles.date.substring(11, 16).split(':');
+      const entree = `${heure[0]}h${heure[1]}`;
       
-      const entree = `${entreeHour}h${entreeMins}`;
-      const sortie = `${sortieHour}h${sortieMins}`;
-      const paracha = parashaMatch ? parashaMatch[1].trim() : 'N/A';
-      
-      // Chercher la date (vendredi prochain)
-      const now = new Date();
-      const jour = now.getDay();
-      const daysUntilFriday = (5 - jour + 7) % 7 || 7;
-      const fridayDate = new Date(now);
-      fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
+      const dateHav = new Date(havdalah.date);
+      const heureHav = havdalah.date.substring(11, 16).split(':');
+      const sortie = `${heureHav[0]}h${heureHav[1]}`;
       
       const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
+      const dateLabel = `vendredi ${dateCandles.getDate()} ${moisNoms[dateCandles.getMonth()]} ${dateCandles.getFullYear()}`;
       
-      console.log('✅ fr.chabad.org OK:', dateLabel, entree, sortie, 'Paracha:', paracha);
-      
+      console.log('✅ Hebcal OK:', dateLabel, entree, sortie);
       return { 
-        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
-        paracha,
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
+        paracha: 'N/A',
         date: dateLabel, 
         entree, 
         sortie 
       };
     }
-    console.log('⚠️ Regex ne match pas sur fr.chabad.org');
-    throw new Error('Horaires non trouvés sur fr.chabad.org');
-  } catch (e) { console.error('❌ fr.chabad.org error:', e.message); }
-  
-  try {
-    // Fallback Chabad.org EN
-    console.log('🌐 Fallback: chabad.org EN...');
-    const res = await fetch('https://www.chabad.org/calendar/candlelighting_cdo/locationId/394/locationType/1/jewish/Candle-Lighting.htm', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
-    const html = await res.text();
-    const match = html.match(/Light Shabbat candles at\s+(\d{1,2}):(\d{2})\s+(AM|PM).*?Shabbat ends at\s+(\d{1,2}):(\d{2})\s+(AM|PM)/i);
-    const parashaMatch = html.match(/Parsha:\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
-    
-    if (match) {
-      let entreeHour = parseInt(match[1]);
-      const entreeMins = match[2];
-      const entreePeriod = match[3].toUpperCase();
-      let sortieHour = parseInt(match[4]);
-      const sortieMins = match[5];
-      const sortiePeriod = match[6].toUpperCase();
-      
-      if (entreePeriod === 'PM' && entreeHour !== 12) entreeHour += 12;
-      if (entreePeriod === 'AM' && entreeHour === 12) entreeHour = 0;
-      if (sortiePeriod === 'PM' && sortieHour !== 12) sortieHour += 12;
-      if (sortiePeriod === 'AM' && sortieHour === 12) sortieHour = 0;
-      
-      const entree = `${String(entreeHour).padStart(2,'0')}h${entreeMins}`;
-      const sortie = `${String(sortieHour).padStart(2,'0')}h${sortieMins}`;
-      const paracha = parashaMatch ? parashaMatch[1].trim() : 'N/A';
-      
-      const now = new Date();
-      const jour = now.getDay();
-      const daysUntilFriday = (5 - jour + 7) % 7 || 7;
-      const fridayDate = new Date(now);
-      fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
-      
-      const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
-      
-      console.log('✅ chabad.org EN OK:', dateLabel, entree, sortie, 'Paracha:', paracha);
-      return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, paracha, date: dateLabel, entree, sortie };
-    }
-    throw new Error('Horaires non trouvés');
-  } catch (e) { console.error('❌ chabad.org EN error:', e.message); }
+    throw new Error('Horaires manquants');
+  } catch (e) { console.error('❌ Hebcal error:', e.message); }
   
   console.log('❌ Aucune source disponible');
   return null;
