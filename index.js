@@ -43,6 +43,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
+const ADMIN_PHONE = process.env.ADMIN_PHONE || "33770241746"; // Format: 33XXXXXXXXX
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour l'envoi (conservé pour compat)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
@@ -2074,6 +2075,20 @@ async function askClaude(userMessage, extra = null, historique = []) {
 async function sendWhatsApp(to, message) {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } }) });
 }
+
+// TEST ENDPOINT — déclencher le cron Chabbat manuellement
+app.post('/test/chabbat', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    console.log('🕯️ Test cron Chabbat déclenché');
+    await preparerValidationChabbat();
+    res.json({ ok: true, message: "Message de validation Chabbat envoyé à l'admin!" });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
