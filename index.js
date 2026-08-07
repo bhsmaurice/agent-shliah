@@ -596,38 +596,31 @@ async function getHorairesChabbat() {
     });
     const html = await res.text();
     
-    // Chercher "allumage avant" et "fin de Shabbat"
-    const allumageMatch = html.match(/allumage avant\s*:\s*[\s\S]*?<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>\s*([\d:h]+)/i);
-    const finMatch = html.match(/fin de Shabbat\s*:\s*[\s\S]*?<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>\s*([\d:h]+)/i);
+    // Chercher les horaires: "21h02 | 22h14"
+    const horaireMatch = html.match(/(\d{1,2}h\d{2})\s*\|\s*(\d{1,2}h\d{2})/);
+    // Chercher la date: "(8/8/2026)"
+    const dateMatch = html.match(/\((\d{1,2})\/(\d{1,2})\/(\d{4})\)/);
+    // Chercher la Paracha: "Re'eh ראה" (avant le "שבת מברכים")
+    const parashaMatch = html.match(/-\s*([A-Za-zéè\']+(?:\s+[A-Za-zéè\']+)?)\s*[\u0590-\u05FF]+/);
     
-    if (allumageMatch && finMatch) {
-      let entree = allumageMatch[1].trim().replace('h', ':');
-      let sortie = finMatch[1].trim().replace('h', ':');
+    if (horaireMatch && dateMatch && parashaMatch) {
+      const entree = horaireMatch[1];
+      const sortie = horaireMatch[2];
+      const jour = parseInt(dateMatch[1]);
+      const mois = parseInt(dateMatch[2]);
+      const annee = parseInt(dateMatch[3]);
+      const paracha = parashaMatch[1].trim();
       
-      // Parser la date depuis le HTML (exemple: "8/8/2026")
-      const dateMatch = html.match(/\(\d+\/\d+\/\d{4}\)/);
-      if (dateMatch) {
-        const dateStr = dateMatch[0].slice(1, -1); // Enlever les parenthèses
-        const [d, m, y] = dateStr.split('/');
-        const dateChabbat = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
-        const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-        const dateLabel = `vendredi ${parseInt(d)} ${moisNoms[parseInt(m) - 1]} ${y}`;
-        
-        // Parser la paracha et autres infos
-        const paraMatch = html.match(/>\s*([A-Za-zéè]+)\s*<\/[^>]*>\s*<\/(td|div)>/);
-        const paracha = paraMatch ? paraMatch[1].trim() : 'N/A';
-        
-        const entreeH = entree.replace(':', 'h');
-        const sortieH = sortie.replace(':', 'h');
-        
-        return { 
-          texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, 
-          paracha, 
-          date: dateLabel, 
-          entree: entreeH, 
-          sortie: sortieH 
-        };
-      }
+      const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      const dateLabel = `vendredi ${jour} ${moisNoms[mois - 1]} ${annee}`;
+      
+      return { 
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entree}\n✨ Sortie de Chabbat (Havdalah) : ${sortie}`, 
+        paracha, 
+        date: dateLabel, 
+        entree, 
+        sortie 
+      };
     }
     throw new Error('Horaires non trouvés sur calj.net');
   } catch (e) { console.error('calj.net error:', e.message); }
@@ -649,7 +642,7 @@ async function getHorairesChabbat() {
       if (m) {
         const jour = parseInt(m[1]), moisIdx = moisFr[m[2]], annee = parseInt(m[3]);
         const paracha = m[4].trim();
-        let entree = m[5], sortie = m[6];
+        const entree = m[5], sortie = m[6];
         
         if (moisIdx === undefined) continue;
         const dateChabbat = new Date(annee, moisIdx, jour);
