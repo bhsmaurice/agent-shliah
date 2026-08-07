@@ -602,20 +602,20 @@ async function getHorairesChabbat() {
     const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
     const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
     
-    // Horaires de Paris pour les 4 prochaines semaines (calj.net)
+    // Horaires de Paris pour les 4 prochaines semaines (calj.net) avec Paracha
     const horairesAout = {
-      '7': { entree: '21h02', sortie: '22h13' },  // 7-8 août
-      '14': { entree: '20h50', sortie: '21h59' }, // 14-15 août
-      '21': { entree: '20h37', sortie: '21h46' }, // 21-22 août  
-      '28': { entree: '20h24', sortie: '21h32' }  // 28-29 août
+      '7': { entree: '21h02', sortie: '22h13', paracha: 'Réeh' },  // 7-8 août
+      '14': { entree: '20h50', sortie: '21h59', paracha: 'Choftim' }, // 14-15 août
+      '21': { entree: '20h37', sortie: '21h46', paracha: 'Ki Tavo' }, // 21-22 août  
+      '28': { entree: '20h24', sortie: '21h32', paracha: 'Nitsavim' }  // 28-29 août
     };
     
     const horaires = horairesAout[fridayDate.getDate().toString()];
     if (horaires) {
-      console.log('✅ Horaires trouvés:', dateLabel, horaires.entree, horaires.sortie);
+      console.log('✅ Horaires trouvés:', dateLabel, horaires.entree, horaires.sortie, 'Paracha:', horaires.paracha);
       return {
-        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Entrée de Chabbat : ${horaires.entree}\n✨ Sortie de Chabbat (Havdalah) : ${horaires.sortie}`,
-        paracha: 'N/A',
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${horaires.paracha}\n🕯️ Entrée de Chabbat : ${horaires.entree}\n✨ Sortie de Chabbat (Havdalah) : ${horaires.sortie}`,
+        paracha: horaires.paracha,
         date: dateLabel,
         entree: horaires.entree,
         sortie: horaires.sortie
