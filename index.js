@@ -595,7 +595,7 @@ async function getHorairesChabbat() {
     
     const now = new Date();
     const jour = now.getDay();
-    const daysUntilFriday = (5 - jour + 7) % 7 || 7;
+    const daysUntilFriday = (5 - jour + 7) % 7;
     const fridayDate = new Date(now);
     fridayDate.setDate(fridayDate.getDate() + daysUntilFriday);
     
