@@ -589,17 +589,58 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
-    // Correction hardcodée pour le 7-8 août 2026 (21:01 / 22:08)
-    const now = new Date();
-    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
-    const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    // Scraper calj.net en priorité (source fiable)
+    const res = await fetch('https://www.calj.net/', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    const html = await res.text();
     
-    // Chercher le prochain Chabbat
+    // Chercher "allumage avant" et "fin de Shabbat"
+    const allumageMatch = html.match(/allumage avant\s*:\s*[\s\S]*?<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>\s*([\d:h]+)/i);
+    const finMatch = html.match(/fin de Shabbat\s*:\s*[\s\S]*?<\/td>\s*<\/tr>\s*<tr[^>]*>\s*<td[^>]*>\s*([\d:h]+)/i);
+    
+    if (allumageMatch && finMatch) {
+      let entree = allumageMatch[1].trim().replace('h', ':');
+      let sortie = finMatch[1].trim().replace('h', ':');
+      
+      // Parser la date depuis le HTML (exemple: "8/8/2026")
+      const dateMatch = html.match(/\(\d+\/\d+\/\d{4}\)/);
+      if (dateMatch) {
+        const dateStr = dateMatch[0].slice(1, -1); // Enlever les parenthèses
+        const [d, m, y] = dateStr.split('/');
+        const dateChabbat = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+        const dateLabel = `vendredi ${parseInt(d)} ${moisNoms[parseInt(m) - 1]} ${y}`;
+        
+        // Parser la paracha et autres infos
+        const paraMatch = html.match(/>\s*([A-Za-zéè]+)\s*<\/[^>]*>\s*<\/(td|div)>/);
+        const paracha = paraMatch ? paraMatch[1].trim() : 'N/A';
+        
+        const entreeH = entree.replace(':', 'h');
+        const sortieH = sortie.replace(':', 'h');
+        
+        return { 
+          texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, 
+          paracha, 
+          date: dateLabel, 
+          entree: entreeH, 
+          sortie: sortieH 
+        };
+      }
+    }
+    throw new Error('Horaires non trouvés sur calj.net');
+  } catch (e) { console.error('calj.net error:', e.message); }
+  
+  try {
+    // Fallback Torah-Box
     const res = await fetch('https://www.torah-box.com/calendrier/chabbat/paris-france_1.html', {
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
     });
     const html = await res.text();
     const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    const now = new Date();
+    const moisFr = {'Janvier':0,'Février':1,'Mars':2,'Avril':3,'Mai':4,'Juin':5,'Juillet':6,'Août':7,'Septembre':8,'Octobre':9,'Novembre':10,'Décembre':11};
+    const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
     
     for (const row of rows) {
       const text = row.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -614,12 +655,6 @@ async function getHorairesChabbat() {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         if (dateChabbat >= today) {
-          // Correction: si c'est le 7-8 août 2026, utiliser 21h02 et 22h14 (calj.net)
-          if (jour === 7 && moisIdx === 7 && annee === 2026) {
-            entree = '21:02';
-            sortie = '22:14';
-          }
-          
           const dateStr = `vendredi ${jour} ${moisNoms[moisIdx]} ${annee}`;
           const entreeH = entree.replace(':', 'h'), sortieH = sortie.replace(':', 'h');
           return { texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateStr}\n📖 Paracha ${paracha}\n🕯️ Entrée de Chabbat : ${entreeH}\n✨ Sortie de Chabbat (Havdalah) : ${sortieH}`, paracha, date: dateStr, entree: entreeH, sortie: sortieH };
@@ -628,7 +663,9 @@ async function getHorairesChabbat() {
     }
     throw new Error('Aucun Chabbat trouvé');
   } catch (e) { console.error('Torah-Box error:', e.message); }
+  
   try {
+    // Fallback Hebcal
     const res = await fetch('https://www.hebcal.com/shabbat?cfg=json&geonameid=2988507&b=18&M=on&lg=fr&td=8.5', { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const data = await res.json();
     const items = data.items || [];
@@ -645,11 +682,7 @@ async function getHorairesChabbat() {
       let entreeH = candle.date.substring(11,16).replace(':','h');
       let sortieH = 'voir torah-box.com';
       
-      // Correction: si c'est le 7 août 2026, utiliser 21h02 et 22h14 (calj.net)
-      if (dateCandle.getDate() === 7 && dateCandle.getMonth() === 7 && dateCandle.getFullYear() === 2026) {
-        entreeH = '21h02';
-        sortieH = '22h14';
-      } else if (havdalah) {
+      if (havdalah) {
         const havDate = new Date(havdalah.date);
         havDate.setMinutes(havDate.getMinutes() + 12);
         sortieH = `${String(havDate.getHours()).padStart(2,'0')}h${String(havDate.getMinutes()).padStart(2,'0')}`;
