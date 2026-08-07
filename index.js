@@ -739,7 +739,7 @@ async function preparerValidationChabbat() {
     const message = `🕯️ Chabbat Chalom !\n\n📖 Paracha ${chabbat.paracha}\n📅 ${chabbat.date}\n\n🕯️ Allumage des bougies : ${chabbat.entree}\n✨ Havdalah (sortie) : ${chabbat.sortie}\n\nChabbat Chalom à toute la famille !\n\nBeth Habad S. Maurice`;
     
     // Envoyer à l'admin pour validation
-    await sendWhatsAppReplyButtons(
+    await sendWhatsAppButtons(
       ADMIN_PHONE, 
       `📢 VALIDATION MESSAGE CHABBAT\n\n${message}\n\nValider l'envoi ?`,
       [
