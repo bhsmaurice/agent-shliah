@@ -2061,7 +2061,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
     await pool.query(
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [numero, 'Donateur(trice)', prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
+      [numero, nom, prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
     );
     
     // Envoyer message de remerciement
