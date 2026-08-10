@@ -2023,11 +2023,11 @@ app.post('/tsedaka/cerfa', async (req, res) => {
   res.sendStatus(200); // Répondre immédiatement
   
   try {
-    const { prenom, adresse, tel, montant, phone } = req.body;
+    const { prenom, nom, adresse, tel, montant, phone } = req.body;
     
     // Validation
-    if (!prenom || !adresse || !tel || !montant || !phone) {
-      console.error('Tsedaka Cerfa: données manquantes', { prenom, adresse, tel, montant, phone });
+    if (!prenom || !nom || !adresse || !tel || !montant || !phone) {
+      console.error('Tsedaka Cerfa: données manquantes', { prenom, nom, adresse, tel, montant, phone });
       return;
     }
     
@@ -2047,7 +2047,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
     // Générer le PDF Cerfa
     const pdfBuffer = await generateCerfaPDF({
       numero,
-      nom: 'Donateur(trice)',
+      nom: nom,
       prenom,
       adresse,
       montant: parseFloat(montant),
