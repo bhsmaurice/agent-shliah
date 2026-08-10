@@ -2018,6 +2018,65 @@ async function sendWhatsApp(to, message) {
   await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, { method: 'POST', headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: message } }) });
 }
 
+// TSEDAKA ENDPOINT — recevoir les données du formulaire Cerfa et générer/envoyer le Cerfa PDF
+app.post('/tsedaka/cerfa', async (req, res) => {
+  res.sendStatus(200); // Répondre immédiatement
+  
+  try {
+    const { prenom, adresse, tel, montant, phone } = req.body;
+    
+    // Validation
+    if (!prenom || !adresse || !tel || !montant || !phone) {
+      console.error('Tsedaka Cerfa: données manquantes', { prenom, adresse, tel, montant, phone });
+      return;
+    }
+    
+    // Normaliser le numéro de téléphone (enlever le +, garder 33XXXXXXXXX)
+    let phoneFormatted = phone.replace(/\D/g, ''); // Enlever tout ce qui n'est pas un chiffre
+    if (phoneFormatted.startsWith('33')) {
+      // OK, garder tel quel
+    } else if (phoneFormatted.startsWith('0')) {
+      phoneFormatted = '33' + phoneFormatted.slice(1); // 0XX -> 33XX
+    }
+    
+    // Générer le numéro Cerfa
+    const numero = await getNextCerfaNumero();
+    const dateDon = new Date().toISOString().slice(0, 10);
+    const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
+    
+    // Générer le PDF Cerfa
+    const pdfBuffer = await generateCerfaPDF({
+      numero,
+      nom: 'Donateur(trice)',
+      prenom,
+      adresse,
+      montant: parseFloat(montant),
+      mode: 'Paiement en ligne',
+      dateVersement
+    });
+    
+    const filename = `Cerfa_${numero}.pdf`;
+    
+    // Enregistrer en DB
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [numero, 'Donateur(trice)', prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
+    );
+    
+    // Envoyer message de remerciement
+    const gratitudeMsg = `Merci pour ta Tsedaka de ${montant}€ aujourd'hui ! 🙏\n\nTon reçu fiscal est en pièce jointe.`;
+    await sendWhatsApp(phoneFormatted, gratitudeMsg);
+    
+    // Envoyer le PDF du Cerfa
+    await sendWhatsAppDocument(phoneFormatted, pdfBuffer, filename);
+    
+    console.log(`✅ Cerfa Tsedaka généré: ${numero} pour ${prenom}`);
+  } catch (e) {
+    console.error('❌ Tsedaka Cerfa error:', e.message);
+  }
+});
+
 // TEST ENDPOINT — déclencher le cron Chabbat manuellement
 app.post('/test/chabbat', async (req, res) => {
   const { password } = req.body;
