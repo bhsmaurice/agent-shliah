@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shliah Admin - Option 2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafbfc; color: #1a1a1a; }
+        
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px 20px; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+        .tab { padding: 10px 16px; background: white; border: 2px solid transparent; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+        .tab.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        
+        .stat-card {
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .stat-card:nth-child(1) { background: linear-gradient(135deg, #FF6B6B 0%, #FF8E72 100%); }
+        .stat-card:nth-child(2) { background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%); }
+        .stat-card:nth-child(3) { background: linear-gradient(135deg, #FFD93D 0%, #FFC857 100%); color: #333; }
+        .stat-card:nth-child(4) { background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%); }
+        
+        .stat-icon { font-size: 32px; margin-bottom: 8px; }
+        .stat-number { font-size: 26px; margin: 8px 0; }
+        .stat-label { font-size: 11px; opacity: 0.9; text-transform: uppercase; }
+        
+        .sections-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .section { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .section-title { padding: 14px 16px; font-weight: 700; font-size: 13px; border-left: 4px solid; }
+        .section:nth-child(1) .section-title { border-left-color: #FF6B6B; }
+        .section:nth-child(2) .section-title { border-left-color: #4ECDC4; }
+        .section:nth-child(3) .section-title { border-left-color: #6C5CE7; }
+        
+        .section-body { padding: 12px 0; max-height: 300px; overflow-y: auto; }
+        .item { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+        .badge-pink { background: #FFE5E5; color: #FF6B6B; }
+        .badge-teal { background: #E5F9F7; color: #4ECDC4; }
+        .badge-purple { background: #F0E5FF; color: #6C5CE7; }
+        
+        @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .sections-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✨ Shliah Admin</h1>
+    </div>
+    
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showPage(0)">📊 Dashboard</button>
+            <button class="tab" onclick="showPage(1)">📝 Infos</button>
+            <button class="tab" onclick="showPage(2)">👥 Contacts</button>
+            <button class="tab" onclick="showPage(3)">💰 Paiements</button>
+        </div>
+        
+        <div class="page active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-number">1.2K</div>
+                    <div class="stat-label">Messages</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number">542</div>
+                    <div class="stat-label">Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-number">€2.8K</div>
+                    <div class="stat-label">Dons</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📩</div>
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">Demandes</div>
+                </div>
+            </div>
+            
+            <div class="sections-grid">
+                <div class="section">
+                    <div class="section-title">💬 Conversations</div>
+                    <div class="section-body">
+                        <div class="item"><div>Sarah Cohen</div><span class="badge badge-pink">5</span></div>
+                        <div class="item"><div>Marc Levy</div><span class="badge badge-pink">3</span></div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">📩 Demandes</div>
+                    <div class="section-body">
+                        <div class="item"><div>Cerfa - Eli</div><span class="badge badge-teal">Attente</span></div>
+                        <div class="item"><div>Sefer - Miri</div><span class="badge badge-teal">Attente</span></div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">💳 Paiements</div>
+                    <div class="section-body">
+                        <div class="item"><div>Sarah - €50</div><span class="badge badge-purple">Payé</span></div>
+                        <div class="item"><div>Marc - €100</div><span class="badge badge-purple">Payé</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showPage(i) {
+            document.querySelectorAll('.page').forEach((p, j) => p.classList.toggle('active', i === j));
+            document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', i === j));
+        }
+    </script>
+</body>
+</html>
