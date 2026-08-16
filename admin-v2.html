@@ -15,6 +15,108 @@
             overflow: hidden;
         }
         
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(160deg, #0B0B14 0%, #1A1233 55%, #2D2166 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 30px;
+        }
+        
+        .login-logo {
+            font-size: 28px;
+            color: #B8972A;
+            margin-bottom: 6px;
+        }
+        
+        .login-sub {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 10px;
+        }
+        
+        .pin-display {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+        
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: transparent;
+            transition: all 0.2s;
+        }
+        
+        .pin-dot.filled {
+            background: #B8972A;
+            border-color: #B8972A;
+        }
+        
+        .pin-dot.error {
+            background: #C0392B;
+            border-color: #C0392B;
+        }
+        
+        .pin-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 72px);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .pin-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.12);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pin-btn:active {
+            background: rgba(184,151,42,0.3);
+            border-color: #B8972A;
+            transform: scale(0.93);
+        }
+        
+        .pin-btn.delete {
+            font-size: 18px;
+            background: transparent;
+            border-color: transparent;
+        }
+        
+        .pin-btn.zero {
+            grid-column: 2;
+        }
+        
+        .login-error {
+            color: #C0392B;
+            font-size: 13px;
+            margin-top: 16px;
+            min-height: 20px;
+            text-align: center;
+        }
+        
+        #app {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        
         .app {
             display: flex;
             height: 100vh;
@@ -43,6 +145,7 @@
             font-size: 24px;
             margin-bottom: 8px;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            cursor: pointer;
         }
         
         .nav-item {
@@ -100,6 +203,39 @@
             -webkit-text-fill-color: transparent;
         }
         
+        .header-btn {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .header-btn:hover {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .header-logout {
+            background: rgba(192, 57, 43, 0.15);
+            border: 1px solid rgba(192, 57, 43, 0.3);
+            color: #ff6b6b;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .header-logout:hover {
+            background: rgba(192, 57, 43, 0.25);
+        }
+        
         .content {
             flex: 1;
             overflow-y: auto;
@@ -155,10 +291,7 @@
             transform: translateY(-4px);
         }
         
-        .stat:hover::before {
-            opacity: 1;
-        }
-        
+        .stat:hover::before { opacity: 1; }
         .stat-icon { font-size: 32px; margin-bottom: 16px; }
         .stat-label { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 12px; }
         .stat-number { font-size: 36px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
@@ -261,9 +394,38 @@
     </style>
 </head>
 <body>
-    <div class="app">
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-logo">✨ Shliah Bot</div>
+        <div class="login-sub">Panneau d'administration</div>
+        <div class="pin-display">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+            <div class="pin-dot" id="dot-4"></div>
+            <div class="pin-dot" id="dot-5"></div>
+        </div>
+        <div class="pin-grid">
+            <button class="pin-btn" onclick="pinPress('1')">1</button>
+            <button class="pin-btn" onclick="pinPress('2')">2</button>
+            <button class="pin-btn" onclick="pinPress('3')">3</button>
+            <button class="pin-btn" onclick="pinPress('4')">4</button>
+            <button class="pin-btn" onclick="pinPress('5')">5</button>
+            <button class="pin-btn" onclick="pinPress('6')">6</button>
+            <button class="pin-btn" onclick="pinPress('7')">7</button>
+            <button class="pin-btn" onclick="pinPress('8')">8</button>
+            <button class="pin-btn" onclick="pinPress('9')">9</button>
+            <button class="pin-btn zero" onclick="pinPress('0')">0</button>
+            <button class="pin-btn delete" onclick="pinDelete()">⌫</button>
+        </div>
+        <div class="login-error" id="login-error"></div>
+    </div>
+    
+    <!-- App -->
+    <div id="app" class="app">
         <div class="sidebar">
-            <div class="logo">✨</div>
+            <div class="logo" onclick="logout()">✨</div>
             <div class="nav-item active" onclick="showPage(0)">📊</div>
             <div class="nav-item" onclick="showPage(1)">📝</div>
             <div class="nav-item" onclick="showPage(2)">📚</div>
@@ -274,12 +436,13 @@
             <div class="nav-item" onclick="showPage(7)">📄</div>
             <div class="nav-item" onclick="showPage(8)">📢</div>
             <div style="flex: 1;"></div>
-            <div class="nav-item">⚙️</div>
+            <div class="nav-item" onclick="logout()">⚙️</div>
         </div>
         
         <div class="main">
             <div class="header">
                 <div class="header-title" id="pageTitle">Dashboard</div>
+                <button class="header-logout" onclick="logout()">🚪 Logout</button>
             </div>
             
             <div class="content">
@@ -372,12 +535,110 @@
     </div>
     
     <script>
+        const SESSION_KEY='shliah_v2_session';
+        const SESSION_DURATION=30*24*60*60*1000;
+        let pinBuffer='';
+        let loginAttempts=0;
+        let lockUntil=0;
+        let currentUser='admin';
+        
+        function getPin() {
+            return localStorage.getItem('admin_pin') || 'habad2024';
+        }
+        
+        function updateDots(state) {
+            for (let i = 0; i < 6; i++) {
+                const dot = document.getElementById('dot-' + i);
+                if (i < pinBuffer.length) {
+                    dot.classList.add('filled');
+                    if (state === 'error') dot.classList.add('error');
+                } else {
+                    dot.classList.remove('filled', 'error');
+                }
+            }
+            setTimeout(() => {
+                document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+            }, 500);
+        }
+        
+        function pinPress(digit) {
+            const now = Date.now();
+            if (now < lockUntil) {
+                document.getElementById('login-error').textContent = `Bloqué — ${Math.ceil((lockUntil-now)/1000)}s`;
+                return;
+            }
+            if (pinBuffer.length >= 6) return;
+            pinBuffer += digit;
+            updateDots();
+            if (pinBuffer.length === 6) setTimeout(() => checkPin(), 100);
+        }
+        
+        function pinDelete() {
+            if (pinBuffer.length > 0) {
+                pinBuffer = pinBuffer.slice(0, -1);
+                updateDots();
+            }
+        }
+        
+        function checkPin() {
+            const adminPin = getPin();
+            const matched = (pinBuffer === adminPin);
+            
+            if (matched) {
+                loginAttempts = 0;
+                currentUser = 'admin';
+                localStorage.setItem(SESSION_KEY, JSON.stringify({role: 'admin', until: Date.now() + SESSION_DURATION}));
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                restaurerSession();
+            } else {
+                loginAttempts++;
+                updateDots('error');
+                document.getElementById('login-error').textContent = loginAttempts >= 5 ? 'Trop de tentatives — bloqué 30s' : `Code incorrect (${loginAttempts}/5)`;
+                if (loginAttempts >= 5) {
+                    lockUntil = Date.now() + 30000;
+                    loginAttempts = 0;
+                }
+                setTimeout(() => {
+                    pinBuffer = '';
+                    updateDots();
+                }, 800);
+            }
+        }
+        
+        function restaurerSession() {
+            try {
+                const raw = localStorage.getItem(SESSION_KEY);
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                if (!s || !s.role || !s.until || Date.now() > s.until) {
+                    localStorage.removeItem(SESSION_KEY);
+                    return;
+                }
+                currentUser = s.role;
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+            } catch (e) {}
+        }
+        
+        function logout() {
+            localStorage.removeItem(SESSION_KEY);
+            pinBuffer = '';
+            updateDots();
+            currentUser = 'admin';
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+        
         const titles = ['Dashboard', 'Infos', 'Histoires', 'Musiques', 'Contacts', 'Paiements', 'Demandes', 'Cerfa', 'Broadcast'];
         function showPage(i) {
             document.querySelectorAll('.page').forEach((p, j) => p.classList.toggle('active', i === j));
             document.querySelectorAll('.nav-item').forEach((t, j) => { if(j<9) t.classList.toggle('active', i === j); });
             document.getElementById('pageTitle').textContent = titles[i];
         }
+        
+        restaurerSession();
     </script>
 </body>
 </html>
