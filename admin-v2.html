@@ -561,6 +561,26 @@
         let lockUntil=0;
         let currentUser='admin';
         
+        // Auto-refresh si nouvelle version
+        function checkVersion() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentVersion = urlParams.get('v') || 'unknown';
+            const lastVersion = localStorage.getItem('lastAppVersion');
+            
+            if (lastVersion && lastVersion !== currentVersion) {
+                console.log(`Version changée: ${lastVersion} → ${currentVersion}`);
+                localStorage.setItem('lastAppVersion', currentVersion);
+                // Petite attente pour laisser le temps de s'adapter
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else if (!lastVersion) {
+                localStorage.setItem('lastAppVersion', currentVersion);
+            }
+        }
+        
+        checkVersion();
+        
         function getPin() {
             return localStorage.getItem('admin_pin') || 'habad2024';
         }
