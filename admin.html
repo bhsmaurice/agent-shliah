@@ -306,6 +306,104 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .activite-date { font-size: 11px; color: var(--muted); }
 .activite-montant { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; }
 .voir-tout-link { display: block; text-align: center; font-size: 12px; color: var(--c-purple-dark); font-weight: 600; margin-top: 12px; cursor: pointer; }
+
+.btn-version {
+  background: rgba(96, 125, 255, 0.2);
+  border: 1px solid rgba(96, 125, 255, 0.4);
+  color: #93c5fd;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-version:hover {
+  background: rgba(96, 125, 255, 0.3);
+}
+
+.versions-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.versions-modal.active {
+  display: flex;
+}
+
+.versions-modal-content {
+  background: #1a2332;
+  border: 1px solid rgba(96, 125, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.versions-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 16px;
+}
+
+.version-item {
+  padding: 12px;
+  background: rgba(96, 125, 255, 0.1);
+  border: 1px solid rgba(96, 125, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.version-item:hover {
+  background: rgba(96, 125, 255, 0.2);
+  border-color: rgba(96, 125, 255, 0.4);
+}
+
+.version-hash {
+  font-family: monospace;
+  font-size: 11px;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.version-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-top: 4px;
+}
+
+.version-link {
+  font-size: 11px;
+  color: #93c5fd;
+  text-decoration: none;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+.versions-modal-close {
+  background: none;
+  border: none;
+  color: #93c5fd;
+  font-size: 24px;
+  cursor: pointer;
+  float: right;
+  margin-top: -8px;
+}
 </style>
 </head>
 <body>
@@ -341,6 +439,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
       <div class="site-name">Shliah Bot 🤖</div>
       <div class="site-sub">Panneau d'administration</div>
     </div>
+  </div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <button class="btn-version" onclick="toggleVersionsModal()">📌 Versions</button>
   </div>
   <div class="header-search-wrap" id="header-search-wrap">
     <div class="header-search">
@@ -1051,6 +1152,17 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="alert err" id="envoi-rapide-err"></div>
   </div>
 </div>
+
+
+<!-- Versions Modal -->
+<div class="versions-modal" id="versionsModal">
+  <div class="versions-modal-content">
+    <button class="versions-modal-close" onclick="toggleVersionsModal()">✕</button>
+    <div class="versions-modal-title">📌 Versions</div>
+    <div id="versionsListContainer"></div>
+  </div>
+</div>
+
 </div><!-- fin #app -->
 <script>
 // ══ UTILISATEURS ══
@@ -2219,6 +2331,47 @@ document.addEventListener('click',function(e){
 });
 function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
+
+// Versions Modal
+const VERSIONS = [
+  { hash: '49b6705', desc: 'feat: add new design v2 with version switching [ACTUELLE]', date: '2026-08-15' },
+  { hash: 'a5151bc', desc: 'fix: complete rewrite - simple and clean layout', date: '2026-08-15' },
+  { hash: '437ca55', desc: 'fix: mobile stats display - force 2 column grid', date: '2026-08-15' },
+  { hash: '4cd6a4f', desc: 'fix: add cache-busting headers and meta tags', date: '2026-08-15' },
+  { hash: '5d26e86', desc: 'fix: improve mobile layout and responsive design', date: '2026-08-15' }
+];
+
+function toggleVersionsModal() {
+  const modal = document.getElementById('versionsModal');
+  if (modal.classList.contains('active')) {
+    modal.classList.remove('active');
+  } else {
+    modal.classList.add('active');
+    loadVersionsList();
+  }
+}
+
+function loadVersionsList() {
+  const container = document.getElementById('versionsListContainer');
+  let html = '';
+  VERSIONS.forEach(v => {
+    html += `
+      <div class="version-item">
+        <div class="version-hash">${v.hash}</div>
+        <div class="version-desc">${v.desc}</div>
+        <a href="https://github.com/bhsmaurice/agent-shliah/commit/${v.hash}" target="_blank" class="version-link">Voir sur GitHub →</a>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('versionsModal');
+  if (e.target === modal) {
+    modal.classList.remove('active');
+  }
+});
 </script>
 </body>
 </html>
