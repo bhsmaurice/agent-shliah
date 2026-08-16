@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Shliah Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        
+        /* Login */
+        .login-screen {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-screen.hidden {
+            display: none;
+        }
+        
+        .login-box {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 48px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .login-emoji {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            color: #94a3b8;
+            margin-bottom: 32px;
+            font-size: 13px;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+        
+        .login-input:focus {
+            outline: none;
+            border-color: rgba(96, 165, 250, 0.5);
+            background: rgba(51, 65, 85, 0.8);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(96, 165, 250, 0.3);
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left h1 {
+            font-size: 18px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        
+        .logout-btn {
+            background: rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(148, 163, 184, 0.15);
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        
+        .tab {
+            padding: 8px 14px;
+            background: rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #94a3b8;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            border: none;
+            color: white;
+        }
+        
+        /* Pages */
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .page h2 {
+            font-size: 26px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        
+        .page > p {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .stat-card:hover {
+            border-color: rgba(96, 165, 250, 0.3);
+            background: rgba(51, 65, 85, 0.7);
+        }
+        
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-number {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+        
+        /* Sections */
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        
+        .section {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        
+        .section:hover {
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        
+        .section-title {
+            padding: 12px 16px;
+            background: rgba(148, 163, 184, 0.1);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        .section-body {
+            padding: 12px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 12px;
+        }
+        
+        .item:last-child {
+            border-bottom: none;
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 3px;
+        }
+        
+        .item-time {
+            color: #64748b;
+            font-size: 11px;
+        }
+        
+        .badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(96, 165, 250, 0.15);
+            color: #60a5fa;
+            white-space: nowrap;
+            margin-left: 8px;
+        }
+        
+        .badge.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+        
+        .badge.pending {
+            background: rgba(251, 146, 60, 0.15);
+            color: #fb923c;
+        }
+        
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        
+        .form-textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(96, 165, 250, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.15);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .page h2 {
+                font-size: 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <div class="login-emoji">✨</div>
+            <div class="login-title">Shliah</div>
+            <div class="login-subtitle">Admin Dashboard</div>
+            <input type="password" class="login-input" id="pwd" placeholder="Mot de passe" />
+            <button class="login-btn" onclick="login()">Accéder</button>
+        </div>
+    </div>
+    
+    <!-- App -->
+    <div id="app" style="display: none;">
+        <div class="header">
+            <div class="header-left">
+                <h1>✨ Shliah Admin</h1>
+            </div>
+            <button class="logout-btn" onclick="logout()">Déconnexion</button>
+        </div>
+        
+        <div class="container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="page(0)">📊 Dashboard</button>
+                <button class="tab" onclick="page(1)">📝 Infos</button>
+                <button class="tab" onclick="page(2)">📖 Histoires</button>
+                <button class="tab" onclick="page(3)">🎵 Musiques</button>
+                <button class="tab" onclick="page(4)">👥 Contacts</button>
+                <button class="tab" onclick="page(5)">💰 Paiements</button>
+                <button class="tab" onclick="page(6)">📩 Demandes</button>
+                <button class="tab" onclick="page(7)">🧾 Cerfa</button>
+                <button class="tab" onclick="page(8)">📢 Broadcast</button>
+            </div>
+            
+            <!-- Dashboard -->
+            <div class="page active">
+                <h2>Dashboard 📊</h2>
+                <p id="dateInfo"></p>
+                
+                <div class="stats-grid" id="stats"></div>
+                
+                <div class="section-grid">
+                    <div class="section">
+                        <div class="section-title">💬 Conversations</div>
+                        <div class="section-body" id="conversations"></div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">📩 Demandes</div>
+                        <div class="section-body" id="demandes"></div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">💳 Paiements</div>
+                        <div class="section-body" id="paiements"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Infos -->
+            <div class="page">
+                <h2>Infos 📝</h2>
+                <div class="section">
+                    <div class="section-body" id="infos"></div>
+                </div>
+            </div>
+            
+            <!-- Histoires -->
+            <div class="page">
+                <h2>Histoires 📖</h2>
+                <div class="section">
+                    <div class="section-body" id="histoires"></div>
+                </div>
+            </div>
+            
+            <!-- Musiques -->
+            <div class="page">
+                <h2>Musiques 🎵</h2>
+                <div class="section">
+                    <div class="section-body" id="musiques"></div>
+                </div>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="page">
+                <h2>Contacts 👥</h2>
+                <p id="contactsCount"></p>
+                <button class="btn-secondary" onclick="exportContacts()" style="margin-bottom: 12px;">📥 Export CSV</button>
+                <div class="section">
+                    <div class="section-body" id="contacts"></div>
+                </div>
+            </div>
+            
+            <!-- Paiements -->
+            <div class="page">
+                <h2>Paiements 💰</h2>
+                <p id="paiementsCount"></p>
+                <div class="section">
+                    <div class="section-body" id="allPaiements"></div>
+                </div>
+            </div>
+            
+            <!-- Demandes -->
+            <div class="page">
+                <h2>Demandes 📩</h2>
+                <p id="demandesCount"></p>
+                <div class="section">
+                    <div class="section-body" id="allDemandes"></div>
+                </div>
+            </div>
+            
+            <!-- Cerfa -->
+            <div class="page">
+                <h2>Cerfa 🧾</h2>
+                <p id="cerfaCount"></p>
+                <button class="btn-secondary" onclick="exportCerfa()" style="margin-bottom: 12px;">📥 Export CSV</button>
+                <div class="section">
+                    <div class="section-body" id="cerfa"></div>
+                </div>
+            </div>
+            
+            <!-- Broadcast -->
+            <div class="page">
+                <h2>Broadcast 📢</h2>
+                <div class="section">
+                    <div style="padding: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-textarea" id="broadcastMsg" placeholder="Ton message..."></textarea>
+                        </div>
+                        <button class="btn-primary" onclick="sendBroadcast()">📤 Envoyer à tous</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API = 'https://agent-shliah-production.up.railway.app';
+        let pwd = null;
+        
+        function login() {
+            pwd = document.getElementById('pwd').value;
+            fetch(`${API}/admin/stats?password=${pwd}&t=${Date.now()}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) throw new Error('Erreur');
+                    sessionStorage.setItem('pwd', pwd);
+                    show();
+                    load();
+                })
+                .catch(() => alert('Erreur mot de passe'));
+        }
+        
+        function show() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('app').style.display = 'block';
+        }
+        
+        function page(i) {
+            document.querySelectorAll('.page').forEach((p, j) => {
+                p.classList.toggle('active', i === j);
+            });
+            document.querySelectorAll('.tab').forEach((m, j) => {
+                m.classList.toggle('active', i === j);
+            });
+            
+            if (i === 1) loadInfos();
+            if (i === 2) loadHistoires();
+            if (i === 3) loadMusiques();
+            if (i === 4) loadContacts();
+            if (i === 5) loadAllPaiements();
+            if (i === 6) loadAllDemandes();
+            if (i === 7) loadCerfa();
+        }
+        
+        async function load() {
+            const d = new Date();
+            document.getElementById('dateInfo').innerText = d.toLocaleDateString('fr-FR');
+            
+            const res = await fetch(`${API}/admin/stats?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            
+            if (data.ok) {
+                const s = data.stats;
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-number">${s.messages}</div>
+                        <div class="stat-label">Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-number">${s.users}</div>
+                        <div class="stat-label">Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-number">€${Math.round(s.dons)}</div>
+                        <div class="stat-label">Dons</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📩</div>
+                        <div class="stat-number">${s.demandes}</div>
+                        <div class="stat-label">Demandes</div>
+                    </div>
+                `;
+            }
+            
+            loadConversations();
+            loadDemandes();
+            loadPaiements();
+        }
+        
+        async function loadConversations() {
+            const res = await fetch(`${API}/admin/conversations/liste?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const html = data.contacts.slice(0, 5).map(c => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${c.prenom || c.phone}</div>
+                            <div class="item-time">${formatTime(new Date(c.derniere_date))} • ${c.nb_messages} msg</div>
+                        </div>
+                        <span class="badge">${c.nb_messages}</span>
+                    </div>
+                `).join('');
+                document.getElementById('conversations').innerHTML = html;
+            }
+        }
+        
+        async function loadDemandes() {
+            const res = await fetch(`${API}/admin/demandes?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const dem = data.demandes.filter(d => d.statut === 'nouveau' || d.statut === 'en_attente').slice(0, 5);
+                const html = dem.map(d => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${d.type} • ${d.prenom || d.phone}</div>
+                            <div class="item-time">${formatTime(new Date(d.created_at))}</div>
+                        </div>
+                        <span class="badge pending">En attente</span>
+                    </div>
+                `).join('');
+                document.getElementById('demandes').innerHTML = html;
+            }
+        }
+        
+        async function loadPaiements() {
+            const res = await fetch(`${API}/admin/paiements?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const html = data.paiements.slice(0, 5).map(p => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${p.nom || p.phone} • €${p.montant}</div>
+                            <div class="item-time">${formatTime(new Date(p.created_at))}</div>
+                        </div>
+                        <span class="badge ${p.statut === 'paye' ? 'success' : 'pending'}">${p.statut}</span>
+                    </div>
+                `).join('');
+                document.getElementById('paiements').innerHTML = html;
+            }
+        }
+        
+        async function loadInfos() {
+            const res = await fetch(`${API}/admin/list?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const html = data.infos.map(i => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${i.titre}</div>
+                            <div class="item-time">${i.categorie}</div>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('infos').innerHTML = html;
+            }
+        }
+        
+        async function loadHistoires() {
+            const res = await fetch(`${API}/admin/histoires?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const html = data.histoires.map(h => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${h.titre}</div>
+                            <div class="item-time">${formatTime(new Date(h.created_at))}</div>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('histoires').innerHTML = html;
+            }
+        }
+        
+        async function loadMusiques() {
+            const res = await fetch(`${API}/admin/musiques?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const html = data.musiques.map(m => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${m.titre}</div>
+                            <div class="item-time">${m.ambiance}</div>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('musiques').innerHTML = html;
+            }
+        }
+        
+        async function loadContacts() {
+            const res = await fetch(`${API}/admin/broadcast/contacts?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                document.getElementById('contactsCount').innerText = `${data.contacts.length} contacts`;
+                const html = data.contacts.slice(0, 20).map(c => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${c.nom || c.phone}</div>
+                            <div class="item-time">${c.phone}</div>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('contacts').innerHTML = html;
+            }
+        }
+        
+        async function loadAllPaiements() {
+            const res = await fetch(`${API}/admin/paiements?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const pending = data.paiements.filter(p => p.statut !== 'paye').length;
+                document.getElementById('paiementsCount').innerText = `${pending} en attente sur ${data.paiements.length}`;
+                const html = data.paiements.map(p => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${p.nom || p.phone} • €${p.montant}</div>
+                            <div class="item-time">${formatTime(new Date(p.created_at))} • ${p.nb_relances} relances</div>
+                        </div>
+                        <span class="badge ${p.statut === 'paye' ? 'success' : 'pending'}">${p.statut}</span>
+                    </div>
+                `).join('');
+                document.getElementById('allPaiements').innerHTML = html;
+            }
+        }
+        
+        async function loadAllDemandes() {
+            const res = await fetch(`${API}/admin/demandes?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                const pending = data.demandes.filter(d => d.statut === 'nouveau' || d.statut === 'en_attente').length;
+                document.getElementById('demandesCount').innerText = `${pending} en attente sur ${data.demandes.length}`;
+                const html = data.demandes.map(d => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">${d.type} • ${d.prenom || d.phone}</div>
+                            <div class="item-time">${formatTime(new Date(d.created_at))}</div>
+                        </div>
+                        <span class="badge pending">${d.statut}</span>
+                    </div>
+                `).join('');
+                document.getElementById('allDemandes').innerHTML = html;
+            }
+        }
+        
+        async function loadCerfa() {
+            const res = await fetch(`${API}/admin/cerfa?password=${pwd}&t=${Date.now()}`);
+            const data = await res.json();
+            if (data.ok) {
+                document.getElementById('cerfaCount').innerText = `${data.cerfa_receipts.length} reçus`;
+                const html = data.cerfa_receipts.slice(0, 20).map(c => `
+                    <div class="item">
+                        <div class="item-info">
+                            <div class="item-name">#${c.numero} ${c.nom} ${c.prenom}</div>
+                            <div class="item-time">€${c.montant} • ${formatTime(new Date(c.created_at))}</div>
+                        </div>
+                        <span class="badge success">✓</span>
+                    </div>
+                `).join('');
+                document.getElementById('cerfa').innerHTML = html;
+            }
+        }
+        
+        async function sendBroadcast() {
+            const msg = document.getElementById('broadcastMsg').value;
+            if (!msg) { alert('Écris un message'); return; }
+            if (!confirm('Envoyer à tous?')) return;
+            
+            const res = await fetch(`${API}/admin/broadcast/send`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: pwd, texte_libre: msg})
+            });
+            
+            const data = await res.json();
+            if (data.ok) {
+                alert('Envoyé! ✓');
+                document.getElementById('broadcastMsg').value = '';
+            }
+        }
+        
+        function exportContacts() {
+            fetch(`${API}/admin/broadcast/contacts?password=${pwd}&t=${Date.now()}`)
+                .then(r => r.json())
+                .then(d => {
+                    let csv = 'Nom,Téléphone\n';
+                    d.contacts.forEach(c => {
+                        csv += `"${c.nom || ''}","${c.phone}"\n`;
+                    });
+                    downloadCSV(csv, 'contacts.csv');
+                });
+        }
+        
+        function exportCerfa() {
+            fetch(`${API}/admin/cerfa?password=${pwd}&t=${Date.now()}`)
+                .then(r => r.json())
+                .then(d => {
+                    let csv = 'Numéro,Nom,Prénom,Montant,Date\n';
+                    d.cerfa_receipts.forEach(c => {
+                        csv += `"${c.numero}","${c.nom}","${c.prenom || ''}","${c.montant}","${new Date(c.created_at).toLocaleDateString('fr-FR')}"\n`;
+                    });
+                    downloadCSV(csv, 'cerfa.csv');
+                });
+        }
+        
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+        }
+        
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            const mins = Math.floor(diff / 60000);
+            const hrs = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (mins < 1) return 'Maintenant';
+            if (mins < 60) return `${mins}m`;
+            if (hrs < 24) return `${hrs}h`;
+            if (days < 7) return `${days}j`;
+            return date.toLocaleDateString('fr-FR');
+        }
+        
+        function logout() {
+            sessionStorage.removeItem('pwd');
+            location.reload();
+        }
+        
+        window.addEventListener('load', () => {
+            pwd = sessionStorage.getItem('pwd');
+            if (pwd) {
+                show();
+                load();
+            }
+        });
+    </script>
+</body>
+</html>
