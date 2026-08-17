@@ -2642,7 +2642,39 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('header-search-wrap');
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
-function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
+function restaurerSession(){
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);
+    console.log('Session key:', SESSION_KEY);
+    console.log('Session brute:', raw);
+    if(!raw){
+      console.log('Pas de session trouvée');
+      return;
+    }
+    const s=JSON.parse(raw);
+    console.log('Session parsée:', s);
+    if(!s||!s.role||!s.until||Date.now()>s.until){
+      console.log('Session invalide ou expirée');
+      localStorage.removeItem(SESSION_KEY);
+      return;
+    }
+    console.log('Session valide! Affichage du panel...');
+    currentUser=s.role;
+    activeLoginUser=s.role;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    const u=localStorage.getItem('railway_url');
+    if(u){
+      document.getElementById('server-url').value=u;
+      document.getElementById('current-url').textContent=u;
+    }
+    const p=localStorage.getItem('railway_admin_pw');
+    if(p)document.getElementById('admin-pw-config').value=p;
+    applyUserRole(s.role);
+  }catch(e){
+    console.error('Erreur restaurerSession:', e);
+  }
+}
 restaurerSession();
 
 // Versions Modal
