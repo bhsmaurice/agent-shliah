@@ -841,9 +841,9 @@ async function telechargerMediaWhatsApp(mediaId) {
 }
 async function enregistrerMedia(buffer, mimeType) {
   try {
-    // Utiliser sharp pour corriger l'orientation EXIF et optimiser l'image
+    // Utiliser sharp pour corriger l'orientation EXIF, rotationner de -90° ET optimiser l'image
     const processedBuffer = await sharp(buffer)
-      .rotate() // Sharp corrige automatiquement l'orientation EXIF
+      .rotate(-90) // Rotation de -90 degrés pour corriger les photos de travers
       .resize(1280, 1280, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 90, progressive: true })
       .toBuffer();
