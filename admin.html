@@ -2252,7 +2252,10 @@ function ouvrirEnvoiRapide(phone) {
   envoiRapidePhone = clean;
   document.getElementById('envoi-rapide-label').textContent = 'Envoyer a +' + clean;
   document.getElementById('envoi-rapide-message').value = '';
-  document.getElementById('envoi-rapide-image').value = '';
+  document.getElementById('envoi-rapide-image-base64').value = '';
+  document.getElementById('envoi-rapide-image-url').value = '';
+  document.getElementById('envoi-rapide-preview').style.display = 'none';
+  document.getElementById('envoi-rapide-dropzone-text').textContent = '📷 Glisse une image ici ou clique';
   document.getElementById('envoi-rapide-ok').style.display = 'none';
   document.getElementById('envoi-rapide-err').style.display = 'none';
   document.getElementById('modal-envoi-rapide').classList.add('active');
