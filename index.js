@@ -1448,6 +1448,13 @@ app.get('/admin/conversations/thread', async (req, res) => {
   `, [phone]);
   res.json({ ok: true, messages: result.rows });
 });
+app.delete('/admin/conversations/delete', async (req, res) => {
+  const { password, phone } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!phone) return res.status(400).json({ ok: false, message: "Numéro requis" });
+  const result = await pool.query('DELETE FROM conversations WHERE phone = $1', [phone]);
+  res.json({ ok: true, message: `${result.rowCount} messages supprimés`, deleted: result.rowCount });
+});
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });

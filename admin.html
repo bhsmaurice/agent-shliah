@@ -1124,6 +1124,7 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="modal-btns">
       <button class="modal-cancel" onclick="fermerModalThread()" style="flex:1;">Fermer</button>
       <button class="modal-save" onclick="envoyerDepuisThread()" style="flex:1;">📤 Message</button>
+      <button class="modal-cancel" onclick="supprimerConversation()" style="flex:1;background:var(--red);color:white;border-color:var(--red);">🗑️ Supprimer</button>
     </div>
   </div>
 </div>
@@ -1712,6 +1713,18 @@ async function ouvrirThread(phone,nomAffiche){
 function fermerModalThread(){document.getElementById('modal-thread').classList.remove('active');}
 function closeModalThread(e){if(e.target===document.getElementById('modal-thread'))fermerModalThread();}
 function envoyerDepuisThread(){fermerModalThread();ouvrirEnvoiRapide(threadPhoneActuel);}
+async function supprimerConversation(){
+  if(!confirm('⚠️ Supprimer définitivement TOUS les messages de cette conversation ? Cette action ne peut pas être annulée.'))return;
+  if(!confirm('✓ Confirmer la suppression ? (2ème confirmation)'))return;
+  const url=getUrl(),pw=getAdminPw();
+  if(!url||!pw){alert('Configure d\'abord ⚙️ Config');return;}
+  try{
+    const res=await fetch(url+'/admin/conversations/delete',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,phone:threadPhoneActuel})});
+    const data=await res.json();
+    if(data.ok){alert('✓ '+data.message);fermerModalThread();location.reload();}
+    else alert('❌ '+data.message);
+  }catch(e){alert('❌ Erreur réseau');}
+}
 // ══ CONFIG ══
 function sauvegarderConfig(){const pw=document.getElementById('admin-pw-config').value.trim();if(pw)localStorage.setItem('railway_admin_pw',pw);const url=document.getElementById('server-url').value.trim().replace(/\/$/,'');if(!url)return;localStorage.setItem('railway_url',url);document.getElementById('current-url').textContent=url;const al=document.getElementById('alert-config');al.className='alert ok';al.style.display='block';al.textContent='✓ Adresse sauvegardée !';setTimeout(()=>al.style.display='none',2000);}
 function showOk(msg){const el=document.getElementById('alert-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
