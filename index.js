@@ -1850,6 +1850,20 @@ app.get('/admin/contacts/detail', async (req, res) => {
   if (result.rows.length === 0) return res.json({ ok: false, message: "Contact non trouvé" });
   res.json({ ok: true, contact: result.rows[0] });
 });
+app.put('/admin/contacts/update', async (req, res) => {
+  const { password, phone, prenom, nom, email, adresse, genre } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!phone) return res.status(400).json({ ok: false, message: "Numéro requis" });
+  try {
+    await pool.query(
+      'UPDATE contacts SET prenom = $1, nom = $2, email = $3, adresse = $4, genre = $5 WHERE phone = $6',
+      [prenom, nom, email, adresse, genre, phone]
+    );
+    res.json({ ok: true, message: "Contact mis à jour" });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 // ─── IMPORT NOMS/PRÉNOMS DES CONTACTS (par téléphone) ─────────
 // Reçoit une liste { telephone, nom, prenom } (téléphone au format
 // international sans + ni espace, ex: "33612345678") et met à jour ou crée

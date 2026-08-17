@@ -1159,17 +1159,22 @@ Chabbat Chalom à toute la communauté ! 🌟
 
 
 <!-- MODAL FICHE CONTACT -->
-<div class="modal-overlay" id="modal-fiche-contact" onclick="fermerModalFicheContact(event)">
+<div class="modal-overlay" id="modal-fiche-contact" onclick="closeModalFicheContact(event)">
   <div class="modal" style="max-height:85vh;display:flex;flex-direction:column;">
     <div class="modal-handle"></div>
-    <div class="modal-title">👤 Fiche Contact</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="modal-title" style="flex:1;">👤 Fiche Contact</div>
+      <button onclick="toggleEditionContact()" style="background:transparent;border:none;font-size:18px;cursor:pointer;padding:8px;">✏️</button>
+    </div>
     <div id="fiche-contact-content" style="flex:1;overflow-y:auto;padding:16px;">
       <!-- Contenu généré par JS -->
     </div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="fermerModalFicheContact()">Fermer</button>
-      <button class="modal-save" onclick="ouvrirEnvoiRapideDepuisFiche()">📤 Message</button>
+      <button class="modal-save" id="fiche-contact-action-btn" onclick="ouvrirEnvoiRapideDepuisFiche()">📤 Message</button>
     </div>
+    <div class="alert ok" id="fiche-contact-ok"></div>
+    <div class="alert err" id="fiche-contact-err"></div>
   </div>
 </div>
 
@@ -1742,8 +1747,10 @@ async function supprimerConversation(){
 }
 // ══ FICHE CONTACT ══
 let ficheContactPhone='';
+let ficheContactEdition=false;
 async function ouvrirFicheContact(phone){
   ficheContactPhone=phone;
+  ficheContactEdition=false;
   const url=getUrl(),pw=getAdminPw();
   if(!url||!pw){alert('Configure ⚙️ Config');return;}
   document.getElementById('fiche-contact-content').innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
@@ -1752,11 +1759,20 @@ async function ouvrirFicheContact(phone){
     const res=await fetch(url+'/admin/contacts/detail?phone='+encodeURIComponent(phone)+'&password='+encodeURIComponent(pw));
     const data=await res.json();
     if(!data.ok||!data.contact){document.getElementById('fiche-contact-content').innerHTML='<p style="color:var(--red)">Contact non trouvé</p>';return;}
-    const c=data.contact;
+    afficherFicheContact(data.contact);
+  }catch(e){document.getElementById('fiche-contact-content').innerHTML='<p style="color:var(--red)">Erreur réseau</p>';}
+}
+function afficherFicheContact(c){
+  if(!ficheContactEdition){
+    // MODE LECTURE
     const html=`
       <div class="field">
+        <label>👤 Prénom</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.prenom||'—'}</div>
+      </div>
+      <div class="field">
         <label>👤 Nom</label>
-        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.prenom?' '+c.prenom:''} ${c.nom||'—'}</div>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.nom||'—'}</div>
       </div>
       <div class="field">
         <label>📱 Téléphone</label>
@@ -1786,9 +1802,70 @@ async function ouvrirFicheContact(phone){
       </div>
     `;
     document.getElementById('fiche-contact-content').innerHTML=html;
-  }catch(e){document.getElementById('fiche-contact-content').innerHTML='<p style="color:var(--red)">Erreur réseau</p>';}
+    document.getElementById('fiche-contact-action-btn').textContent='📤 Message';
+    document.getElementById('fiche-contact-action-btn').onclick=()=>ouvrirEnvoiRapideDepuisFiche();
+  }else{
+    // MODE ÉDITION
+    const html=`
+      <div class="field">
+        <label>👤 Prénom</label>
+        <input type="text" id="edit-prenom" value="${c.prenom||''}" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid #E4E1EF;border-radius:12px;background:var(--white);color:var(--text);outline:none;">
+      </div>
+      <div class="field">
+        <label>👤 Nom</label>
+        <input type="text" id="edit-nom" value="${c.nom||''}" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid #E4E1EF;border-radius:12px;background:var(--white);color:var(--text);outline:none;">
+      </div>
+      <div class="field">
+        <label>✉️ Email</label>
+        <input type="email" id="edit-email" value="${c.email||''}" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid #E4E1EF;border-radius:12px;background:var(--white);color:var(--text);outline:none;">
+      </div>
+      <div class="field">
+        <label>📍 Adresse</label>
+        <input type="text" id="edit-adresse" value="${c.adresse||''}" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid #E4E1EF;border-radius:12px;background:var(--white);color:var(--text);outline:none;">
+      </div>
+      <div class="field">
+        <label>👥 Genre</label>
+        <select id="edit-genre" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid #E4E1EF;border-radius:12px;background:var(--white);color:var(--text);outline:none;">
+          <option value="">Non spécifié</option>
+          <option value="homme" ${c.genre==='homme'?'selected':''}>👨 Homme</option>
+          <option value="femme" ${c.genre==='femme'?'selected':''}>👩 Femme</option>
+          <option value="enfant" ${c.genre==='enfant'?'selected':''}>🧒 Enfant</option>
+        </select>
+      </div>
+    `;
+    document.getElementById('fiche-contact-content').innerHTML=html;
+    document.getElementById('fiche-contact-action-btn').textContent='💾 Sauvegarder';
+    document.getElementById('fiche-contact-action-btn').onclick=()=>sauvegarderContact();
+  }
 }
-function fermerModalFicheContact(){document.getElementById('modal-fiche-contact').classList.remove('active');}
+function toggleEditionContact(){
+  ficheContactEdition=!ficheContactEdition;
+  const url=getUrl(),pw=getAdminPw();
+  fetch(url+'/admin/contacts/detail?phone='+encodeURIComponent(ficheContactPhone)+'&password='+encodeURIComponent(pw))
+    .then(r=>r.json())
+    .then(d=>{if(d.ok)afficherFicheContact(d.contact);})
+    .catch(e=>console.log(e));
+}
+async function sauvegarderContact(){
+  const url=getUrl(),pw=getAdminPw();
+  const prenom=document.getElementById('edit-prenom').value.trim()||null;
+  const nom=document.getElementById('edit-nom').value.trim()||null;
+  const email=document.getElementById('edit-email').value.trim()||null;
+  const adresse=document.getElementById('edit-adresse').value.trim()||null;
+  const genre=document.getElementById('edit-genre').value||null;
+  const okEl=document.getElementById('fiche-contact-ok'),errEl=document.getElementById('fiche-contact-err');
+  okEl.style.display='none';errEl.style.display='none';
+  try{
+    const res=await fetch(url+'/admin/contacts/update',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw,phone:ficheContactPhone,prenom,nom,email,adresse,genre})});
+    const data=await res.json();
+    if(data.ok){
+      okEl.textContent='✓ Contact mis à jour !';okEl.style.display='block';
+      ficheContactEdition=false;
+      setTimeout(()=>ouvrirFicheContact(ficheContactPhone),1000);
+    }else{errEl.textContent='❌ '+data.message;errEl.style.display='block';}
+  }catch(e){errEl.textContent='❌ Erreur réseau';errEl.style.display='block';}
+}
+function fermerModalFicheContact(){document.getElementById('modal-fiche-contact').classList.remove('active');ficheContactEdition=false;}
 function closeModalFicheContact(e){if(e.target===document.getElementById('modal-fiche-contact'))fermerModalFicheContact();}
 function ouvrirEnvoiRapideDepuisFiche(){fermerModalFicheContact();ouvrirEnvoiRapide(ficheContactPhone);}
 // ══ CONFIG ══
