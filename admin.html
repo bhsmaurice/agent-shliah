@@ -32,8 +32,10 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .pin-dot.filled { background: var(--gold); border-color: var(--gold); }
 .pin-dot.error { background: var(--red); border-color: var(--red); }
 .pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
-.pin-btn { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.12); color: #fff; font-family: 'Heebo', sans-serif; font-size: 22px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.pin-btn { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.12); color: #fff; font-family: 'Heebo', sans-serif; font-size: 22px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pin-btn:active { background: rgba(184,151,42,0.3); border-color: var(--gold); transform: scale(0.93); }
+.pin-btn:hover { background: rgba(255,255,255,0.12); }
+.pin-btn.touch-active { background: rgba(184,151,42,0.3) !important; border-color: var(--gold) !important; }
 .pin-btn.delete { font-size: 18px; background: transparent; border-color: transparent; }
 .pin-btn.zero { grid-column: 2; }
 .login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
@@ -1258,6 +1260,31 @@ function getPin2Name(){return localStorage.getItem(PIN2_NAME_KEY)||'2ème utilis
 function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';pinBuffer='';updateDots();document.getElementById('login-error').textContent='';if(activeLoginUser==='user2'){const name=getPin2Name();document.getElementById('login-user-label').textContent=`👤 ${name}`;if(!getPin2()){document.getElementById('login-error').textContent='Aucun 2ème utilisateur configuré';activeLoginUser='admin';document.getElementById('login-user-label').textContent='👤 Administrateur';}}else{document.getElementById('login-user-label').textContent='👤 Administrateur';}}
 function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
+function initPinButtons(){
+  document.querySelectorAll('.pin-btn').forEach(btn => {
+    const digit = btn.textContent.trim();
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      btn.classList.add('touch-active');
+      if(digit !== '⌫') pinPress(digit);
+      else pinDelete();
+    });
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      btn.classList.remove('touch-active');
+    });
+    btn.addEventListener('mousedown', () => {
+      btn.classList.add('touch-active');
+    });
+    btn.addEventListener('mouseup', () => {
+      btn.classList.remove('touch-active');
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(initPinButtons, 100);
+  restaurerSession();
+});
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
