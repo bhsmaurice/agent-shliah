@@ -2301,13 +2301,23 @@ async function envoyerEnvoiRapide() {
   const finalImageUrl = imageBase64 || imageUrl || null;
   const okEl = document.getElementById('envoi-rapide-ok'), errEl = document.getElementById('envoi-rapide-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
+  
+  // DEBUG: afficher les infos qu'on envoie
+  errEl.textContent = '⏳ Envoi en cours...';
+  errEl.style.color = '#7A8AAA';
+  errEl.style.display = 'block';
+  
   if (!message && !finalImageUrl) { errEl.textContent = 'Ecris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!url) { errEl.textContent = '❌ URL serveur manquante — configure ⚙️ Config'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!pw) { errEl.textContent = '❌ Password manquant — configure ⚙️ Config'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  
   try {
-    const r = await fetch(url + '/admin/broadcast/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: message || ' ', image_url: finalImageUrl, phone_unique: envoiRapidePhone }) });
+    const payload = { password: pw, mode: 'libre', texte_libre: message || ' ', image_url: finalImageUrl, phone_unique: envoiRapidePhone };
+    const r = await fetch(url + '/admin/broadcast/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const d = await r.json();
-    if (d.ok && d.envoyes > 0) { okEl.textContent = 'Message envoye !'; okEl.className = 'alert ok'; okEl.style.display = 'block'; setTimeout(() => fermerModalEnvoiRapide(), 1500); }
-    else { errEl.textContent = d.message || "Erreur d'envoi"; errEl.className = 'alert err'; errEl.style.display = 'block'; }
-  } catch (e) { errEl.textContent = 'Erreur reseau'; errEl.className = 'alert err'; errEl.style.display = 'block'; }
+    if (d.ok && d.envoyes > 0) { okEl.textContent = '✅ Message envoye !'; okEl.className = 'alert ok'; okEl.style.display = 'block'; setTimeout(() => fermerModalEnvoiRapide(), 1500); }
+    else { errEl.textContent = '❌ ' + (d.message || "Erreur d'envoi (voir réponse serveur)"); errEl.className = 'alert err'; errEl.style.display = 'block'; console.log('Erreur serveur:', d); }
+  } catch (e) { errEl.textContent = '❌ Erreur réseau: ' + e.message; errEl.className = 'alert err'; errEl.style.display = 'block'; console.log('Erreur:', e); }
 }
 async function loadBroadcastContacts(){const url=getUrl(),pw=getAdminPw();if(!url){document.getElementById('broadcast-contacts').innerHTML="⚠️ Configurez l'adresse dans ⚙️ Config";return;}try{const r=await fetch(url+'/admin/broadcast/contacts?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok)document.getElementById('broadcast-contacts').innerHTML=`👥 <strong>${d.count} contacts</strong> ont utilisé le Shliah Bot.`;else document.getElementById('broadcast-contacts').innerHTML='❌ '+d.message;}catch(e){document.getElementById('broadcast-contacts').innerHTML='❌ Erreur de connexion';}}
 async function chargerInfoChabbat(){const url=getUrl(),pw=getAdminPw();const box=document.getElementById('chabbat-live-box'),content=document.getElementById('chabbat-live-content');box.style.display='block';content.textContent='Chargement...';try{const r=await fetch(url+'/admin/chabbat?password='+encodeURIComponent(pw));const d=await r.json();if(d.ok&&d.data)content.innerHTML=d.data.replace(/\n/g,'<br>');else content.textContent='Impossible de charger les horaires.';}catch(e){content.textContent='Erreur de connexion';}}
