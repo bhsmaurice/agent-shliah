@@ -1461,6 +1461,22 @@ app.delete('/admin/conversations/delete', async (req, res) => {
   const result = await pool.query('DELETE FROM conversations WHERE phone = $1', [phone]);
   res.json({ ok: true, message: `${result.rowCount} messages supprimés`, deleted: result.rowCount });
 });
+app.get('/admin/home/recent-conversations', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const result = await pool.query(`
+      SELECT phone, question, reponse, created_at,
+             (SELECT nom FROM contacts WHERE phone = conversations.phone LIMIT 1) as nom,
+             (SELECT prenom FROM contacts WHERE phone = conversations.phone LIMIT 1) as prenom
+      FROM conversations
+      ORDER BY created_at DESC LIMIT 8
+    `);
+    res.json({ ok: true, conversations: result.rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 app.get('/admin/demandes', async (req, res) => {
   const { password, type } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
