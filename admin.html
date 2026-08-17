@@ -2224,6 +2224,12 @@ function afficherContacts() {
     const el = document.createElement('div');
     el.className = 'contact-card';
     el.id = 'contact-' + c.phone;
+    el.style.cursor = 'pointer';
+    const phoneForClick = c.phone;
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('contact-checkbox') || e.target.classList.contains('phone-link')) return;
+      ouvrirFicheContact(phoneForClick);
+    });
     let badges = '';
     if (c.abonne_chabbat) badges += '<span class="badge-abo badge-chabbat">🕯️ Chabbat</span>';
     if (c.abonne_evenements) badges += '<span class="badge-abo badge-evenements">📅 Événements</span>';
@@ -2231,7 +2237,7 @@ function afficherContacts() {
     const nomComplet = [c.prenom, c.nom].filter(Boolean).join(' ').trim();
     const iconGenre = genreIcon(c.genre);
     el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="ouvrirFicheContact('${c.phone}')">
+      <div style="display:flex;align-items:center;gap:10px;">
         <input type="checkbox" class="contact-checkbox" data-phone="${c.phone}" onchange="toggleSelectContact('${c.phone}',this)" style="width:18px;height:18px;display:none;">
         <div>
           ${nomComplet ? `<div class="contact-nom">${iconGenre?iconGenre+' ':''}${nomComplet}</div>` : ''}
