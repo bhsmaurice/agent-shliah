@@ -1144,7 +1144,6 @@ Chabbat Chalom à toute la communauté ! 🌟
         <img id="envoi-rapide-preview" src="" style="max-width: 100%; max-height: 150px; border-radius: 10px; margin-top: 12px; display: none; object-fit: cover;">
       </div>
       <input type="file" id="envoi-rapide-file-input" accept="image/*" style="display: none;" onchange="handleEnvoiRapideImageFile(this.files[0])">
-      <input type="hidden" id="envoi-rapide-image-base64">
       <div style="margin-top: 12px; font-size: 12px; color: var(--muted);">ou colle un lien :</div>
       <input type="url" id="envoi-rapide-image-url" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);outline:none;margin-top:8px;">
     </div>
@@ -2252,7 +2251,6 @@ function ouvrirEnvoiRapide(phone) {
   envoiRapidePhone = clean;
   document.getElementById('envoi-rapide-label').textContent = 'Envoyer a +' + clean;
   document.getElementById('envoi-rapide-message').value = '';
-  document.getElementById('envoi-rapide-image-base64').value = '';
   document.getElementById('envoi-rapide-image-url').value = '';
   document.getElementById('envoi-rapide-preview').style.display = 'none';
   document.getElementById('envoi-rapide-dropzone-text').textContent = '📷 Glisse une image ici ou clique';
@@ -2263,7 +2261,6 @@ function ouvrirEnvoiRapide(phone) {
 function fermerModalEnvoiRapide() { 
   document.getElementById('modal-envoi-rapide').classList.remove('active'); 
   document.getElementById('envoi-rapide-message').value = '';
-  document.getElementById('envoi-rapide-image-base64').value = '';
   document.getElementById('envoi-rapide-image-url').value = '';
   document.getElementById('envoi-rapide-preview').style.display = 'none';
   document.getElementById('envoi-rapide-dropzone-text').textContent = '📷 Glisse une image ici ou clique';
@@ -2280,15 +2277,41 @@ function handleEnvoiRapideImageDrop(e) {
 async function handleEnvoiRapideImageFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) { alert('Merci de choisir un fichier image (jpg, png, etc.)'); return; }
+  
+  const url = getUrl(), pw = getAdminPw();
+  if (!url) { alert("❌ Configurez l'URL dans ⚙️ Config"); return; }
+  if (!pw) { alert("❌ Configurez le password dans ⚙️ Config"); return; }
+  
   const textEl = document.getElementById('envoi-rapide-dropzone-text');
   const prevEl = document.getElementById('envoi-rapide-preview');
   if (textEl) textEl.textContent = '⏳ Upload...';
+  
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     const base64 = reader.result.split(',')[1];
-    document.getElementById('envoi-rapide-image-base64').value = base64;
-    if (prevEl) { prevEl.src = reader.result; prevEl.style.display = 'block'; }
-    if (textEl) textEl.textContent = '✅ Image prête ! (clique pour la remplacer)';
+    console.log('📤 Upload image au serveur, taille:', base64.length, 'bytes');
+    
+    try {
+      const r = await fetch(url + '/admin/upload-image', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ password: pw, image_base64: base64, mime_type: file.type }) 
+      });
+      const d = await r.json();
+      console.log('📨 Réponse upload:', d);
+      
+      if (d.ok && d.url) {
+        document.getElementById('envoi-rapide-image-url').value = d.url;
+        document.getElementById('envoi-rapide-image-base64').value = ''; // nettoyer
+        if (prevEl) { prevEl.src = reader.result; prevEl.style.display = 'block'; }
+        if (textEl) textEl.textContent = '✅ Image chargée ! (clique pour la remplacer)';
+      } else {
+        if (textEl) textEl.textContent = '❌ ' + (d.message || 'Erreur upload');
+      }
+    } catch (e) {
+      if (textEl) textEl.textContent = '❌ Erreur: ' + e.message;
+      console.log('❌ Erreur upload:', e);
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -2296,9 +2319,7 @@ async function handleEnvoiRapideImageFile(file) {
 async function envoyerEnvoiRapide() {
   const url = getUrl(), pw = getAdminPw();
   const message = document.getElementById('envoi-rapide-message').value.trim();
-  const imageBase64 = document.getElementById('envoi-rapide-image-base64').value.trim();
   const imageUrl = document.getElementById('envoi-rapide-image-url').value.trim() || null;
-  const finalImageUrl = imageBase64 || imageUrl || null;
   const okEl = document.getElementById('envoi-rapide-ok'), errEl = document.getElementById('envoi-rapide-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
   
@@ -2307,13 +2328,13 @@ async function envoyerEnvoiRapide() {
   errEl.style.color = '#7A8AAA';
   errEl.style.display = 'block';
   
-  if (!message && !finalImageUrl) { errEl.textContent = 'Ecris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!message && !imageUrl) { errEl.textContent = 'Ecris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!url) { errEl.textContent = '❌ URL serveur manquante — configure ⚙️ Config'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!pw) { errEl.textContent = '❌ Password manquant — configure ⚙️ Config'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   if (!envoiRapidePhone) { errEl.textContent = '❌ Numéro de téléphone manquant'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   
   try {
-    const payload = { password: pw, mode: 'libre', texte_libre: message || ' ', image_url: finalImageUrl, phone_unique: envoiRapidePhone };
+    const payload = { password: pw, mode: 'libre', texte_libre: message || ' ', image_url: imageUrl, phone_unique: envoiRapidePhone };
     console.log('📤 Envoi a:', envoiRapidePhone, 'Payload:', payload);
     const r = await fetch(url + '/admin/broadcast/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const d = await r.json();
