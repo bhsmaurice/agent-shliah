@@ -1762,15 +1762,19 @@ app.post('/admin/broadcast/send', async (req, res) => {
     for (const phone of phones) {
       try {
         let body;
+        let messageTexte = '';
         if (mode === 'chabbat') {
           body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'template', template: { name: 'broadcast_chabbat', language: { code: 'fr' }, components: [{ type: 'body', parameters: [{ type: 'text', text: paracha || '' }, { type: 'text', text: date || '' }, { type: 'text', text: entree || '' }, { type: 'text', text: sortie || '' }] }] } });
+          messageTexte = `🕯️ Chabbat Chalom !\n\nParacha de la semaine : ${paracha || ''}\nDate : ${date || ''}\n\nEntrée de Chabbat : ${entree || ''}\nSortie de Chabbat : ${sortie || ''}\n\nChabbat Chalom à toute la communauté ! 🌟\n✡️ Beth Habad Saint-Maurice`;
         } else {
           const texteAEnvoyer = (texte_libre || '').trim();
           if (texteAEnvoyer && texteAEnvoyer !== ' ') {
             body = JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: texteAEnvoyer } });
+            messageTexte = texteAEnvoyer;
           } else if (image_url) {
             await sendWhatsAppImage(phone, image_url);
             envoyes++;
+            await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [phone, '[Admin - Image]', image_url]);
             await new Promise(r => setTimeout(r, 200));
             continue;
           }
@@ -1779,6 +1783,9 @@ app.post('/admin/broadcast/send', async (req, res) => {
         const data = await response.json();
         if (data.messages) {
           envoyes++;
+          if (messageTexte) {
+            await pool.query('INSERT INTO conversations (phone, question, reponse) VALUES ($1, $2, $3)', [phone, '[Admin]', messageTexte]);
+          }
           if (mode !== 'chabbat' && image_url && (texte_libre || '').trim() && (texte_libre || '').trim() !== ' ') {
             await new Promise(r => setTimeout(r, 400));
             await sendWhatsAppImage(phone, image_url);
