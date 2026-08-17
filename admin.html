@@ -1139,7 +1139,14 @@ Chabbat Chalom à toute la communauté ! 🌟
     </div>
     <div class="field">
       <label>🖼️ Image / Affiche (facultatif)</label>
-      <input type="url" id="envoi-rapide-image" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+      <div id="envoi-rapide-dropzone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg);" ondrop="handleEnvoiRapideImageDrop(event)" ondragover="event.preventDefault(); event.currentTarget.style.borderColor='var(--c-purple)'; event.currentTarget.style.background='#F1EEFF';" ondragleave="event.currentTarget.style.borderColor='var(--border)'; event.currentTarget.style.background='var(--bg)';" onclick="document.getElementById('envoi-rapide-file-input').click();">
+        <div id="envoi-rapide-dropzone-text" style="font-size: 13px; color: var(--muted);">📷 Glisse une image ici ou clique</div>
+        <img id="envoi-rapide-preview" src="" style="max-width: 100%; max-height: 150px; border-radius: 10px; margin-top: 12px; display: none; object-fit: cover;">
+      </div>
+      <input type="file" id="envoi-rapide-file-input" accept="image/*" style="display: none;" onchange="handleEnvoiRapideImageFile(this.files[0])">
+      <input type="hidden" id="envoi-rapide-image-base64">
+      <div style="margin-top: 12px; font-size: 12px; color: var(--muted);">ou colle un lien :</div>
+      <input type="url" id="envoi-rapide-image-url" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);outline:none;margin-top:8px;">
     </div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="fermerModalEnvoiRapide()">Annuler</button>
@@ -2250,17 +2257,50 @@ function ouvrirEnvoiRapide(phone) {
   document.getElementById('envoi-rapide-err').style.display = 'none';
   document.getElementById('modal-envoi-rapide').classList.add('active');
 }
-function fermerModalEnvoiRapide() { document.getElementById('modal-envoi-rapide').classList.remove('active'); }
+function fermerModalEnvoiRapide() { 
+  document.getElementById('modal-envoi-rapide').classList.remove('active'); 
+  document.getElementById('envoi-rapide-message').value = '';
+  document.getElementById('envoi-rapide-image-base64').value = '';
+  document.getElementById('envoi-rapide-image-url').value = '';
+  document.getElementById('envoi-rapide-preview').style.display = 'none';
+  document.getElementById('envoi-rapide-dropzone-text').textContent = '📷 Glisse une image ici ou clique';
+}
 function closeModalEnvoiRapide(e) { if (e.target === document.getElementById('modal-envoi-rapide')) fermerModalEnvoiRapide(); }
+function handleEnvoiRapideImageDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--border)';
+  e.currentTarget.style.background = 'var(--bg)';
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) handleEnvoiRapideImageFile(file);
+}
+
+async function handleEnvoiRapideImageFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('Merci de choisir un fichier image (jpg, png, etc.)'); return; }
+  const textEl = document.getElementById('envoi-rapide-dropzone-text');
+  const prevEl = document.getElementById('envoi-rapide-preview');
+  if (textEl) textEl.textContent = '⏳ Upload...';
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(',')[1];
+    document.getElementById('envoi-rapide-image-base64').value = base64;
+    if (prevEl) { prevEl.src = reader.result; prevEl.style.display = 'block'; }
+    if (textEl) textEl.textContent = '✅ Image prête ! (clique pour la remplacer)';
+  };
+  reader.readAsDataURL(file);
+}
+
 async function envoyerEnvoiRapide() {
   const url = getUrl(), pw = getAdminPw();
   const message = document.getElementById('envoi-rapide-message').value.trim();
-  const imageUrl = document.getElementById('envoi-rapide-image').value.trim() || null;
+  const imageBase64 = document.getElementById('envoi-rapide-image-base64').value.trim();
+  const imageUrl = document.getElementById('envoi-rapide-image-url').value.trim() || null;
+  const finalImageUrl = imageBase64 || imageUrl || null;
   const okEl = document.getElementById('envoi-rapide-ok'), errEl = document.getElementById('envoi-rapide-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
-  if (!message && !imageUrl) { errEl.textContent = 'Ecris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
+  if (!message && !finalImageUrl) { errEl.textContent = 'Ecris un message ou ajoute une image'; errEl.className = 'alert err'; errEl.style.display = 'block'; return; }
   try {
-    const r = await fetch(url + '/admin/broadcast/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: message || ' ', image_url: imageUrl, phone_unique: envoiRapidePhone }) });
+    const r = await fetch(url + '/admin/broadcast/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, mode: 'libre', texte_libre: message || ' ', image_url: finalImageUrl, phone_unique: envoiRapidePhone }) });
     const d = await r.json();
     if (d.ok && d.envoyes > 0) { okEl.textContent = 'Message envoye !'; okEl.className = 'alert ok'; okEl.style.display = 'block'; setTimeout(() => fermerModalEnvoiRapide(), 1500); }
     else { errEl.textContent = d.message || "Erreur d'envoi"; errEl.className = 'alert err'; errEl.style.display = 'block'; }
