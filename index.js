@@ -11,6 +11,7 @@ app.use((req, res, next) => {
 const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const sharp = require('sharp');
 async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS infos (id SERIAL PRIMARY KEY, categorie TEXT, titre TEXT, contenu TEXT, instruction TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS conversations (id SERIAL PRIMARY KEY, phone TEXT, question TEXT, reponse TEXT, created_at TIMESTAMP DEFAULT NOW())`);
@@ -839,8 +840,21 @@ async function telechargerMediaWhatsApp(mediaId) {
   return { buffer, mimeType: info.mime_type || 'image/jpeg' };
 }
 async function enregistrerMedia(buffer, mimeType) {
-  const result = await pool.query('INSERT INTO medias (data, mime_type) VALUES ($1, $2) RETURNING id', [buffer, mimeType]);
-  return result.rows[0].id;
+  try {
+    // Utiliser sharp pour corriger l'orientation EXIF et optimiser l'image
+    const processedBuffer = await sharp(buffer)
+      .rotate() // Sharp corrige automatiquement l'orientation EXIF
+      .resize(1280, 1280, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 90, progressive: true })
+      .toBuffer();
+    const result = await pool.query('INSERT INTO medias (data, mime_type) VALUES ($1, $2) RETURNING id', [processedBuffer, 'image/jpeg']);
+    return result.rows[0].id;
+  } catch (e) {
+    // Fallback: enregistrer l'image sans traitement si sharp échoue
+    console.error('Erreur traitement image:', e.message);
+    const result = await pool.query('INSERT INTO medias (data, mime_type) VALUES ($1, $2) RETURNING id', [buffer, mimeType]);
+    return result.rows[0].id;
+  }
 }
 let sessionsAjoutInfo = {};
 async function demarrerAjoutInfo(from, mediaId) {
