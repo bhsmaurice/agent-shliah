@@ -20,6 +20,12 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS messages_traites (msg_id TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS histoires (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, texte TEXT NOT NULL, image_url TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, phone TEXT UNIQUE NOT NULL, abonne_chabbat BOOLEAN DEFAULT FALSE, abonne_evenements BOOLEAN DEFAULT FALSE, question_chabbat_posee BOOLEAN DEFAULT FALSE, question_evenements_posee BOOLEAN DEFAULT FALSE, nb_messages INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
+  // Ajouter colonnes si elles n'existent pas
+  await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT`);
+  await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS prenom TEXT`);
+  await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS genre TEXT`);
+  await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS adresse TEXT`);
+  await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS email TEXT`);
   await pool.query(`CREATE TABLE IF NOT EXISTS musiques (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, lien TEXT NOT NULL, ambiance TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playlistes (id SERIAL PRIMARY KEY, nom TEXT NOT NULL, ambiance TEXT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
@@ -1835,6 +1841,14 @@ app.post('/admin/abonnes/envoyer', async (req, res) => {
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
   await envoyerHorairesChabbatAbonnes();
   res.json({ ok: true, message: 'Horaires envoyés aux abonnés !' });
+});
+app.get('/admin/contacts/detail', async (req, res) => {
+  const { password, phone } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!phone) return res.status(400).json({ ok: false, message: "Numéro requis" });
+  const result = await pool.query('SELECT * FROM contacts WHERE phone = $1', [phone]);
+  if (result.rows.length === 0) return res.json({ ok: false, message: "Contact non trouvé" });
+  res.json({ ok: true, contact: result.rows[0] });
 });
 // ─── IMPORT NOMS/PRÉNOMS DES CONTACTS (par téléphone) ─────────
 // Reçoit une liste { telephone, nom, prenom } (téléphone au format

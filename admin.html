@@ -1158,6 +1158,21 @@ Chabbat Chalom à toute la communauté ! 🌟
 </div>
 
 
+<!-- MODAL FICHE CONTACT -->
+<div class="modal-overlay" id="modal-fiche-contact" onclick="fermerModalFicheContact(event)">
+  <div class="modal" style="max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 Fiche Contact</div>
+    <div id="fiche-contact-content" style="flex:1;overflow-y:auto;padding:16px;">
+      <!-- Contenu généré par JS -->
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalFicheContact()">Fermer</button>
+      <button class="modal-save" onclick="ouvrirEnvoiRapideDepuisFiche()">📤 Message</button>
+    </div>
+  </div>
+</div>
+
 <!-- Versions Modal -->
 <div class="versions-modal" id="versionsModal">
   <div class="versions-modal-content">
@@ -1725,6 +1740,57 @@ async function supprimerConversation(){
     else alert('❌ '+data.message);
   }catch(e){alert('❌ Erreur réseau');}
 }
+// ══ FICHE CONTACT ══
+let ficheContactPhone='';
+async function ouvrirFicheContact(phone){
+  ficheContactPhone=phone;
+  const url=getUrl(),pw=getAdminPw();
+  if(!url||!pw){alert('Configure ⚙️ Config');return;}
+  document.getElementById('fiche-contact-content').innerHTML='<div class="empty"><div class="icon">⏳</div><p>Chargement...</p></div>';
+  document.getElementById('modal-fiche-contact').classList.add('active');
+  try{
+    const res=await fetch(url+'/admin/contacts/detail?phone='+encodeURIComponent(phone)+'&password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(!data.ok||!data.contact){document.getElementById('fiche-contact-content').innerHTML='<p style="color:var(--red)">Contact non trouvé</p>';return;}
+    const c=data.contact;
+    const html=`
+      <div class="field">
+        <label>👤 Nom</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.prenom?' '+c.prenom:''} ${c.nom||'—'}</div>
+      </div>
+      <div class="field">
+        <label>📱 Téléphone</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">+${c.phone}</div>
+      </div>
+      <div class="field">
+        <label>✉️ Email</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.email||'—'}</div>
+      </div>
+      <div class="field">
+        <label>📍 Adresse</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.adresse||'—'}</div>
+      </div>
+      <div class="field">
+        <label>👥 Genre</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.genre==='homme'?'👨 Homme':c.genre==='femme'?'👩 Femme':c.genre==='enfant'?'🧒 Enfant':'—'}</div>
+      </div>
+      <div class="field">
+        <label>📊 Messages</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;">${c.nb_messages||0} messages</div>
+      </div>
+      <div class="field">
+        <label>🔔 Abonnements</label>
+        <div style="padding:10px;background:var(--bg);border-radius:8px;font-size:13px;">
+          ${c.abonne_chabbat?'✓ Chabbat':'✗ Chabbat'} | ${c.abonne_evenements?'✓ Événements':'✗ Événements'}
+        </div>
+      </div>
+    `;
+    document.getElementById('fiche-contact-content').innerHTML=html;
+  }catch(e){document.getElementById('fiche-contact-content').innerHTML='<p style="color:var(--red)">Erreur réseau</p>';}
+}
+function fermerModalFicheContact(){document.getElementById('modal-fiche-contact').classList.remove('active');}
+function closeModalFicheContact(e){if(e.target===document.getElementById('modal-fiche-contact'))fermerModalFicheContact();}
+function ouvrirEnvoiRapideDepuisFiche(){fermerModalFicheContact();ouvrirEnvoiRapide(ficheContactPhone);}
 // ══ CONFIG ══
 function sauvegarderConfig(){const pw=document.getElementById('admin-pw-config').value.trim();if(pw)localStorage.setItem('railway_admin_pw',pw);const url=document.getElementById('server-url').value.trim().replace(/\/$/,'');if(!url)return;localStorage.setItem('railway_url',url);document.getElementById('current-url').textContent=url;const al=document.getElementById('alert-config');al.className='alert ok';al.style.display='block';al.textContent='✓ Adresse sauvegardée !';setTimeout(()=>al.style.display='none',2000);}
 function showOk(msg){const el=document.getElementById('alert-ok');el.textContent=msg;el.className='alert ok';el.style.display='block';}
@@ -2069,11 +2135,11 @@ function afficherContacts() {
     const nomComplet = [c.prenom, c.nom].filter(Boolean).join(' ').trim();
     const iconGenre = genreIcon(c.genre);
     el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="ouvrirFicheContact('${c.phone}')">
         <input type="checkbox" class="contact-checkbox" data-phone="${c.phone}" onchange="toggleSelectContact('${c.phone}',this)" style="width:18px;height:18px;display:none;">
         <div>
           ${nomComplet ? `<div class="contact-nom">${iconGenre?iconGenre+' ':''}${nomComplet}</div>` : ''}
-          <div class="contact-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${c.phone}')">+${c.phone}</span></div>
+          <div class="contact-phone">📱 <span class="phone-link" onclick="event.stopPropagation();ouvrirEnvoiRapide('${c.phone}')">+${c.phone}</span></div>
           <div class="contact-date">Depuis le ${date} · ${c.nb_messages || 0} msg</div>
         </div>
       </div>
