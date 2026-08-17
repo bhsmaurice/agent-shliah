@@ -125,23 +125,32 @@ function deleteLast() {
 
 function checkCode() {
   const input = document.getElementById('code');
+  console.log('Code tapé:', input.value, 'Longueur:', input.value.length);
   if (input.value.length === 6) {
     if (input.value === correctCode) {
+      console.log('Code correct! Création de session...');
       showSuccess('✓ Accès autorisé!');
       // Créer la session
       const SESSION_KEY = 'shliah_session';
       const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(SESSION_KEY, JSON.stringify({
+      const session = {
         role: 'admin',
         until: Date.now() + SESSION_DURATION
-      }));
+      };
+      console.log('Session:', JSON.stringify(session));
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      console.log('Session sauvegardée. Redirection...');
       setTimeout(() => {
+        console.log('Redirection vers admin.html...');
         window.location.href = 'https://bhsmaurice.github.io/agent-shliah/admin.html';
-      }, 1000);
+      }, 2000);
     } else {
+      console.log('Code incorrect. Attendu: ' + correctCode + ', Reçu: ' + input.value);
       showError('✗ Code incorrect');
       input.value = '';
     }
+  } else {
+    console.log('Code incomplet:', input.value.length + '/6');
   }
 }
 
