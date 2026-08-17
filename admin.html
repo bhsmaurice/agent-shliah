@@ -643,6 +643,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <!-- CONTACTS -->
 <div class="page" id="tab-contacts"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Rafraîchir les contacts</button></div>
+  <div class="field" style="margin-bottom:14px;">
+    <input type="text" id="contacts-search" placeholder="🔍 Chercher un contact (nom, prénom, téléphone)..." onkeyup="filtrerContactsRecherche()" style="width:100%;font-family:Heebo,sans-serif;font-size:14px;padding:10px 12px;border:1.5px solid #E4E1EF;border-radius:10px;background:var(--white);color:var(--text);outline:none;">
+  </div>
   <div id="contacts-stats" style="display:none">
     <div class="stats-row" id="contacts-stats-row"></div>
   </div>
@@ -2104,12 +2107,18 @@ async function supprimerPlayliste(id) {
   try { await fetch(url + '/admin/playlistes/' + id, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }); chargerPlaylistes(); } catch (e) { alert('Erreur'); }
 }
 // ══ CONTACTS ══
-let allContacts = [], filterContact = 'tous';
+let allContacts = [], filterContact = 'tous', searchContactText = '';
 let contactsSelectMode = false, selectedPhones = new Set();
 function selectContactFilter(chip) {
   document.querySelectorAll('#contacts-filter-chips .chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   filterContact = chip.dataset.filter;
+  document.getElementById('contacts-search').value = '';
+  searchContactText = '';
+  afficherContacts();
+}
+function filtrerContactsRecherche() {
+  searchContactText = document.getElementById('contacts-search').value.toLowerCase().trim();
   afficherContacts();
 }
 function activerSelectionContacts() {
@@ -2193,6 +2202,16 @@ function afficherContacts() {
   else if (filterContact === 'aucun') filtered = allContacts.filter(c => !c.abonne_chabbat && !c.abonne_evenements);
   else if (filterContact === 'hommes') filtered = allContacts.filter(c => c.genre === 'homme');
   else if (filterContact === 'femmes') filtered = allContacts.filter(c => c.genre === 'femme');
+  
+  // Filtrer par recherche
+  if (searchContactText) {
+    filtered = filtered.filter(c => {
+      const nomComplet = [c.prenom, c.nom].filter(Boolean).join(' ').toLowerCase();
+      const phone = (c.phone || '').toString();
+      return nomComplet.includes(searchContactText) || phone.includes(searchContactText);
+    });
+  }
+  
   if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="icon">👥</div><p>Aucun contact</p></div>'; return; }
   container.innerHTML = '';
   // Boutons sélection
