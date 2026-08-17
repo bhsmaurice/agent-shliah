@@ -421,6 +421,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="pin-dot" id="dot-3"></div><div class="pin-dot" id="dot-4"></div><div class="pin-dot" id="dot-5"></div>
   </div>
   <input type="tel" id="pin-input" placeholder="Ou tape le code ici" style="width: 200px; padding: 10px; margin-bottom: 20px; text-align: center; font-size: 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff;" maxlength="6" oninput="pinInputChange(this.value)">
+  <button style="width: 200px; padding: 12px; margin-bottom: 20px; background: var(--gold); color: var(--navy); border: none; border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer; font-family: 'Heebo', sans-serif;" onclick="validerPinInput()">✓ Valider</button>
   <div class="pin-grid">
     <button class="pin-btn" onclick="pinPress('1')">1</button>
     <button class="pin-btn" onclick="pinPress('2')">2</button>
@@ -1262,10 +1263,22 @@ function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';
 function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();document.getElementById('pin-input').value=pinBuffer;}}
 function pinInputChange(val){
-  pinBuffer=val.replace(/[^0-9]/g,'').slice(0,6);
-  document.getElementById('pin-input').value=pinBuffer;
-  updateDots();
-  if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);
+  val = val.replace(/[^0-9]/g,'').slice(0,6);
+  document.getElementById('pin-input').value=val;
+}
+function validerPinInput(){
+  pinBuffer = document.getElementById('pin-input').value;
+  if(pinBuffer.length !== 6){
+    document.getElementById('login-error').textContent='Tapez 6 chiffres';
+    return;
+  }
+  const expectedPin = getPin();
+  console.log('PIN tapé:', pinBuffer, 'PIN attendu:', expectedPin, 'Match:', pinBuffer === expectedPin);
+  if(pinBuffer !== expectedPin){
+    document.getElementById('login-error').textContent=`Code incorrect. Attendu: ${expectedPin}`;
+    return;
+  }
+  checkPin();
 }
 function initPinButtons(){
   document.querySelectorAll('.pin-btn').forEach(btn => {
