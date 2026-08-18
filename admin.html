@@ -69,6 +69,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 .user-badge { background: rgba(184,151,42,0.2); border: 1px solid rgba(184,151,42,0.4); color: var(--gold); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
+.theme-btn { padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 12px; background: transparent; font-family: 'Heebo', sans-serif; font-size: 13px; color: var(--muted-theme); cursor: pointer; transition: all 0.2s; font-weight: 500; }
+.theme-btn:hover { border-color: var(--c-purple); color: var(--c-purple); background: rgba(124, 92, 252, 0.1); }
+.theme-btn.active { border-color: var(--c-purple); background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
 .tabs { display: flex; gap: 6px; background: var(--white); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; padding: 10px 12px; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: 0 0 auto; padding: 10px 12px; text-align: center; font-size: 18px; color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); }
@@ -404,6 +407,34 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   float: right;
   margin-top: -8px;
 }
+
+/* THEME SYSTEM */
+:root.theme-light {
+  --bg-theme: #F4F2ED;
+  --text-theme: #1A2540;
+  --muted-theme: #7A8AAA;
+  --border-theme: #E0D8C8;
+  --card-theme: var(--white);
+  --header-theme: linear-gradient(120deg, var(--navy) 0%, #2A2166 55%, var(--c-purple-dark) 100%);
+}
+
+:root.theme-dark {
+  --bg-theme: #0B0B14;
+  --text-theme: #F5F3FF;
+  --muted-theme: #B0AEC4;
+  --border-theme: rgba(255, 255, 255, 0.08);
+  --card-theme: rgba(45, 33, 102, 0.35);
+  --header-theme: linear-gradient(120deg, #1a1438 0%, #2A2166 55%, #3d2d7a 100%);
+}
+
+/* Apply theme */
+html, body { 
+  background: var(--bg-theme, #F4F2ED); 
+  color: var(--text-theme, #1A2540); 
+}
+.header { background: var(--header-theme); }
+.card { background: var(--card-theme); border-color: var(--border-theme); }
+.field input, .field textarea { background: var(--card-theme); border-color: var(--border-theme); color: var(--text-theme); }
 </style>
 </head>
 <body>
@@ -1206,6 +1237,24 @@ function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById(
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
 function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+
+function setTheme(theme){
+  localStorage.setItem('shliah_theme', theme);
+  document.documentElement.className = 'theme-' + theme;
+  const btnLight = document.getElementById('btn-theme-light');
+  const btnDark = document.getElementById('btn-theme-dark');
+  if(btnLight) btnLight.classList.toggle('active', theme === 'light');
+  if(btnDark) btnDark.classList.toggle('active', theme === 'dark');
+}
+
+function loadTheme(){
+  const theme = localStorage.getItem('shliah_theme') || 'light';
+  document.documentElement.className = 'theme-' + theme;
+  const btnLight = document.getElementById('btn-theme-light');
+  const btnDark = document.getElementById('btn-theme-dark');
+  if(btnLight) btnLight.classList.toggle('active', theme === 'light');
+  if(btnDark) btnDark.classList.toggle('active', theme === 'dark');
+}
 function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 // ══ UTILS ══
 let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],allHistoires=[],filterCat='tous',filterDemande='tous';
@@ -2584,7 +2633,8 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('header-search-wrap');
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
-function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
+function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}
+loadTheme();const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
 
 // Versions Modal
