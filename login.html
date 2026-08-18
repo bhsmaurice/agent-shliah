@@ -404,11 +404,20 @@ function showSuccess(msg) {
   el.className = 'message success';
 }
 
-// Enter pour valider
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    validate();
-  }
+// Au chargement, vérifier s'il y a déjà une session valide
+window.addEventListener('load', function() {
+  try {
+    const SESSION_KEY = 'shliah_session';
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && s.role && s.until && Date.now() < s.until) {
+        // Session valide, aller directement au panel
+        window.location = 'admin.html';
+        return;
+      }
+    }
+  } catch(e) {}
 });
 </script>
 
