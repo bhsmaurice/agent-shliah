@@ -8,7 +8,7 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
-  --gold: #B8972A; --gold-light: #F5E9C0; --gold-dark: #8A6E1A;
+  --gold: #7c3aed; --gold-light: #a78bfa; --gold-dark: #5B3FD1;
   --navy: #1A2540; --navy2: #2C3E66;
   --bg: #F4F2ED; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
   --border: #E0D8C8; --green: #2D7A4F; --green-bg: #E8F5EE;
@@ -498,28 +498,6 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 <div class="main-content">
 <!-- AJOUTER -->
-<!-- ACCUEIL V2 MODERNE -->
-<div class="page active" id="tab-accueil"><div class="inner">
-  <div style="background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(139,92,246,0.1) 100%); border: 1px solid rgba(168,85,247,0.3); border-radius: 15px; padding: 20px; margin-bottom: 24px;">
-    <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div style="display: flex; align-items: center; gap: 12px;"><div style="width: 45px; height: 45px; background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;">🤖</div><div><div style="font-size: 16px; font-weight: 700;">Shliah Bot</div><div style="font-size: 11px; color: var(--muted);">Admin Panel</div></div></div>
-      <button class="btn-secondary" onclick="logout()" style="padding: 8px 12px; font-size: 12px;">↪️ Exit</button>
-    </div>
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
-    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(168,85,247,0.3);"><div style="font-size: 24px; margin-bottom: 6px;">👥</div><div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">Contacts</div><div style="font-size: 18px; font-weight: 700; color: #a78bfa;">639</div></div>
-    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(168,85,247,0.3);"><div style="font-size: 24px; margin-bottom: 6px;">🕯️</div><div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">Chabbat</div><div style="font-size: 18px; font-weight: 700; color: #a78bfa;">15</div></div>
-    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(168,85,247,0.3);"><div style="font-size: 24px; margin-bottom: 6px;">💬</div><div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">Messages</div><div style="font-size: 18px; font-weight: 700; color: #a78bfa;">1.2K</div></div>
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px;">
-    <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px;" onclick="showTab('ajouter')"><div style="font-size: 20px;">➕</div>Nouveau</button>
-    <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px;" onclick="showTab('demandes')"><div style="font-size: 20px;">📋</div>Reçus</button>
-    <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px;" onclick="showTab('infos')"><div style="font-size: 20px;">📚</div>Infos</button>
-    <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px;" onclick="showTab('contacts')"><div style="font-size: 20px;">👥</div>Contacts</button>
-  </div>
-  <div class="card"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"><button class="btn-main" style="background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);" onclick="showTab('broadcast')">📢 Broadcast</button><button class="btn-secondary" onclick="showTab('cerfa')">🧾 Cerfa</button></div></div>
-</div></div>
-
 <div class="page active" id="tab-ajouter"><div class="inner">
   <div class="card">
     <div class="card-title">Nouvelle information</div>
