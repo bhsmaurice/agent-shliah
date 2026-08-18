@@ -2631,5 +2631,36 @@ document.addEventListener('click', function(e) {
 
 <div style="position:fixed;bottom:16px;right:16px;padding:8px 12px;font-size:11px;color:#a0a0a0;background:rgba(26,31,50,0.8);border:1px solid rgba(74,158,255,0.2);border-radius:6px;font-family:monospace;z-index:50;">V1</div>
 
+
+<!-- V2 PRO - Dynamic Theme Loading -->
+<script>
+(async function loadTheme() {
+  try {
+    // Fetch les couleurs depuis l'API
+    const response = await fetch('/api/admin/theme');
+    if (!response.ok) throw new Error('Failed to load theme');
+    
+    const colors = await response.json();
+    
+    // Injecter les couleurs dans les CSS variables
+    const root = document.documentElement;
+    root.style.setProperty('--gold', colors.gold || '#B8972A');
+    root.style.setProperty('--gold-light', colors.gold_light || '#F5E9C0');
+    root.style.setProperty('--gold-dark', colors.gold_dark || '#8A6E1A');
+    root.style.setProperty('--navy', colors.navy || '#1A2540');
+    root.style.setProperty('--navy2', colors.navy2 || '#2C3E66');
+    root.style.setProperty('--bg', colors.bg || '#F4F2ED');
+    root.style.setProperty('--white', colors.white || '#fff');
+    root.style.setProperty('--text', colors.text || '#1A2540');
+    root.style.setProperty('--muted', colors.muted || '#7A8AAA');
+    root.style.setProperty('--border', colors.border || '#E0D8C8');
+    
+    console.log('✅ Theme loaded successfully');
+  } catch (e) {
+    console.error('Theme loading error:', e);
+    // Continue avec les couleurs par défaut du CSS
+  }
+})();
+</script>
 </body>
 </html>
