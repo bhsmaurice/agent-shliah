@@ -1018,6 +1018,16 @@ Chabbat Chalom à toute la communauté ! 🌟
 <!-- CONFIG -->
 <div class="page" id="tab-config"><div class="inner">
   <div class="card">
+    <div class="card-title">🎨 Apparence</div>
+    <div class="field">
+      <label>Thème</label>
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <button class="theme-btn theme-btn-light" id="btn-theme-light" onclick="setTheme('light')" style="flex:1;">☀️ Clair</button>
+        <button class="theme-btn theme-btn-dark" id="btn-theme-dark" onclick="setTheme('dark')" style="flex:1;">🌙 Dark</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-title">Configuration serveur</div>
     <div class="config-note">⚠️ Entrez l'adresse Railway et le mot de passe admin une seule fois — ils seront mémorisés.</div>
     <div class="field"><label>Adresse du serveur Railway</label><input type="text" id="server-url" placeholder="https://agent-shliah-production.up.railway.app"></div>
