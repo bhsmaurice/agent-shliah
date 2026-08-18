@@ -1131,6 +1131,191 @@ body {
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
+
+
+/* MODERN ICON SYSTEM WITH COLORS */
+
+/* Icon color system for dark mode */
+:root.theme-dark {
+  --icon-primary: #7C5CFC;
+  --icon-secondary: #4F8FFF;
+  --icon-success: #22C55E;
+  --icon-warning: #FF9F43;
+  --icon-danger: #EF4444;
+  --icon-info: #17C3B2;
+}
+
+:root.theme-light {
+  --icon-primary: #7C5CFC;
+  --icon-secondary: #4F8FFF;
+  --icon-success: #22C55E;
+  --icon-warning: #FF9F43;
+  --icon-danger: #EF4444;
+  --icon-info: #17C3B2;
+}
+
+/* Modern icon styling */
+.card-title::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--icon-primary), var(--icon-secondary));
+  border-radius: 8px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Icon badges - modern design */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  font-size: 20px;
+  filter: drop-shadow(0 2px 4px rgba(124, 92, 252, 0.2));
+}
+
+.tab.active {
+  background: linear-gradient(135deg, var(--icon-primary), var(--icon-secondary)) !important;
+  box-shadow: 0 4px 12px rgba(124, 92, 252, 0.4) !important;
+  filter: drop-shadow(0 4px 8px rgba(124, 92, 252, 0.3));
+}
+
+/* Badge styling modern */
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.badge-priere {
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(79, 143, 255, 0.15));
+  color: var(--icon-primary);
+  border: 1.5px solid rgba(124, 92, 252, 0.3);
+}
+
+.badge-horaire {
+  background: linear-gradient(135deg, rgba(255, 159, 67, 0.15), rgba(230, 126, 34, 0.15));
+  color: var(--icon-warning);
+  border: 1.5px solid rgba(255, 159, 67, 0.3);
+}
+
+.badge-cours {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(21, 128, 61, 0.15));
+  color: var(--icon-success);
+  border: 1.5px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-service {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+  color: var(--icon-danger);
+  border: 1.5px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-evenement {
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(79, 143, 255, 0.15));
+  color: var(--icon-primary);
+  border: 1.5px solid rgba(124, 92, 252, 0.3);
+}
+
+.badge-autre {
+  background: linear-gradient(135deg, rgba(23, 195, 178, 0.15), rgba(15, 168, 154, 0.15));
+  color: var(--icon-info);
+  border: 1.5px solid rgba(23, 195, 178, 0.3);
+}
+
+/* Demande type badges modern */
+.demande-type {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  border: 1.5px solid;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.1), rgba(79, 143, 255, 0.1));
+}
+
+.type-cerfa {
+  color: var(--icon-warning);
+  border-color: rgba(255, 159, 67, 0.3);
+  background: linear-gradient(135deg, rgba(255, 159, 67, 0.1), rgba(230, 126, 34, 0.1));
+}
+
+.type-sefer_torah {
+  color: var(--icon-success);
+  border-color: rgba(34, 197, 94, 0.3);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(21, 128, 61, 0.1));
+}
+
+.type-location_salle {
+  color: var(--icon-primary);
+  border-color: rgba(124, 92, 252, 0.3);
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.1), rgba(79, 143, 255, 0.1));
+}
+
+.type-autre {
+  color: var(--icon-info);
+  border-color: rgba(23, 195, 178, 0.3);
+  background: linear-gradient(135deg, rgba(23, 195, 178, 0.1), rgba(15, 168, 154, 0.1));
+}
+
+/* Buttons with icons */
+.btn-main, .btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.btn-main {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  filter: drop-shadow(0 2px 4px rgba(124, 92, 252, 0.2));
+}
+
+/* Search icon */
+.search-box .icon {
+  color: var(--icon-primary);
+  font-size: 18px;
+  filter: drop-shadow(0 1px 2px rgba(124, 92, 252, 0.2));
+}
+
+/* Icon spacing cleanup */
+.card-title, .btn-main, .demande-type, .badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Filter chips with icons */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip.active {
+  filter: drop-shadow(0 2px 4px rgba(124, 92, 252, 0.3));
+}
+
+/* Responsive icon sizing */
+@media (max-width: 480px) {
+  .tab { font-size: 18px; padding: 10px 14px; }
+  .card-title { font-size: 16px; }
+  .badge { font-size: 11px; }
+}
+
 </style>
 </head>
 <body>
