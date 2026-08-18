@@ -39,7 +39,7 @@ html, body { height: 100%; background: #0B0B14; font-family: 'Heebo', sans-serif
 .login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
 .switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
-.header { background: linear-gradient(120deg, #1a1438 0%, #2A2166 55%, #3d2d7a 100%); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
+.header { background: linear-gradient(120deg, #1a1438 0%, #2A2166 55%, #3d2d7a 100%); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
 .header-left { order: 1; }
 .header-right { order: 3; margin-left: auto; }
 .header-search-wrap { position: relative; order: 4; flex: 1 1 100%; }
@@ -80,9 +80,9 @@ html, body { height: 100%; background: #0B0B14; font-family: 'Heebo', sans-serif
 .tab.active { color: #fff; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); border-color: transparent; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
 .tab:hover:not(.active) { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.25); color: var(--c-purple-dark); }
 .tab.hidden { display: none; }
-.page { display: none; min-height: calc(100vh - 120px); }
+.page { display: none; min-height: calc(100vh - 120px); position: relative; z-index: 1; }
 .page.active { display: block; }
-.inner { padding: 16px; max-width: 600px; margin: 0 auto; }
+.inner { padding: 16px 16px 32px 16px; max-width: 600px; margin: 0 auto; position: relative; z-index: 1; overflow: visible; }
 .card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
 .card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: #F5F3FF; margin-bottom: 16px; }
 .field { margin-bottom: 14px; }
@@ -129,14 +129,16 @@ html, body { height: 100%; background: #0B0B14; font-family: 'Heebo', sans-serif
 .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; color: #B0AEC4; transition: color 0.15s; }
 .btn-icon.edit:hover { color: var(--gold); }
 .btn-icon.del:hover { color: var(--red); }
-.conv-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; }
-.conv-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.conv-phone { font-size: 12px; font-weight: 600; color: #F5F3FF; background: rgba(26, 20, 56, 0.5); padding: 3px 10px; border-radius: 20px; }
-.conv-date { font-size: 11px; color: #B0AEC4; }
-.conv-q { font-size: 13px; color: #F5F3FF; font-weight: 500; padding: 8px 10px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; margin-bottom: 6px; }
-.conv-r { font-size: 12px; color: #B0AEC4; padding: 8px 10px; background: rgba(26, 20, 56, 0.5); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
-.demande-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
-.demande-card.selected { border-color: var(--gold); background: #FFFDF5; }
+.conv-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 14px; display: block; position: relative; z-index: 1; }
+.conv-card:hover { border-color: rgba(139, 92, 246, 0.4); background: rgba(45, 33, 102, 0.45); }
+.conv-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+.conv-phone { font-size: 12px; font-weight: 600; color: #F5F3FF; background: rgba(26, 20, 56, 0.5); padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+.conv-date { font-size: 11px; color: #B0AEC4; white-space: nowrap; }
+.conv-q { font-size: 13px; color: #F5F3FF; font-weight: 500; padding: 10px 12px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; margin-bottom: 8px; word-wrap: break-word; }
+.conv-r { font-size: 12px; color: #B0AEC4; padding: 10px 12px; background: rgba(26, 20, 56, 0.5); border-radius: 8px; line-height: 1.6; max-height: 80px; overflow-y: auto; word-wrap: break-word; }
+.demande-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; z-index: 1; display: block; }
+.demande-card:hover { border-color: rgba(139, 92, 246, 0.4); background: rgba(45, 33, 102, 0.45); }
+.demande-card.selected { border-color: rgba(139, 92, 246, 0.8); background: rgba(139, 92, 246, 0.2); }
 .demande-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
 .demande-card.select-mode .demande-checkbox { display: block; }
 .demande-card.select-mode { padding-left: 42px; }
@@ -147,6 +149,13 @@ html, body { height: 100%; background: #0B0B14; font-family: 'Heebo', sans-serif
 .type-location_salle { background: rgba(139, 92, 246, 0.1); color: #4338CA; }
 .type-autre { background: rgba(139, 92, 246, 0.1); color: #334155; }
 .demande-date { font-size: 11px; color: #B0AEC4; }
+
+#convs-container { display: block; position: relative; z-index: 1; }
+#demandes-container { display: block; position: relative; z-index: 1; }
+#infos-container { display: block; position: relative; z-index: 1; }
+#contacts-container { display: block; position: relative; z-index: 1; }
+#cerfa-container { display: block; position: relative; z-index: 1; }
+#corbeille-container { display: block; position: relative; z-index: 1; }
 .demande-phone { font-size: 12px; color: #B0AEC4; margin-bottom: 8px; }
 .demande-texte { font-size: 13px; color: #F5F3FF; background: rgba(26, 20, 56, 0.5); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
