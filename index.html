@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Redirection...</title>
+<script>
+try {
+  const SESSION_KEY = 'shliah_session';
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (raw) {
+    const s = JSON.parse(raw);
+    if (s && s.role && s.until && Date.now() < s.until) {
+      window.location = 'admin.html';
+    } else {
+      window.location = 'login.html';
+    }
+  } else {
+    window.location = 'login.html';
+  }
+} catch(e) {
+  window.location = 'login.html';
+}
+</script>
+</head>
+<body></body>
+</html>
