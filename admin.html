@@ -498,6 +498,38 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 <div class="main-content">
 <!-- AJOUTER -->
+<!-- ACCUEIL V2 MODERNE AVEC THEME DYNAMIQUE -->
+<div class="page active" id="tab-accueil"><div class="inner" style="padding: 0;">
+  <!-- Header Violet/Bleu -->
+  <div style="background: linear-gradient(135deg, #1a0a3e 0%, #2d1b5e 100%); padding: 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+      <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px;">🤖</div>
+      <div style="flex: 1;">
+        <div style="font-size: 18px; font-weight: 700; color: white;">Shliah Bot</div>
+        <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Panneau d'administration</div>
+      </div>
+      <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">🔔</button>
+      <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">A</button>
+      <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="logout()">↪️</button>
+    </div>
+    <input type="text" placeholder="🔍 Rechercher un reçu, un contact, un montant..." style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(168,85,247,0.3); border-radius: 12px; color: rgba(255,255,255,0.8); font-size: 13px; outline: none;">
+  </div>
+
+  <!-- Grille 8 Icônes (4x2) -->
+  <div style="padding: 0 16px;">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('ajouter')"><div style="font-size: 24px;">➕</div><div style="font-size: 10px; font-weight: 500;">Nouveau</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('demandes')"><div style="font-size: 24px;">📋</div><div style="font-size: 10px; font-weight: 500;">Reçus</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('infos')"><div style="font-size: 24px;">📚</div><div style="font-size: 10px; font-weight: 500;">Cours</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('musiques')"><div style="font-size: 24px;">🎵</div><div style="font-size: 10px; font-weight: 500;">Audio</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('contacts')"><div style="font-size: 24px;">👥</div><div style="font-size: 10px; font-weight: 500;">Contacts</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('paiements')"><div style="font-size: 24px;">💰</div><div style="font-size: 10px; font-weight: 500;">Dons</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('questions')"><div style="font-size: 24px;">💬</div><div style="font-size: 10px; font-weight: 500;">Messages</div></button>
+      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; border: 1px solid rgba(124,58,237,0.2);" onclick="showTab('export')"><div style="font-size: 24px;">📊</div><div style="font-size: 10px; font-weight: 500;">Rapports</div></button>
+    </div>
+  </div>
+</div></div>
+
 <div class="page active" id="tab-ajouter"><div class="inner">
   <div class="card">
     <div class="card-title">Nouvelle information</div>
@@ -2631,18 +2663,15 @@ document.addEventListener('click', function(e) {
 
 <div style="position:fixed;bottom:16px;right:16px;padding:8px 12px;font-size:11px;color:#a0a0a0;background:rgba(26,31,50,0.8);border:1px solid rgba(74,158,255,0.2);border-radius:6px;font-family:monospace;z-index:50;">V1</div>
 
+</html>
 
 <!-- V2 PRO - Dynamic Theme Loading -->
 <script>
 (async function loadTheme() {
   try {
-    // Fetch les couleurs depuis l'API
     const response = await fetch('/api/admin/theme');
     if (!response.ok) throw new Error('Failed to load theme');
-    
     const colors = await response.json();
-    
-    // Injecter les couleurs dans les CSS variables
     const root = document.documentElement;
     root.style.setProperty('--gold', colors.gold || '#B8972A');
     root.style.setProperty('--gold-light', colors.gold_light || '#F5E9C0');
@@ -2654,11 +2683,9 @@ document.addEventListener('click', function(e) {
     root.style.setProperty('--text', colors.text || '#1A2540');
     root.style.setProperty('--muted', colors.muted || '#7A8AAA');
     root.style.setProperty('--border', colors.border || '#E0D8C8');
-    
-    console.log('✅ Theme loaded successfully');
+    console.log('✅ Theme loaded');
   } catch (e) {
     console.error('Theme loading error:', e);
-    // Continue avec les couleurs par défaut du CSS
   }
 })();
 </script>
