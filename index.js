@@ -35,6 +35,28 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS infos_privees (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, contenu TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   // AJOUT — stockage des images uploadées depuis WhatsApp (servies via /media/:id)
   await pool.query(`CREATE TABLE IF NOT EXISTS medias (id SERIAL PRIMARY KEY, data BYTEA NOT NULL, mime_type TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  // THEMES TABLE - Pour V2 PRO
+  await pool.query(`CREATE TABLE IF NOT EXISTS themes (id SERIAL PRIMARY KEY, name TEXT NOT NULL, colors_json JSONB NOT NULL, is_active BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+  
+  // Insérer le theme V2 violet par défaut s'il n'existe pas
+  const themeV2 = {
+    "gold": "#7c3aed",
+    "gold_light": "#a78bfa",
+    "gold_dark": "#5B3FD1",
+    "navy": "#1A2540",
+    "navy2": "#2C3E66",
+    "bg": "#F4F2ED",
+    "white": "#fff",
+    "text": "#1A2540",
+    "muted": "#7A8AAA",
+    "border": "#E0D8C8"
+  };
+  await pool.query(
+    `INSERT INTO themes (name, colors_json, is_active) VALUES ($1, $2, $3) 
+     ON CONFLICT DO NOTHING`,
+    ['V2-Violet', JSON.stringify(themeV2), true]
+  ).catch(() => {});
+
   await pool.query('ALTER TABLE sessions_demande ADD COLUMN IF NOT EXISTS terminee BOOLEAN DEFAULT FALSE').catch(()=>{});
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
@@ -2171,6 +2193,46 @@ app.get('/test/chabbat/:password', async (req, res) => {
     res.send('✅ Message de validation Chabbat envoyé! Regarde ton WhatsApp 👍');
   } catch (e) {
     res.send('❌ Erreur: ' + e.message);
+  }
+});
+
+
+// ═══════════════════════════════════════════════
+// THEMES API - V2 PRO
+// ═══════════════════════════════════════════════
+
+// GET /api/admin/theme - Retourne le theme actif
+app.get('/api/admin/theme', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT colors_json FROM themes WHERE is_active = true LIMIT 1');
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No active theme found' });
+    }
+    res.json(result.rows[0].colors_json);
+  } catch (e) {
+    console.error('Theme fetch error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/theme/update - Changer les couleurs
+app.post('/api/admin/theme/update', async (req, res) => {
+  try {
+    const { colors } = req.body;
+    if (!colors || typeof colors !== 'object') {
+      return res.status(400).json({ error: 'Invalid colors object' });
+    }
+    
+    // Mettre à jour le theme actif
+    await pool.query(
+      'UPDATE themes SET colors_json = $1 WHERE is_active = true',
+      [JSON.stringify(colors)]
+    );
+    
+    res.json({ success: true, message: 'Theme updated' });
+  } catch (e) {
+    console.error('Theme update error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 
