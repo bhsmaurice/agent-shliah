@@ -8,176 +8,723 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
-  --bg-main: #0B0B14;
-  --bg-grad: linear-gradient(135deg, #0B0B14 0%, #1A1233 50%, #2D2166 100%);
-  --bg-card: rgba(45, 33, 102, 0.35);
-  --bg-card-dark: #1a1438;
-  --border-card: rgba(124, 92, 252, 0.25);
-  --border-light: rgba(255, 255, 255, 0.08);
-  --purple-main: #8B5CF6;
-  --purple-light: #A78BFA;
-  --purple-bright: #7C5CFC;
-  --white: #fff;
-  --text-main: #F5F3FF;
-  --text-muted: #B0AEC4;
-  --red: #EF4444;
-  --green: #22C55E;
-  --orange: #F97316;
-  --gold: #7c3aed;
-  --c-purple: #7C5CFC;
-  --c-pink: #E63969;
-  --c-orange2: #FF9F43;
-}
+  --gold: #7c3aed; --gold-light: #a78bfa; --gold-dark: #5B3FD1;
+  --navy: #1A2540; --navy2: #2C3E66;
+  --bg: #0B0B14; --white: #fff; --text: #F5F3FF; --muted: #B0AEC4;
+  --border: rgba(255, 255, 255, 0.08); --green: #2D7A4F; --green-bg: #E8F5EE;
+  --red: #C0392B; --red-bg: #FDECEA; --r: 14px;
+  --orange: #C05621; --orange-bg: #FFF3E0;
+  --c-pink: #E63969; --c-pink-dark: #C42753;
+  --c-purple: #7C5CFC; --c-purple-dark: #5B3FD1;
+  --c-orange2: #FF9F43; --c-orange2-dark: #E67E22;
+  --c-teal: #17C3B2; --c-teal-dark: #0EA89A;
 
-html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg-main); color: var(--text-main); }
-
-#login-screen { position: fixed; inset: 0; background: var(--bg-grad); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
-.login-logo { font-family: 'Frank Ruhl Libre', serif; font-size: 32px; color: var(--purple-light); margin-bottom: 8px; font-weight: 700; }
-.login-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 40px; }
-.pin-display { display: flex; gap: 14px; margin-bottom: 40px; }
-.pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); background: transparent; transition: all 0.2s; }
-.pin-dot.filled { background: var(--purple-light); border-color: var(--purple-light); box-shadow: 0 0 12px rgba(167, 139, 250, 0.6); }
+  --bg-dark: #0B0B14;
+  --card-dark: rgba(45, 33, 102, 0.35);
+  --border-dark: rgba(255, 255, 255, 0.08);}
+html, body { height: 100%; background: #0B0B14; font-family: 'Heebo', sans-serif; background: rgba(26, 20, 56, 0.5); color: #F5F3FF; }
+#login-screen { position: fixed; inset: 0; background: linear-gradient(160deg, #0B0B14 0%, #1A1233 55%, #2D2166 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
+.login-logo { font-family: 'Frank Ruhl Libre', serif; font-size: 28px; color: var(--gold); margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
+.login-user-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 24px; background: rgba(255,255,255,0.08); padding: 4px 14px; border-radius: 20px; }
+.pin-display { display: flex; gap: 14px; margin-bottom: 32px; }
+.pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: transparent; transition: all 0.2s; }
+.pin-dot.filled { background: var(--gold); border-color: var(--gold); }
 .pin-dot.error { background: var(--red); border-color: var(--red); }
-.pin-grid { display: grid; grid-template-columns: repeat(3, 70px); gap: 14px; }
-.pin-btn { width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); border: 1.5px solid rgba(255, 255, 255, 0.12); color: var(--text-main); font-family: 'Heebo', sans-serif; font-size: 22px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-.pin-btn:active { background: rgba(139, 92, 246, 0.3); border-color: var(--purple-light); transform: scale(0.93); }
+.pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+.pin-btn { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.12); color: #fff; font-family: 'Heebo', sans-serif; font-size: 22px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.pin-btn:active { background: rgba(184,151,42,0.3); border-color: var(--gold); transform: scale(0.93); }
 .pin-btn.delete { font-size: 18px; background: transparent; border-color: transparent; }
 .pin-btn.zero { grid-column: 2; }
-.login-error { color: var(--red); font-size: 13px; margin-top: 20px; min-height: 20px; text-align: center; }
-.switch-user-btn { margin-top: 20px; background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.2); color: var(--text-muted); font-size: 12px; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; transition: all 0.2s; }
-.switch-user-btn:hover { border-color: var(--purple-light); color: var(--purple-light); }
-
+.login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
+.switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
-
 .header { background: linear-gradient(120deg, #1a1438 0%, #2A2166 55%, #3d2d7a 100%); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
-.header-left { order: 1; display: flex; align-items: center; gap: 10px; }
-.header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: var(--white); font-weight: 700; }
+.header-left { order: 1; }
+.header-right { order: 3; margin-left: auto; }
+.header-search-wrap { position: relative; order: 4; flex: 1 1 100%; }
+@media (min-width: 860px) { .header-search-wrap { order: 2; flex: 1 1 auto; max-width: 380px; margin: 0; } }
+.header-search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 20px; padding: 8px 12px; }
+.header-search input { flex: 1; min-width: 0; background: none; border: none; outline: none; color: #fff; font-family: 'Heebo', sans-serif; font-size: 13px; }
+.header-search input::placeholder { color: rgba(255,255,255,0.55); }
+.header-search .kbd { font-size: 10px; color: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.25); border-radius: 5px; padding: 1px 5px; flex-shrink: 0; }
+.header-search-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: rgba(45, 33, 102, 0.35); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.22); max-height: 320px; overflow-y: auto; z-index: 120; display: none; }
+.header-search-results.active { display: block; }
+.hsr-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #B0AEC4; padding: 10px 14px 4px; font-weight: 600; }
+.hsr-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; }
+.hsr-item:hover { background: rgba(139, 92, 246, 0.1); }
+.hsr-item-icon { width: 28px; height: 28px; border-radius: 50%; background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.hsr-item-title { font-size: 13px; color: #F5F3FF; font-weight: 600; }
+.hsr-item-sub { font-size: 11px; color: #B0AEC4; }
+.hsr-empty { padding: 14px; text-align: center; font-size: 12px; color: #B0AEC4; }
+.header-bell { position: relative; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+.header-bell-badge { position: absolute; top: -4px; right: -4px; background: var(--c-pink); color: #fff; font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
+.header-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+@media (max-width: 480px) { .header-hebrew { display: none; } }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
-.header-right { order: 3; margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.header-bell { position: relative; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 15px; cursor: pointer; flex-shrink: 0; }
-.header-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: var(--white); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.btn-hamburger { background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 18px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.header-cta { border: none; border-radius: 20px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 12px; font-weight: 600; padding: 7px 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(124,92,252,0.4); }
+.header-cta-label { display: none; }
+@media (min-width: 480px) { .header-cta-label { display: inline; } }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
-
-.nav-tabs { display: flex; gap: 6px; background: rgba(45, 33, 102, 0.3); border-bottom: 1px solid var(--border-light); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; padding: 10px 12px; }
-.nav-tabs::-webkit-scrollbar { display: none; }
-.nav-tab { flex: 0 0 auto; padding: 10px 12px; text-align: center; font-size: 18px; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; border-radius: 20px; border: 1.5px solid var(--border-light); background: transparent; }
-.nav-tab-label { display: none; }
-@media (min-width: 640px) { .nav-tab { font-size: 13px; font-weight: 500; padding: 10px 16px; } .nav-tab-label { display: inline; margin-left: 6px; } }
-.nav-tab.active { color: var(--white); background: linear-gradient(135deg, var(--c-purple), #4F8FFF); border-color: transparent; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
-.nav-tab:hover:not(.active) { background: rgba(139, 92, 246, 0.15); border-color: var(--border-card); color: var(--purple-light); }
-.nav-tab.hidden { display: none; }
-
+.user-badge { background: rgba(184,151,42,0.2); border: 1px solid rgba(184,151,42,0.4); color: var(--gold); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
+.tabs { display: flex; gap: 6px; background: rgba(45, 33, 102, 0.35); border-bottom: 1px solid rgba(255, 255, 255, 0.08); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; padding: 10px 12px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 0 0 auto; padding: 10px 12px; text-align: center; font-size: 18px; color: #B0AEC4; cursor: pointer; white-space: nowrap; transition: all 0.15s; border-radius: 20px; border: 1.5px solid rgba(255, 255, 255, 0.08); background: rgba(45, 33, 102, 0.35); }
+.tab-label { display: none; }
+@media (min-width: 640px) { .tab { font-size: 13px; font-weight: 500; padding: 10px 16px; } .tab-label { display: inline; margin-left: 6px; } }
+.tab.active { color: #fff; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); border-color: transparent; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
+.tab:hover:not(.active) { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.25); color: var(--c-purple-dark); }
+.tab.hidden { display: none; }
 .page { display: none; min-height: calc(100vh - 120px); }
 .page.active { display: block; }
 .inner { padding: 16px; max-width: 600px; margin: 0 auto; }
-.card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 14px; padding: 18px; margin-bottom: 14px; backdrop-filter: blur(10px); }
-.card:hover { border-color: rgba(139, 92, 246, 0.4); background: rgba(45, 33, 102, 0.5); }
-.card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+.card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+.card-title { font-family: 'Frank Ruhl Libre', serif; font-size: 17px; font-weight: 700; color: #F5F3FF; margin-bottom: 16px; }
 .field { margin-bottom: 14px; }
-.field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
-.field input, .field textarea, .field select { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; background: rgba(26, 20, 56, 0.5); border: 1.5px solid var(--border-light); border-radius: 12px; color: var(--text-main); outline: none; transition: all 0.2s; }
-.field input::placeholder, .field textarea::placeholder { color: var(--text-muted); }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
+.field label { display: block; font-size: 11px; font-weight: 600; color: #B0AEC4; text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
+.field input, .field textarea, .field select { width: 100%; font-family: 'Heebo', sans-serif; font-size: 15px; padding: 12px 14px; border: 1.5px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: rgba(45, 33, 102, 0.35); color: #F5F3FF; outline: none; transition: all 0.2s; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--c-purple); box-shadow: 0 0 0 3px rgba(124,92,252,0.12); }
 .field textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
 .cat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.cat-btn { padding: 10px 6px; border: 1.5px solid var(--border-light); border-radius: 12px; background: transparent; font-family: 'Heebo', sans-serif; font-size: 12px; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
-.cat-btn.active { border-color: var(--purple-light); background: rgba(139, 92, 246, 0.2); color: var(--purple-light); font-weight: 600; }
-.btn-main { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: var(--white); font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; box-shadow: 0 4px 14px rgba(124,92,252,0.32); }
+.cat-btn { padding: 10px 6px; border: 1.5px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: rgba(45, 33, 102, 0.35); font-family: 'Heebo', sans-serif; font-size: 12px; color: #B0AEC4; cursor: pointer; text-align: center; transition: all 0.15s; font-weight: 500; }
+.cat-btn.active { border-color: var(--c-purple); background: rgba(139, 92, 246, 0.15); color: var(--c-purple-dark); font-weight: 600; }
+.btn-main { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; box-shadow: 0 4px 14px rgba(124,92,252,0.32); }
 .btn-main:active { filter: brightness(0.94); transform: scale(0.98); }
-.btn-main:disabled { background: var(--text-muted); box-shadow: none; cursor: not-allowed; }
-.btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--text-main); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-light); border-radius: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-.btn-secondary:hover { border-color: var(--purple-light); background: rgba(139, 92, 246, 0.1); }
-.btn-danger { width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.15); color: var(--red); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid rgba(239, 68, 68, 0.3); border-radius: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-.alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; border: 1px solid; }
-.alert.ok { background: rgba(34, 197, 94, 0.15); color: var(--green); border-color: rgba(34, 197, 94, 0.3); }
-.alert.err { background: rgba(239, 68, 68, 0.15); color: var(--red); border-color: rgba(239, 68, 68, 0.3); }
-.alert.warn { background: rgba(249, 115, 22, 0.15); color: var(--orange); border-color: rgba(249, 115, 22, 0.3); }
-.image-upload-zone { border: 2px dashed var(--border-card); border-radius: 14px; padding: 24px 14px; text-align: center; background: rgba(139, 92, 246, 0.08); cursor: pointer; transition: all 0.2s; margin-bottom: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.image-upload-zone:hover { border-color: var(--purple-light); background: rgba(139, 92, 246, 0.15); }
-.image-upload-zone.dragover { border-color: var(--purple-light); border-style: solid; background: rgba(139, 92, 246, 0.25); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15); }
-.upload-icon { font-size: 32px; margin-bottom: 8px; display: block; transition: all 0.2s; }
-.upload-text { font-size: 13px; color: var(--text-main); font-weight: 500; margin-bottom: 4px; }
-.upload-subtext { font-size: 11px; color: var(--text-muted); }
-.image-url-wrapper { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light); }
-.image-url-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; display: block; }
-.divider { border: none; border-top: 1px solid var(--border-light); margin: 18px 0; }
-.info-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 14px; padding: 14px; margin-bottom: 10px; backdrop-filter: blur(10px); position: relative; }
-.info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; background: rgba(139, 92, 246, 0.2); color: var(--purple-light); }
-.info-card .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; padding-right: 60px; }
-.info-card .info-preview { font-size: 12px; color: var(--text-muted); line-height: 1.6; max-height: 52px; overflow: hidden; white-space: pre-wrap; }
-.info-card .info-date { font-size: 11px; color: var(--text-muted); margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 6px; }
-.conv-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 14px; padding: 14px; margin-bottom: 10px; backdrop-filter: blur(10px); }
+.btn-main:disabled { background: var(--muted); box-shadow: none; cursor: not-allowed; }
+.btn-secondary { width: 100%; padding: 12px; background: transparent; color: #F5F3FF; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid rgba(255, 255, 255, 0.08); border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.btn-danger { width: 100%; padding: 12px; background: var(--red-bg); color: var(--red); font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 500; border: 1.5px solid #F5B7B1; border-radius: var(--r); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
+.alert.ok { background: var(--green-bg); color: var(--green); border: 1px solid #A8D5B8; }
+.alert.err { background: var(--red-bg); color: var(--red); border: 1px solid #F5B7B1; }
+.search-box { position: relative; margin-bottom: 14px; }
+.search-box input { width: 100%; padding: 12px 14px 12px 40px; border: 1.5px solid rgba(255, 255, 255, 0.08); border-radius: var(--r); font-family: 'Heebo', sans-serif; font-size: 14px; background: rgba(45, 33, 102, 0.35); color: #F5F3FF; outline: none; transition: border-color 0.2s; }
+.search-box input:focus { border-color: var(--gold); }
+.search-box .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #B0AEC4; font-size: 16px; }
+.filter-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 14px; }
+.filter-chips::-webkit-scrollbar { display: none; }
+.chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid rgba(255, 255, 255, 0.08); background: rgba(45, 33, 102, 0.35); color: #B0AEC4; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.chip.active { background: var(--navy); color: #fff; border-color: #F5F3FF; }
+.dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; background: rgba(26, 20, 56, 0.5); }
+.dropzone:hover, .dropzone.drag { border-color: var(--c-purple); background: rgba(139, 92, 246, 0.15); }
+.dropzone-text { font-size: 13px; color: #B0AEC4; }
+.dropzone-text span { display: block; font-size: 11px; margin-top: 4px; }
+.dropzone img { max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 10px; margin-top: 10px; display: block; }
+.info-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.info-card .badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+.badge-priere { background: rgba(139, 92, 246, 0.1); color: #4338CA; }
+.badge-horaire { background: rgba(249, 115, 22, 0.1); color: #92400E; }
+.badge-cours { background: rgba(34, 197, 94, 0.1); color: #065F46; }
+.badge-service { background: rgba(239, 68, 68, 0.1); color: #9F1239; }
+.badge-evenement { background: rgba(139, 92, 246, 0.1); color: #6B21A8; }
+.badge-autre { background: rgba(139, 92, 246, 0.1); color: #334155; }
+.info-card .info-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: #F5F3FF; margin-bottom: 6px; padding-right: 60px; }
+.info-card .info-preview { font-size: 12px; color: #B0AEC4; line-height: 1.6; max-height: 52px; overflow: hidden; white-space: pre-wrap; }
+.info-card .info-date { font-size: 11px; color: #B0AEC4; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 6px; }
+.info-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; color: #B0AEC4; transition: color 0.15s; }
+.btn-icon.edit:hover { color: var(--gold); }
+.btn-icon.del:hover { color: var(--red); }
+.conv-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; }
 .conv-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.conv-phone { font-size: 12px; font-weight: 600; color: var(--text-main); background: rgba(139, 92, 246, 0.2); padding: 3px 10px; border-radius: 20px; }
-.conv-date { font-size: 11px; color: var(--text-muted); }
-.conv-q { font-size: 13px; color: var(--text-main); font-weight: 500; padding: 8px 10px; background: rgba(139, 92, 246, 0.15); border-radius: 8px; margin-bottom: 6px; }
-.conv-r { font-size: 12px; color: var(--text-muted); padding: 8px 10px; background: rgba(26, 20, 56, 0.5); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
-.demande-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 14px; padding: 14px; margin-bottom: 10px; backdrop-filter: blur(10px); position: relative; }
-.demande-card.selected { border-color: var(--purple-light); background: rgba(139, 92, 246, 0.2); }
+.conv-phone { font-size: 12px; font-weight: 600; color: #F5F3FF; background: rgba(26, 20, 56, 0.5); padding: 3px 10px; border-radius: 20px; }
+.conv-date { font-size: 11px; color: #B0AEC4; }
+.conv-q { font-size: 13px; color: #F5F3FF; font-weight: 500; padding: 8px 10px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; margin-bottom: 6px; }
+.conv-r { font-size: 12px; color: #B0AEC4; padding: 8px 10px; background: rgba(26, 20, 56, 0.5); border-radius: 8px; line-height: 1.5; max-height: 70px; overflow: hidden; }
+.demande-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.demande-card.selected { border-color: var(--gold); background: #FFFDF5; }
 .demande-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
 .demande-card.select-mode .demande-checkbox { display: block; }
 .demande-card.select-mode { padding-left: 42px; }
 .demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; background: rgba(139, 92, 246, 0.2); color: var(--purple-light); }
-.demande-name { font-family: 'Frank Ruhl Libre', serif; font-size: 15px; font-weight: 700; color: var(--white); margin-top: 6px; }
-.demande-date { font-size: 10px; color: var(--text-muted); }
-.cerfa-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
-.cerfa-numero { font-weight: 600; color: var(--white); }
-.cerfa-montant { color: var(--c-purple); font-weight: 600; text-align: right; }
-.contact-card { background: var(--bg-card); border: 1.5px solid var(--border-card); border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
-.contact-card:hover { border-color: var(--c-purple); box-shadow: 0 2px 8px rgba(124,92,252,0.15); }
-.contact-card.selected { border-color: var(--c-purple); background: rgba(139, 92, 246, 0.2); }
-.contact-card-name { font-weight: 600; color: var(--white); font-size: 14px; }
-.contact-card-phone { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
-.select-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-card); border-top: 1px solid var(--border-card); padding: 12px 16px; gap: 12px; flex-direction: row; align-items: center; z-index: 100; }
+.demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; }
+.type-cerfa { background: rgba(249, 115, 22, 0.1); color: #92400E; }
+.type-sefer_torah { background: rgba(34, 197, 94, 0.1); color: #065F46; }
+.type-location_salle { background: rgba(139, 92, 246, 0.1); color: #4338CA; }
+.type-autre { background: rgba(139, 92, 246, 0.1); color: #334155; }
+.demande-date { font-size: 11px; color: #B0AEC4; }
+.demande-phone { font-size: 12px; color: #B0AEC4; margin-bottom: 8px; }
+.demande-texte { font-size: 13px; color: #F5F3FF; background: rgba(26, 20, 56, 0.5); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.statut-select { font-size: 12px; padding: 4px 8px; border-radius: 20px; border: 1.5px solid rgba(255, 255, 255, 0.08); background: rgba(26, 20, 56, 0.5); color: #F5F3FF; font-family: 'Heebo', sans-serif; cursor: pointer; outline: none; }
+.btn-trash { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px 6px; color: #B0AEC4; transition: color 0.15s; }
+.btn-trash:hover { color: var(--red); }
+.select-bar { display: none; background: var(--navy); padding: 10px 16px; border-radius: var(--r); margin-bottom: 12px; align-items: center; justify-content: space-between; }
 .select-bar.active { display: flex; }
-.select-bar-left { flex: 1; font-size: 13px; color: var(--text-main); font-weight: 500; }
+.select-bar-left { color: #fff; font-size: 13px; font-weight: 500; }
 .select-bar-right { display: flex; gap: 8px; }
-.btn-select-action { background: transparent; border: 1px solid var(--border-card); color: var(--text-main); padding: 8px 12px; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-.btn-select-action:hover { border-color: var(--purple-light); }
+.btn-select-action { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-weight: 500; }
+.btn-sel-trash { background: var(--red-bg); color: var(--red); }
+.btn-sel-cancel { background: rgba(255,255,255,0.15); color: #fff; }
+.corbeille-card { background: #FFF5F5; border-radius: var(--r); border: 1px dashed #F5B7B1; padding: 14px; margin-bottom: 10px; position: relative; }
+.corbeille-card.selected { border-color: var(--red); background: #FFF0F0; }
+.corbeille-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
+.corbeille-card.select-mode .corbeille-checkbox { display: block; }
+.corbeille-card.select-mode { padding-left: 42px; }
+.btn-restore { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--green); background: var(--green-bg); color: var(--green); cursor: pointer; font-family: 'Heebo', sans-serif; }
+.btn-delete-perm { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--red); background: var(--red-bg); color: var(--red); cursor: pointer; font-family: 'Heebo', sans-serif; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: rgba(45, 33, 102, 0.35); border-radius: 20px 20px 0 0; padding: 24px 20px 36px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 20px; }
+.modal-title { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; font-weight: 700; color: #F5F3FF; margin-bottom: 18px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+.modal-cancel { flex: 1; padding: 13px; background: rgba(26, 20, 56, 0.5); color: #B0AEC4; font-family: 'Heebo', sans-serif; font-size: 14px; border: 1.5px solid rgba(255, 255, 255, 0.08); border-radius: var(--r); cursor: pointer; }
+.modal-save { flex: 2; padding: 13px; background: var(--navy); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; }
+.config-note { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400E; line-height: 1.6; margin-bottom: 14px; }
+.url-display { background: rgba(26, 20, 56, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 14px; font-size: 12px; font-family: monospace; color: #B0AEC4; word-break: break-all; margin-top: 10px; }
+.topic-item { background: rgba(26, 20, 56, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+.topic-bar-wrap { flex: 1; }
+.topic-name { font-size: 13px; font-weight: 600; color: #F5F3FF; margin-bottom: 4px; }
+.topic-bar { height: 6px; background: var(--gold-light); border-radius: 4px; overflow: hidden; }
+.topic-bar-fill { height: 100%; background: var(--gold); border-radius: 4px; }
+.topic-count { font-size: 13px; font-weight: 700; color: var(--gold-dark); min-width: 30px; text-align: right; }
+.suggest-btn { width: 100%; padding: 10px 14px; background: var(--gold-light); color: var(--gold-dark); font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--gold); border-radius: 10px; cursor: pointer; text-align: left; margin-bottom: 8px; }
+.empty { text-align: center; padding: 50px 20px; color: #B0AEC4; }
+.empty .icon { font-size: 40px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-box { border-radius: 14px; padding: 14px 10px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position: relative; overflow: hidden; }
+.stat-box:nth-child(4n+1) { background: linear-gradient(135deg, var(--c-pink), var(--c-pink-dark)); }
+.stat-box:nth-child(4n+2) { background: linear-gradient(135deg, var(--c-purple), var(--c-purple-dark)); }
+.stat-box:nth-child(4n+3) { background: linear-gradient(135deg, var(--c-orange2), var(--c-orange2-dark)); }
+.stat-box:nth-child(4n+4) { background: linear-gradient(135deg, var(--c-teal), var(--c-teal-dark)); }
+.stat-box .stat-num { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; font-weight: 700; color: #fff; }
+.stat-box .stat-label { font-size: 10px; color: rgba(255,255,255,0.85); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; font-weight: 600; }
+.bc-mode-btn { flex: 1; padding: 12px; border-radius: 10px; font-family: 'Heebo', sans-serif; font-size: 15px; cursor: pointer; transition: all 0.2s; border: 2px solid var(--border); background: rgba(45, 33, 102, 0.35); color: #B0AEC4; }
+.bc-mode-btn.active { background: var(--navy); color: #fff; border-color: #F5F3FF; }
+.bc-apercu { background: #e8f5e9; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 14px; color: #2e7d32; white-space: pre-line; line-height: 1.7; border: 1px solid #c8e6c9; }
+.bc-warning { background: #fff3cd; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #856404; border: 1px solid #ffc107; }
+.bc-contacts-box { background: #f0f4ff; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 15px; color: #F5F3FF; border: 1px solid #c5cae9; }
+.chabbat-info-box { background: linear-gradient(135deg, #1A2540, #2C3E66); border-radius: 14px; padding: 18px; margin-bottom: 16px; color: #fff; }
+.chabbat-info-box .chabbat-title { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; color: var(--gold); margin-bottom: 10px; }
+.chabbat-info-box .chabbat-line { font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 6px; }
+.divider { border: none; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 16px 0; }
+/* ══ CONTACTS ══ */
+.contact-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.04); transition: border-color 0.15s; }
+.contact-card.selected { border-color: var(--gold); background: #FFFDF5; }
+.contact-card.select-mode .contact-checkbox { display: block !important; }
+.contact-phone { font-size: 13px; font-weight: 600; color: #F5F3FF; }
+.contact-nom { font-size: 13px; font-weight: 700; color: #F5F3FF; margin-bottom: 2px; }
+.contact-date { font-size: 11px; color: #B0AEC4; margin-top: 2px; }
+.contact-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.badge-abo { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+.badge-chabbat { background: rgba(249, 115, 22, 0.1); color: #92400E; }
+.badge-evenements { background: rgba(34, 197, 94, 0.1); color: #065F46; }
+.badge-non { background: rgba(139, 92, 246, 0.1); color: #94A3B8; }
+.genre-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; margin-right: 6px; vertical-align: middle; }
+.genre-homme { background: #E3F0FF; }
+.genre-femme { background: #FCE4EC; }
+.genre-enfant { background: #FFF3E0; }
+.chat-thread { display: flex; flex-direction: column; gap: 8px; }
+.bubble-q { align-self: flex-end; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.bubble-r { align-self: flex-start; background: rgba(26, 20, 56, 0.5); color: #F5F3FF; padding: 10px 14px; border-radius: 14px 14px 14px 4px; max-width: 82%; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.bubble-date { align-self: center; font-size: 11px; color: #B0AEC4; background: rgba(45, 33, 102, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); padding: 2px 10px; border-radius: 10px; margin: 8px 0; }
+.statut-en_attente { background: #FDECEA; color: #C0392B; }
+.statut-relance { background: rgba(249, 115, 22, 0.1); color: #92400E; }
+.statut-paye { background: rgba(34, 197, 94, 0.1); color: #2D7A4F; }
+.histoire-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+.histoire-card .histoire-titre { font-family: 'Frank Ruhl Libre', serif; font-size: 16px; font-weight: 700; color: #F5F3FF; margin-bottom: 6px; padding-right: 70px; }
+.histoire-card .histoire-preview { font-size: 12px; color: #B0AEC4; line-height: 1.6; max-height: 52px; overflow: hidden; }
+.histoire-card .histoire-image { font-size: 11px; color: var(--green); margin-top: 6px; }
+.histoire-card .histoire-date { font-size: 11px; color: #B0AEC4; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 6px; }
+.histoire-card .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+/* ══ CERFA — mise en page responsive (mobile empilé, desktop en colonnes) ══ */
+.field-row { display: block; }
+.field-row .field { margin-bottom: 14px; }
+.cerfa-actions-grid { display: block; }
+.cerfa-actions-grid .card { margin-bottom: 14px; }
+@media (min-width: 860px) {
+  #tab-cerfa .inner { max-width: 1280px; }
+  .field-row { display: flex; gap: 14px; }
+  .field-row .field { flex: 1; margin-bottom: 14px; }
+  .cerfa-actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .cerfa-actions-grid .card { margin-bottom: 0; }
+  #cerfa-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-items: start; }
+  #cerfa-container .demande-card { margin-bottom: 0; }
+}
+/* ══ SIDEBAR (tiroir mobile + sticky desktop, façon mockup) ══ */
+.app-layout { display: flex; align-items: flex-start; }
+.main-content { width: 100%; min-width: 0; }
+.sidebar-cta { width: 100%; padding: 13px; margin-bottom: 18px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-family: 'Heebo', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(124,92,252,0.35); transition: all 0.15s; }
+.sidebar-cta:active { transform: scale(0.98); }
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+.sidenav-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; font-size: 15px; color: #B0AEC4; cursor: pointer; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+.sidenav-item .sidenav-icon { font-size: 17px; width: 20px; text-align: center; }
+.sidenav-item:hover { background: rgba(139, 92, 246, 0.1); color: #F5F3FF; }
+.sidenav-item.active { background: rgba(139, 92, 246, 0.15); color: var(--c-purple-dark); font-weight: 600; border-left-color: var(--c-purple); }
+.sidenav-item.hidden { display: none; }
+.sidebar-divider { border: none; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 14px 0; }
+.sidebar-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 12px; color: #B0AEC4; display: flex; align-items: center; gap: 8px; }
+.sidebar-foot .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sidebar { display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; width: 260px; max-width: 82vw; background: rgba(45, 33, 102, 0.35); padding: 18px 14px; z-index: 300; transform: translateX(-105%); transition: transform 0.25s ease; box-shadow: 4px 0 24px rgba(0,0,0,0.18); overflow-y: auto; }
+.sidebar.mobile-open { transform: translateX(0); }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 290; opacity: 0; transition: opacity 0.25s ease; }
+.sidebar-overlay.active { display: block; opacity: 1; }
+@media (min-width: 900px) {
+  .btn-hamburger { display: none; }
+  .sidebar-overlay { display: none !important; }
+  .sidebar { position: sticky; top: 61px; left: auto; height: calc(100vh - 61px); width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); transform: none; box-shadow: none; z-index: auto; }
+  .main-content { flex: 1; min-width: 0; }
+  .main-content .inner { max-width: 760px; }
+  #tab-cerfa .inner { max-width: 1280px !important; }
+}
+.sidebar, .btn-hamburger, .sidebar-overlay { display: none !important; }
+/* ══ CERFA — panneau d'aperçu à droite ══ */
+.cerfa-insights { margin-top: 14px; }
+@media (min-width: 1000px) {
+  .cerfa-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; align-items: start; }
+  .cerfa-insights { margin-top: 0; position: sticky; top: 75px; }
+}
+.insight-card { background: rgba(45, 33, 102, 0.35); border-radius: var(--r); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+.insight-title { display: flex; align-items: center; justify-content: space-between; font-family: 'Frank Ruhl Libre', serif; font-size: 15px; font-weight: 700; color: #F5F3FF; margin-bottom: 14px; }
+.live-badge { font-size: 10px; font-weight: 700; color: var(--green); background: var(--green-bg); padding: 3px 9px 3px 7px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+.live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.ring-wrap { position: relative; width: 150px; height: 150px; margin: 6px auto 18px; }
+.ring { position: absolute; inset: 0; border-radius: 50%; background: var(--border); }
+.ring-inner { position: absolute; inset: 13px; border-radius: 50%; background: rgba(45, 33, 102, 0.35); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--border); text-align: center; padding: 4px; }
+.ring-value { font-family: 'Frank Ruhl Libre', serif; font-size: 19px; font-weight: 700; color: #F5F3FF; }
+.ring-label { font-size: 10px; color: #B0AEC4; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.6px; }
+.insight-mini-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.insight-mini { display: flex; align-items: center; gap: 8px; background: rgba(26, 20, 56, 0.5); border-radius: 10px; padding: 10px; }
+.insight-mini-icon { width: 30px; height: 30px; border-radius: 50%; background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.insight-mini-num { font-size: 14px; font-weight: 700; color: #F5F3FF; line-height: 1.2; }
+.insight-mini-label { font-size: 10px; color: #B0AEC4; }
+.paiement-row { margin-bottom: 14px; }
+.paiement-row:last-child { margin-bottom: 0; }
+.paiement-label { font-size: 13px; color: #F5F3FF; font-weight: 500; margin-bottom: 6px; }
+.paiement-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.paiement-bar { flex: 1; height: 6px; border-radius: 4px; background: rgba(26, 20, 56, 0.5); overflow: hidden; }
+.paiement-bar-fill { height: 100%; border-radius: 4px; }
+.paiement-pct { font-size: 12px; font-weight: 600; color: #B0AEC4; min-width: 32px; text-align: right; }
+.activite-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.activite-item:last-child { border-bottom: none; }
+.activite-left { display: flex; align-items: center; gap: 10px; }
+.activite-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.activite-num { font-size: 13px; font-weight: 600; color: #F5F3FF; }
+.activite-date { font-size: 11px; color: #B0AEC4; }
+.activite-montant { font-size: 13px; font-weight: 700; color: #F5F3FF; white-space: nowrap; }
+.voir-tout-link { display: block; text-align: center; font-size: 12px; color: var(--c-purple-dark); font-weight: 600; margin-top: 12px; cursor: pointer; }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.5); }
+.btn-version {
+  background: rgba(96, 125, 255, 0.2);
+  border: 1px solid rgba(96, 125, 255, 0.4);
+  color: #93c5fd;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-version:hover {
+  background: rgba(96, 125, 255, 0.3);
+}
+
+.versions-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.versions-modal.active {
+  display: flex;
+}
+
+.versions-modal-content {
+  background: #1a2332;
+  border: 1px solid rgba(96, 125, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.versions-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 16px;
+}
+
+.version-item {
+  padding: 12px;
+  background: rgba(96, 125, 255, 0.1);
+  border: 1px solid rgba(96, 125, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.version-item:hover {
+  background: rgba(96, 125, 255, 0.2);
+  border-color: rgba(96, 125, 255, 0.4);
+}
+
+.version-hash {
+  font-family: monospace;
+  font-size: 11px;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.version-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-top: 4px;
+}
+
+.version-link {
+  font-size: 11px;
+  color: #93c5fd;
+  text-decoration: none;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+.versions-modal-close {
+  background: none;
+  border: none;
+  color: #93c5fd;
+  font-size: 24px;
+  cursor: pointer;
+  float: right;
+  margin-top: -8px;
+}
 </style>
 </head>
 <body>
-
 <div id="login-screen">
   <div class="login-logo">Shliah Bot 🤖</div>
   <div class="login-sub">Panneau d'administration</div>
-  <div class="pin-display" id="pin-display"></div>
-  <div class="pin-grid" id="pin-grid"></div>
+  <div class="login-user-label" id="login-user-label">👤 Administrateur</div>
+  <div class="pin-display">
+    <div class="pin-dot" id="dot-0"></div><div class="pin-dot" id="dot-1"></div><div class="pin-dot" id="dot-2"></div>
+    <div class="pin-dot" id="dot-3"></div><div class="pin-dot" id="dot-4"></div><div class="pin-dot" id="dot-5"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn zero" onclick="pinPress('0')">0</button>
+    <button class="pin-btn delete" onclick="pinDelete()">⌫</button>
+  </div>
   <div class="login-error" id="login-error"></div>
-  <button class="switch-user-btn" onclick="afficherAutresUtilisateurs()">Autres utilisateurs</button>
+  <button class="switch-user-btn" onclick="switchUser()">🔄 Changer d'utilisateur</button>
 </div>
-
 <div id="app">
-  <div class="header">
-    <div class="header-left">
-      <div class="site-name">Shliah Bot</div>
+<div class="header">
+  <div class="header-left">
+    <button class="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+    <div>
+      <div class="site-name">Shliah Bot 🤖</div>
       <div class="site-sub">Panneau d'administration</div>
     </div>
-    <div class="header-right">
-      <div class="header-bell" id="header-bell" onclick="toggleNotifications()">🔔</div>
-      <div class="header-avatar" id="header-avatar">A</div>
-      <button class="btn-logout" onclick="logout()">Déco</button>
+  </div>
+  <div class="header-search-wrap" id="header-search-wrap">
+    <div class="header-search">
+      <span>🔍</span>
+      <input type="text" id="header-search-input" placeholder="Rechercher un reçu, un contact, un montant..." oninput="rechercheGlobale()" onfocus="rechercheGlobale()">
+      <span class="kbd">⌘K</span>
+    </div>
+    <div class="header-search-results" id="header-search-results"></div>
+  </div>
+  <div class="header-right">
+    <button class="header-cta" onclick="showTab('cerfa')">✦ <span class="header-cta-label">Nouveau Cerfa</span></button>
+    <div class="header-bell" onclick="showTab('demandes')" title="Demandes">🔔<span class="header-bell-badge" id="header-bell-badge">0</span></div>
+    <span class="user-badge" id="header-user-badge">Admin</span>
+    <span class="header-hebrew">בית חב"ד</span>
+    <div class="header-avatar" id="header-avatar">A</div>
+    <button class="btn-logout" onclick="logout()">🔒</button>
+  </div>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+<div class="tabs" id="main-tabs">
+  <div class="tab active" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
+  <div class="tab" data-tab="infos" onclick="showTab('infos')">📋<span class="tab-label">Infos</span></div>
+  <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
+  <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
+  <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
+  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💰<span class="tab-label">Paiements</span></div>
+  <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
+  <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>
+  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
+  <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
+  <div class="tab tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="tab-label">Broadcast</span></div>
+  <div class="tab tab-admin-only" data-tab="prive" onclick="showTab('prive')">🔒<span class="tab-label">Privé</span></div>
+  <div class="tab" data-tab="export" onclick="showTab('export')">📤<span class="tab-label">Export</span></div>
+  <div class="tab tab-admin-only" data-tab="config" onclick="showTab('config')">⚙️<span class="tab-label">Config</span></div>
+</div>
+<div class="app-layout">
+<div class="sidebar" id="app-sidebar">
+  <button class="sidebar-cta" onclick="showTab('cerfa')">✦ Nouveau Cerfa</button>
+  <div class="sidebar-nav">
+    <div class="sidenav-item active" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
+    <div class="sidenav-item" data-tab="infos" onclick="showTab('infos')"><span class="sidenav-icon">📋</span>Infos</div>
+    <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
+    <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
+    <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
+    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💰</span>Paiements</div>
+    <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
+    <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
+    <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
+    <div class="sidenav-item" data-tab="questions" onclick="showTab('questions')"><span class="sidenav-icon">💬</span>Questions</div>
+    <hr class="sidebar-divider">
+    <div class="sidenav-item tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')"><span class="sidenav-icon">📢</span>Broadcast</div>
+    <div class="sidenav-item tab-admin-only" data-tab="prive" onclick="showTab('prive')"><span class="sidenav-icon">🔒</span>Privé</div>
+    <div class="sidenav-item" data-tab="export" onclick="showTab('export')"><span class="sidenav-icon">📤</span>Export</div>
+    <div class="sidenav-item tab-admin-only" data-tab="config" onclick="showTab('config')"><span class="sidenav-icon">⚙️</span>Config</div>
+  </div>
+  <div class="sidebar-foot"><span class="dot"></span>Shliah Bot IA · En ligne</div>
+</div>
+<div class="main-content">
+<!-- AJOUTER -->
+<div class="page active" id="tab-ajouter"><div class="inner">
+  <div class="card">
+    <div class="card-title">Nouvelle information</div>
+    <div class="field"><label>Catégorie</label>
+      <div class="cat-grid">
+        <button class="cat-btn active" data-cat="priere" onclick="selectCat(this)">🙏 Prière</button>
+        <button class="cat-btn" data-cat="horaire" onclick="selectCat(this)">🕐 Horaire</button>
+        <button class="cat-btn" data-cat="cours" onclick="selectCat(this)">📚 Cours</button>
+        <button class="cat-btn" data-cat="service" onclick="selectCat(this)">🔧 Service</button>
+        <button class="cat-btn" data-cat="evenement" onclick="selectCat(this)">✡️ Événement</button>
+        <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
+      </div>
+    </div>
+    <div class="field"><label>Titre</label><input type="text" id="titre" placeholder="Ex: Téfilat HaDerech"></div>
+    <div class="field"><label>Contenu</label><textarea id="contenu" placeholder="Écrivez ici l'information..."></textarea></div>
+    <div class="field"><label>Image (facultatif)</label>
+      <div class="dropzone" id="dropzone-ajouter" onclick="document.getElementById('image-file-ajouter').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleImageDrop(event,'ajouter')">
+        <input type="file" id="image-file-ajouter" accept="image/*" style="display:none" onchange="handleImageFile(this.files[0],'ajouter')">
+        <div class="dropzone-text" id="dropzone-text-ajouter">📷 Glisse une image ici ou clique pour choisir<span>ou colle un lien d'image ci-dessous</span></div>
+        <img id="preview-ajouter" style="display:none">
+      </div>
+      <input type="url" id="image-url" placeholder="https://... (rempli automatiquement si tu uploades une image)" style="margin-top:8px;">
+    </div>
+    <div class="field"><label>Instruction pour l'agent (facultatif)</label><input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer"></div>
+    <button class="btn-main" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
+    <div class="alert ok" id="alert-ok"></div>
+    <div class="alert err" id="alert-err"></div>
+  </div>
+</div></div>
+<!-- INFOS -->
+<div class="page" id="tab-infos"><div class="inner">
+  <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Rafraîchir les infos</button></div>
+  <div class="search-box" id="search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()"></div>
+  <div class="filter-chips" id="filter-chips" style="display:none">
+    <div class="chip active" data-filter="tous" onclick="selectFilter(this)">Tous</div>
+    <div class="chip" data-filter="priere" onclick="selectFilter(this)">🙏 Prière</div>
+    <div class="chip" data-filter="horaire" onclick="selectFilter(this)">🕐 Horaire</div>
+    <div class="chip" data-filter="cours" onclick="selectFilter(this)">📚 Cours</div>
+    <div class="chip" data-filter="service" onclick="selectFilter(this)">🔧 Service</div>
+    <div class="chip" data-filter="evenement" onclick="selectFilter(this)">✡️ Événement</div>
+    <div class="chip" data-filter="autre" onclick="selectFilter(this)">📝 Autre</div>
+  </div>
+  <div id="liste-container"></div>
+</div></div>
+<!-- ══════════════ HISTOIRES ══════════════ -->
+<div class="page" id="tab-histoires"><div class="inner">
+  <!-- Formulaire ajout -->
+  <div class="card">
+    <div class="card-title">📖 Ajouter une histoire</div>
+    <div class="field"><label>Titre de l'histoire</label><input type="text" id="h-titre" placeholder="Ex: Le Rabbi et le marchand..."></div>
+    <div class="field"><label>Texte de l'histoire</label><textarea id="h-texte" style="min-height:160px;" placeholder="Écris l'histoire ici..."></textarea></div>
+    <div class="field"><label>URL de l'image (facultatif)</label><input type="url" id="h-image" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/histoire1.jpg"></div>
+    <button class="btn-main" id="btn-add-histoire" onclick="ajouterHistoire()">✦ Ajouter l'histoire</button>
+    <div class="alert ok" id="alert-histoire-ok"></div>
+    <div class="alert err" id="alert-histoire-err"></div>
+  </div>
+  <!-- Liste des histoires -->
+  <div class="card"><button class="btn-main" onclick="chargerHistoires()">🔄 Rafraîchir les histoires</button></div>
+  <div id="histoires-container"></div>
+</div></div>
+<!-- ══════════════ FIN HISTOIRES ══════════════ -->
+<!-- MUSIQUES -->
+<div class="page" id="tab-musiques"><div class="inner">
+  <!-- Tabs internes : Musiques / Playlistes -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <button class="bc-mode-btn active" id="btn-tab-musiques" onclick="switchMusiqueTab('musiques')">🎵 Musiques</button>
+    <button class="bc-mode-btn" id="btn-tab-playlistes" onclick="switchMusiqueTab('playlistes')">🎶 Playlistes</button>
+  </div>
+  <!-- SECTION MUSIQUES -->
+  <div id="section-musiques">
+    <div class="card">
+      <div class="card-title">🎵 Ajouter une musique</div>
+      <div class="field"><label>Titre</label><input type="text" id="m-titre" placeholder="Ex: Nigoun du Rabbi Naphtali"></div>
+      <div class="field"><label>Lien (YouTube ou autre)</label><input type="url" id="m-lien" placeholder="https://youtube.com/..."></div>
+      <div class="field"><label>Ambiance</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="cat-btn active" data-ambiance="douce" onclick="selectAmbianceMusique(this)">🎶 Douce</button>
+          <button class="cat-btn" data-ambiance="bouge" onclick="selectAmbianceMusique(this)">🔥 Qui bouge</button>
+          <button class="cat-btn" data-ambiance="chabbat" onclick="selectAmbianceMusique(this)">🕯️ Chabbat</button>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-add-musique" onclick="ajouterMusique()">✦ Ajouter la musique</button>
+      <div class="alert ok" id="alert-musique-ok"></div>
+      <div class="alert err" id="alert-musique-err"></div>
+    </div>
+    <div class="card"><button class="btn-main" onclick="chargerMusiques()">🔄 Rafraîchir les musiques</button></div>
+    <div class="filter-chips" id="musiques-filter-chips" style="display:none">
+      <div class="chip active" data-filter="tous" onclick="selectMusiqueFilter(this)">Toutes</div>
+      <div class="chip" data-filter="douce" onclick="selectMusiqueFilter(this)">🎶 Douce</div>
+      <div class="chip" data-filter="bouge" onclick="selectMusiqueFilter(this)">🔥 Qui bouge</div>
+      <div class="chip" data-filter="chabbat" onclick="selectMusiqueFilter(this)">🕯️ Chabbat</div>
+    </div>
+    <div id="musiques-container"></div>
+  </div>
+  <!-- SECTION PLAYLISTES -->
+  <div id="section-playlistes" style="display:none;">
+    <div class="card">
+      <div class="card-title">🎶 Créer une playlist</div>
+      <div class="field"><label>Nom de la playlist</label><input type="text" id="pl-nom" placeholder="Ex: Les meilleurs nigouns"></div>
+      <div class="field"><label>Description (facultatif)</label><input type="text" id="pl-desc" placeholder="Ex: Sélection du Rav Levi"></div>
+      <div class="field"><label>Ambiance</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="cat-btn active" data-ambiance="douce" onclick="selectAmbiancePlayliste(this)">🎶 Douce</button>
+          <button class="cat-btn" data-ambiance="bouge" onclick="selectAmbiancePlayliste(this)">🔥 Qui bouge</button>
+          <button class="cat-btn" data-ambiance="chabbat" onclick="selectAmbiancePlayliste(this)">🕯️ Chabbat</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Musiques à inclure</label>
+        <div id="pl-musiques-select" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:10px;background:var(--bg);">
+          <p style="font-size:12px;color:var(--muted);">Charge les musiques d'abord ↑</p>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-add-playliste" onclick="ajouterPlayliste()">✦ Créer la playlist</button>
+      <div class="alert ok" id="alert-playliste-ok"></div>
+      <div class="alert err" id="alert-playliste-err"></div>
+    </div>
+    <div class="card"><button class="btn-main" onclick="chargerPlaylistes()">🔄 Rafraîchir les playlistes</button></div>
+    <div id="playlistes-container"></div>
+  </div>
+</div></div>
+<!-- MODAL MODIFIER MUSIQUE -->
+<div class="modal-overlay" id="modal-musique" onclick="closeModalMusique(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Modifier la musique</div>
+    <input type="hidden" id="edit-m-id">
+    <div class="field"><label>Titre</label><input type="text" id="edit-m-titre"></div>
+    <div class="field"><label>Lien</label><input type="url" id="edit-m-lien"></div>
+    <div class="field"><label>Ambiance</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;" id="edit-m-ambiance-grid">
+        <button class="cat-btn" data-ambiance="douce" onclick="selectEditAmbianceMusique(this)">🎶 Douce</button>
+        <button class="cat-btn" data-ambiance="bouge" onclick="selectEditAmbianceMusique(this)">🔥 Qui bouge</button>
+        <button class="cat-btn" data-ambiance="chabbat" onclick="selectEditAmbianceMusique(this)">🕯️ Chabbat</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fermerModalMusique()">Annuler</button>
+      <button class="modal-save" onclick="sauvegarderMusique()">💾 Sauvegarder</button>
     </div>
   </div>
-
-  <div class="nav-tabs">
-    <div class="nav-tab nav-admin-only active" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="nav-tab-label">Broadcast</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="demandes" onclick="showTab('demandes')">📋<span class="nav-tab-label">Demandes</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="nav-tab-label">Cerfa</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="contacts" onclick="showTab('contacts')">👥<span class="nav-tab-label">Contacts</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="infos" onclick="showTab('infos')">ℹ️<span class="nav-tab-label">Infos</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="questions" onclick="showTab('questions')">❓<span class="nav-tab-label">Questions</span></div>
-    <div class="nav-tab nav-admin-only" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="nav-tab-label">Corbeille</span></div>
-    <div class="nav-tab" data-tab="config" onclick="showTab('config')">⚙️<span class="nav-tab-label">Config</span></div>
+</div>
+<!-- CONTACTS -->
+<div class="page" id="tab-contacts"><div class="inner">
+  <div class="card"><button class="btn-main" onclick="chargerContacts()">🔄 Rafraîchir les contacts</button></div>
+  <div class="field" style="margin-bottom:14px;">
+    <input type="text" id="contacts-search" placeholder="🔍 Chercher un contact (nom, prénom, téléphone)..." onkeyup="filtrerContactsRecherche()" style="width:100%;font-family:Heebo,sans-serif;font-size:14px;padding:10px 12px;border:1.5px solid #E4E1EF;border-radius:10px;background:var(--white);color:var(--text);outline:none;">
   </div>
-
-  <div class="page active" id="tab-broadcast"><div class="inner">
+  <div id="contacts-stats" style="display:none">
+    <div class="stats-row" id="contacts-stats-row"></div>
+  </div>
+  <div class="filter-chips" id="contacts-filter-chips" style="display:none">
+    <div class="chip active" data-filter="tous" onclick="selectContactFilter(this)">Tous</div>
+    <div class="chip" data-filter="hommes" onclick="selectContactFilter(this)">👨 Hommes</div>
+    <div class="chip" data-filter="femmes" onclick="selectContactFilter(this)">👩 Femmes</div>
+    <div class="chip" data-filter="chabbat" onclick="selectContactFilter(this)">🕯️ Chabbat</div>
+    <div class="chip" data-filter="evenements" onclick="selectContactFilter(this)">📅 Événements</div>
+    <div class="chip" data-filter="aucun" onclick="selectContactFilter(this)">❌ Non abonnés</div>
+  </div>
+  <!-- Barre de sélection -->
+  <div class="select-bar" id="contacts-select-bar">
+    <div class="select-bar-left" id="contacts-select-count">0 sélectionné(s)</div>
+    <div class="select-bar-right">
+      <button class="btn-select-action" style="background:var(--gold-light);color:var(--gold-dark);" onclick="ouvrirEnvoiContacts()">📤 Envoyer</button>
+      <button class="btn-select-action btn-sel-cancel" onclick="annulerSelectionContacts()">Annuler</button>
+    </div>
+  </div>
+  <!-- Boutons sélection -->
+  <div id="contacts-actions" style="display:none;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="activerSelectionContacts()">☑️ Sélectionner</button>
+      <button class="btn-secondary" style="margin:0;flex:1;" onclick="toutSelectionnerContacts()">✅ Tout sélectionner</button>
+    </div>
+  </div>
+  <div id="contacts-container"></div>
+  <!-- Modal envoi message -->
+  <div class="modal-overlay" id="modal-envoi-contacts" onclick="closeModalEnvoiContacts(event)">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📤 Envoyer un message</div>
+      <p id="envoi-contacts-label" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></p>
+      <div class="field">
+        <label>Message (facultatif si image)</label>
+        <textarea id="envoi-contacts-message" style="min-height:140px;" placeholder="Ton message... (laisser vide pour envoyer uniquement l'image)"></textarea>
+      </div>
+      <div class="field">
+        <label>🖼️ Image / Affiche (facultatif)</label>
+        <input type="url" id="envoi-contacts-image" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">L'image sera envoyée après le message.</p>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="fermerModalEnvoiContacts()">Annuler</button>
+        <button class="modal-save" onclick="envoyerAuxContactsSelectionnes()">📤 Envoyer</button>
+      </div>
+      <div class="alert ok" id="envoi-contacts-ok"></div>
+      <div class="alert err" id="envoi-contacts-err"></div>
+    </div>
+  </div>
+</div></div>
+<!-- PAIEMENTS -->
+<div class="page" id="tab-paiements"><div class="inner">
+  <div class="card">
+    <div class="card-title">💰 Ajouter un paiement en attente</div>
+    <div class="field"><label>Numéro WhatsApp</label><input type="tel" id="p-phone" placeholder="ex: 0612345678 ou +33612345678"></div>
+    <div class="field-row">
+      <div class="field"><label>Montant (€)</label><input type="number" id="p-montant" placeholder="Ex: 20"></div>
+      <div class="field"><label>Relancer après (jours)</label><input type="number" id="p-delai" value="3" min="1"></div>
+    </div>
+    <div class="field"><label>Description</label><input type="text" id="p-description" placeholder="Ex: Repas Chabbat du 18/07"></div>
+    <div class="field"><label>Lien de paiement (facultatif)</label><input type="url" id="p-lien" placeholder="https://habad-s-maurice.kehila.io/don/..."></div>
+    <div class="field"><label>Nombre max de relances automatiques</label><input type="number" id="p-max-relances" value="3" min="1"></div>
+    <button class="btn-main" onclick="ajouterPaiement()">✦ Ajouter le paiement</button>
+    <div class="alert ok" id="alert-paiement-ok"></div>
+    <div class="alert err" id="alert-paiement-err"></div>
+  </div>
+  <div class="card"><button class="btn-main" onclick="chargerPaiements()">🔄 Rafraîchir les paiements</button></div>
+  <div id="paiements-stats" style="display:none"><div class="stats-row" id="paiements-stats-row"></div></div>
+  <div class="filter-chips" id="paiements-filter-chips" style="display:none">
+    <div class="chip active" data-filter="tous" onclick="selectPaiementFilter(this)">Tous</div>
+    <div class="chip" data-filter="en_attente" onclick="selectPaiementFilter(this)">🔴 En attente</div>
+    <div class="chip" data-filter="relance" onclick="selectPaiementFilter(this)">🟡 Relancé</div>
+    <div class="chip" data-filter="paye" onclick="selectPaiementFilter(this)">✅ Payé</div>
+  </div>
+  <div id="paiements-container"></div>
 </div></div>
 <!-- DEMANDES -->
 <div class="page" id="tab-demandes"><div class="inner">
@@ -599,12 +1146,12 @@ Chabbat Chalom à toute la communauté ! 🌟
     </div>
     <div class="field">
       <label>🖼️ Image / Affiche (facultatif)</label>
-      <div id="envoi-rapide-dropzone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg);" ondrop="handleEnvoiRapideImageDrop(event)" ondragover="event.preventDefault(); event.currentTarget.style.borderColor='var(--c-purple)'; event.currentTarget.style.background='#F1EEFF';" ondragleave="event.currentTarget.style.borderColor='var(--border)'; event.currentTarget.style.background='var(--bg)';" onclick="document.getElementById('envoi-rapide-file-input').click();">
-        <div id="envoi-rapide-dropzone-text" style="font-size: 13px; color: var(--muted);">📷 Glisse une image ici ou clique</div>
+      <div id="envoi-rapide-dropzone" style="border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(26, 20, 56, 0.5);" ondrop="handleEnvoiRapideImageDrop(event)" ondragover="event.preventDefault(); event.currentTarget.style.borderColor='var(--c-purple)'; event.currentTarget.style.background='#F1EEFF';" ondragleave="event.currentTarget.style.borderColor='var(--border)'; event.currentTarget.style.background='var(--bg)';" onclick="document.getElementById('envoi-rapide-file-input').click();">
+        <div id="envoi-rapide-dropzone-text" style="font-size: 13px; color: #B0AEC4;">📷 Glisse une image ici ou clique</div>
         <img id="envoi-rapide-preview" src="" style="max-width: 100%; max-height: 150px; border-radius: 10px; margin-top: 12px; display: none; object-fit: cover;">
       </div>
       <input type="file" id="envoi-rapide-file-input" accept="image/*" style="display: none;" onchange="handleEnvoiRapideImageFile(this.files[0])">
-      <div style="margin-top: 12px; font-size: 12px; color: var(--muted);">ou colle un lien :</div>
+      <div style="margin-top: 12px; font-size: 12px; color: #B0AEC4;">ou colle un lien :</div>
       <input type="url" id="envoi-rapide-image-url" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);outline:none;margin-top:8px;">
     </div>
     <div class="modal-btns">
