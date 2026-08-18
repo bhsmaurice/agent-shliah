@@ -1383,6 +1383,40 @@ body {
   .stat-number { font-size: 24px; }
 }
 
+
+
+/* STAT CARDS CLICKABLE */
+.stat-card {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.1), rgba(79, 143, 255, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.stat-card:hover {
+  border-color: var(--c-purple) !important;
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.2), rgba(79, 143, 255, 0.2)) !important;
+  box-shadow: 0 4px 12px rgba(124, 92, 252, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card:active {
+  transform: translateY(0) !important;
+}
+
 </style>
 </head>
 <body>
@@ -1486,14 +1520,14 @@ body {
 <!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-    <div class="stat-card">
+    <div class="stat-card" onclick="showTab('questions')" style="cursor:pointer;">
       <div class="stat-icon">💬</div>
       <div class="stat-content">
         <div class="stat-label">Nouvelles conversations</div>
         <div class="stat-number" id="home-conv-count">0</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" onclick="showTab('paiements')" style="cursor:pointer;">
       <div class="stat-icon">💳</div>
       <div class="stat-content">
         <div class="stat-label">Nouveaux paiements</div>
