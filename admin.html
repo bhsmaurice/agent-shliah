@@ -1527,11 +1527,11 @@ body {
         <div class="stat-number" id="home-conv-count">0</div>
       </div>
     </div>
-    <div class="stat-card" onclick="showTab('paiements')" style="cursor:pointer;">
-      <div class="stat-icon">💳</div>
+    <div class="stat-card" onclick="showTab('cerfa')" style="cursor:pointer;">
+      <div class="stat-icon">🧾</div>
       <div class="stat-content">
-        <div class="stat-label">Nouveaux paiements</div>
-        <div class="stat-number" id="home-payment-count">0</div>
+        <div class="stat-label">Nouveaux Cerfa</div>
+        <div class="stat-number" id="home-cerfa-count">0</div>
       </div>
     </div>
   </div>
@@ -2379,12 +2379,12 @@ async function chargerStatsHome(){
     }
   }catch(e){}
   try{
-    const resPay=await fetch(url+'/admin/paiements?password='+encodeURIComponent(pw));
-    const dataPay=await resPay.json();
-    if(dataPay.ok){
-      const paiements=dataPay.paiements||[];
-      const nouveaux=paiements.filter(p=>!p.traite).length;
-      document.getElementById('home-payment-count').textContent=nouveaux;
+    const resCerfa=await fetch(url+'/admin/demandes?password='+encodeURIComponent(pw));
+    const dataCerfa=await resCerfa.json();
+    if(dataCerfa.ok){
+      const demandes=dataCerfa.demandes||[];
+      const nouveaux=demandes.filter(d=>d.type==='cerfa'&&d.statut==='nouveau').length;
+      document.getElementById('home-cerfa-count').textContent=nouveaux;
     }
   }catch(e){}
 }
