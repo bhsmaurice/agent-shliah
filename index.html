@@ -100,9 +100,24 @@ function check() {
     if (inp.value === CODE) {
       document.getElementById('msg').textContent = '✓ OK! Redirection...';
       document.getElementById('msg').style.color = '#51cf66';
+      
+      // Créer la session AVANT de rediriger
+      try {
+        const SESSION_KEY = 'shliah_session';
+        const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
+        const sessionData = {
+          role: 'admin',
+          until: Date.now() + SESSION_DURATION
+        };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+        console.log('Session créée:', localStorage.getItem(SESSION_KEY));
+      } catch(e) {
+        console.error('Erreur création session:', e);
+      }
+      
       setTimeout(() => {
-        window.location = 'https://bhsmaurice.github.io/agent-shliah/admin.html?token=valid';
-      }, 1000);
+        window.location = 'https://bhsmaurice.github.io/agent-shliah/admin.html';
+      }, 500);
     } else {
       document.getElementById('msg').textContent = '✗ Mauvais code';
       document.getElementById('msg').style.color = '#ff6b6b';
