@@ -1770,7 +1770,12 @@ body {
       </div>
       <div class="field">
         <label>🖼️ Image / Affiche (facultatif)</label>
-        <input type="url" id="envoi-contacts-image" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+        <div class="dropzone" id="dropzone-contacts" onclick="document.getElementById('image-file-contacts').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleImageDropContacts(event)" style="cursor:pointer;">
+          <input type="file" id="image-file-contacts" accept="image/*" style="display:none" onchange="handleImageFileContacts(this.files[0])">
+          <div class="dropzone-text">📸 Glisse une image ici ou clique<span>JPG, PNG, GIF jusqu'à 5MB</span></div>
+          <img id="preview-contacts" style="display:none;max-width:100%;max-height:180px;border-radius:10px;margin-top:10px;">
+        </div>
+        <input type="url" id="envoi-contacts-image" placeholder="https://... (rempli automatiquement si tu uploades une image)" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;margin-top:8px;">
         <p style="font-size:11px;color:var(--muted);margin-top:6px;">L'image sera envoyée après le message.</p>
       </div>
       <div class="modal-btns">
@@ -2307,6 +2312,33 @@ function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false
 chargerStatsHome();const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
 function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+
+
+
+function handleImageDropContacts(event){
+  event.preventDefault();
+  event.stopPropagation();
+  const files = event.dataTransfer.files;
+  if(files.length > 0) handleImageFileContacts(files[0]);
+}
+
+function handleImageFileContacts(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  if(file.size > 5 * 1024 * 1024) {
+    alert('Image trop grande (max 5MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    document.getElementById('envoi-contacts-image').value = base64;
+    const preview = document.getElementById('preview-contacts');
+    preview.src = base64;
+    preview.style.display = 'block';
+    document.getElementById('dropzone-contacts').style.minHeight = 'auto';
+  };
+  reader.readAsDataURL(file);
+}
 
 function toggleCerfaForm(){
   const fields = document.getElementById('cerfa-form-fields');
