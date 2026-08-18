@@ -2379,7 +2379,8 @@ function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
 function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
-  if(name==='broadcast')loadBroadcastContacts();
+  if(name==='ajouter')chargerStatsHome();
+  else if(name==='broadcast')loadBroadcastContacts();
   else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
   else if(name==='infos')chargerListe();
   else if(name==='histoires')chargerHistoires();
@@ -2652,6 +2653,7 @@ async function genererCerfa(){
     document.getElementById('cerfa-nom').value='';document.getElementById('cerfa-prenom').value='';document.getElementById('cerfa-adresse').value='';document.getElementById('cerfa-email').value='';document.getElementById('cerfa-montant').value='';document.getElementById('cerfa-date').value=new Date().toISOString().slice(0,10);
     document.querySelectorAll('#cerfa-type-grid .cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#cerfa-type-grid .cat-btn[data-type="perso"]').classList.add('active');cerfaTypeSelected='perso';document.getElementById('cerfa-nom-label').textContent='Nom';document.getElementById('cerfa-prenom-field').style.display='';
     chargerCerfa();
+    chargerStatsHome();
   }catch(e){errEl.textContent='Erreur de connexion';errEl.className='alert err';errEl.style.display='block';}
   btn.disabled=false;btn.textContent='✦ Générer le Cerfa';
 }
