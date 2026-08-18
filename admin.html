@@ -1235,7 +1235,20 @@ function getPin(){return localStorage.getItem(PIN_KEY)||DEFAULT_PIN;}
 function getPin2(){return localStorage.getItem(PIN2_KEY)||'';}
 function getPin2Name(){return localStorage.getItem(PIN2_NAME_KEY)||'2ème utilisateur';}
 function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';pinBuffer='';updateDots();document.getElementById('login-error').textContent='';if(activeLoginUser==='user2'){const name=getPin2Name();document.getElementById('login-user-label').textContent=`👤 ${name}`;if(!getPin2()){document.getElementById('login-error').textContent='Aucun 2ème utilisateur configuré';activeLoginUser='admin';document.getElementById('login-user-label').textContent='👤 Administrateur';}}else{document.getElementById('login-user-label').textContent='👤 Administrateur';}}
-function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
+function pinPress(digit){
+  const now=Date.now();
+  if(now<lockUntil){
+    document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;
+    return;
+  }
+  if(pinBuffer.length>=6)return;
+  pinBuffer+=digit;
+  console.log('PIN tapé:', pinBuffer);
+  updateDots();
+  if(pinBuffer.length===6){
+    setTimeout(()=>checkPin(),100);
+  }
+}
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
@@ -1250,9 +1263,6 @@ function logout(){
   document.getElementById('login-user-label').textContent='👤 Administrateur';
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
-  setTimeout(() => {
-    window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-  }, 500);
 }
 function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 // ══ UTILS ══
@@ -2637,24 +2647,16 @@ document.addEventListener('click',function(e){
 function restaurerSession(){
   try{
     const raw=localStorage.getItem(SESSION_KEY);
-    if(!raw){
-      // Pas de session : rediriger vers la nouvelle page login
-      if(!window.location.href.includes('login.html')){
-        window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-      }
-      return;
-    }
+    if(!raw) return; // Pas de session, le login screen s'affiche déjà
     
     const s=JSON.parse(raw);
     if(!s||!s.role||!s.until){
       localStorage.removeItem(SESSION_KEY);
-      window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
       return;
     }
     
     if(Date.now()>s.until){
       localStorage.removeItem(SESSION_KEY);
-      window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
       return;
     }
     
