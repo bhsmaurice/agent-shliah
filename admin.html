@@ -1048,6 +1048,89 @@ body {
   .field { margin-bottom: 14px !important; }
 }
 
+
+
+/* IMPROVE ICON VISIBILITY IN DARK MODE */
+:root.theme-dark {
+  --icon-filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+  --icon-opacity: 1;
+}
+
+:root.theme-light {
+  --icon-filter: none;
+  --icon-opacity: 1;
+}
+
+/* Apply to card titles with icons */
+.card-title {
+  filter: var(--icon-filter);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Badges avec icônes */
+.badge {
+  filter: var(--icon-filter);
+}
+
+/* Info card avec icônes */
+.info-card .badge {
+  filter: var(--icon-filter);
+  background: var(--badge-bg) !important;
+  color: var(--badge-text) !important;
+}
+
+/* Tabs icons */
+.tab {
+  filter: var(--icon-filter);
+  font-size: 22px;
+}
+
+.tab.active {
+  filter: var(--icon-filter);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Header icons */
+.header-bell, .header-avatar {
+  filter: var(--icon-filter);
+}
+
+/* Buttons avec icônes */
+.btn-main, .btn-secondary {
+  filter: var(--icon-filter);
+}
+
+/* Demande type badges */
+.demande-type {
+  filter: var(--icon-filter);
+}
+
+/* Conv card badges */
+.conv-phone {
+  filter: var(--icon-filter);
+}
+
+/* Search icon */
+.search-box .icon {
+  filter: var(--icon-filter);
+  font-size: 18px;
+}
+
+/* Ajouter du contraste spécifique au dark mode */
+:root.theme-dark .card-title {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+:root.theme-dark .badge {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+
+:root.theme-dark .tab {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
 </style>
 </head>
 <body>
