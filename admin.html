@@ -515,6 +515,13 @@ html, body {
 </style>
 </head>
 <body>
+
+<script>
+(function() {
+  const theme = localStorage.getItem('shliah_theme') || 'light';
+  document.documentElement.className = 'theme-' + theme;
+})();
+</script>
 <div id="login-screen">
   <div class="login-logo">Shliah Bot 🤖</div>
   <div class="login-sub">Panneau d'administration</div>
