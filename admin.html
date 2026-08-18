@@ -2474,8 +2474,12 @@ async function chargerStatsHome(){
     const data=await res.json();
     if(data.ok){
       const conversations=data.conversations||[];
-      const nouveauxCount=conversations.filter(c=>!c.lus).length;
-      document.getElementById('home-conv-count').textContent=nouveauxCount;
+      const today=new Date().toISOString().split('T')[0];
+      const convAujourdui=conversations.filter(c=>{
+        const convDate=c.timestamp?new Date(c.timestamp).toISOString().split('T')[0]:null;
+        return convDate===today;
+      }).length;
+      document.getElementById('home-conv-count').textContent=convAujourdui;
     }
   }catch(e){}
   try{
