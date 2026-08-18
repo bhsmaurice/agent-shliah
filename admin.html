@@ -2643,6 +2643,20 @@ document.addEventListener('click',function(e){
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
 function restaurerSession(){
+  // Vérifier si on vient du login avec token
+  const url = new URL(window.location);
+  if (url.searchParams.get('token') === 'valid') {
+    console.log('Token URL trouvé! Création de session...');
+    const SESSION_KEY = 'shliah_session';
+    const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      role: 'admin',
+      until: Date.now() + SESSION_DURATION
+    }));
+    // Nettoyer l'URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
   try{
     const raw=localStorage.getItem(SESSION_KEY);
     console.log('Session key:', SESSION_KEY);

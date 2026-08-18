@@ -100,12 +100,8 @@ function check() {
     if (inp.value === CODE) {
       document.getElementById('msg').textContent = '✓ OK! Redirection...';
       document.getElementById('msg').style.color = '#51cf66';
-      localStorage.setItem('shliah_session', JSON.stringify({
-        role: 'admin',
-        until: Date.now() + 30*24*60*60*1000
-      }));
       setTimeout(() => {
-        window.location = 'https://bhsmaurice.github.io/agent-shliah/admin.html';
+        window.location = 'https://bhsmaurice.github.io/agent-shliah/admin.html?token=valid';
       }, 1000);
     } else {
       document.getElementById('msg').textContent = '✗ Mauvais code';
