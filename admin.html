@@ -1417,63 +1417,6 @@ body {
   transform: translateY(0) !important;
 }
 
-
-
-/* ACCORDION STYLE */
-.accordion-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  padding: 18px !important;
-  user-select: none;
-  transition: all 0.3s ease;
-}
-
-.accordion-header:hover {
-  background: rgba(124, 92, 252, 0.1);
-}
-
-.accordion-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.accordion-arrow {
-  font-size: 18px;
-  color: var(--text-secondary);
-  transition: transform 0.4s ease;
-  flex-shrink: 0;
-}
-
-.accordion-arrow.open {
-  transform: rotate(180deg);
-}
-
-.accordion-content {
-  overflow: hidden;
-  transition: all 0.4s ease;
-}
-
-.accordion-content.open {
-  max-height: 2000px;
-  padding: 0 18px 18px 18px;
-}
-
-.accordion-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.accordion-inner .field:last-child {
-  margin-bottom: 0;
-}
-
 </style>
 </head>
 <body>
@@ -1843,44 +1786,35 @@ body {
 <div class="cerfa-layout">
 <div class="cerfa-main">
   <div class="card">
-    <div class="accordion-header" onclick="toggleCerfaForm()">
-      <div class="accordion-title">
-        <span>🧾 Générer un reçu Cerfa</span>
-      </div>
-      <div class="accordion-arrow" id="cerfa-arrow">▾</div>
-    </div>
-    <div class="accordion-content" id="cerfa-form-content" style="display:none;overflow:hidden;max-height:0;transition:all 0.4s ease;">
-      <div class="accordion-inner">
-        <div class="field"><label>Type de donateur</label>
-          <div class="cat-grid" id="cerfa-type-grid" style="grid-template-columns:1fr 1fr;">
-            <button class="cat-btn active" data-type="perso" onclick="selectCerfaType(this)">👤 Particulier</button>
-            <button class="cat-btn" data-type="societe" onclick="selectCerfaType(this)">🏢 Société</button>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field"><label id="cerfa-nom-label">Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
-          <div class="field" id="cerfa-prenom-field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
-        </div>
-        <div class="field"><label>Adresse complète</label><input type="text" id="cerfa-adresse" placeholder="Ex: 4 rue d'Avignon, 94700 Maisons-Alfort"></div>
-        <div class="field-row">
-          <div class="field"><label>Email (facultatif)</label><input type="email" id="cerfa-email" placeholder="Ex: israel.cohen@email.com"></div>
-          <div class="field"><label>Montant (€)</label><input type="number" id="cerfa-montant" placeholder="Ex: 1000"></div>
-        </div>
-        <div class="field"><label>Date du don</label><input type="date" id="cerfa-date"></div>
-        <div class="field"><label>Mode de paiement</label>
-          <div class="cat-grid">
-            <button class="cat-btn active" data-mode="especes" onclick="selectCerfaMode(this)">💵 Espèces</button>
-            <button class="cat-btn" data-mode="cb" onclick="selectCerfaMode(this)">💳 CB</button>
-            <button class="cat-btn" data-mode="cheque" onclick="selectCerfaMode(this)">📝 Chèque</button>
-            <button class="cat-btn" data-mode="virement" onclick="selectCerfaMode(this)">🏦 Virement</button>
-            <button class="cat-btn" data-mode="autre" onclick="selectCerfaMode(this)">❔ Autre</button>
-          </div>
-        </div>
-        <button class="btn-main" id="btn-generer-cerfa" onclick="genererCerfa()">✦ Générer le Cerfa</button>
-        <div class="alert ok" id="alert-cerfa-ok"></div>
-        <div class="alert err" id="alert-cerfa-err"></div>
+    <div class="card-title">🧾 Générer un reçu Cerfa</div>
+    <div class="field"><label>Type de donateur</label>
+      <div class="cat-grid" id="cerfa-type-grid" style="grid-template-columns:1fr 1fr;">
+        <button class="cat-btn active" data-type="perso" onclick="selectCerfaType(this)">👤 Particulier</button>
+        <button class="cat-btn" data-type="societe" onclick="selectCerfaType(this)">🏢 Société</button>
       </div>
     </div>
+    <div class="field-row">
+      <div class="field"><label id="cerfa-nom-label">Nom</label><input type="text" id="cerfa-nom" placeholder="Ex: Cohen"></div>
+      <div class="field" id="cerfa-prenom-field"><label>Prénom</label><input type="text" id="cerfa-prenom" placeholder="Ex: Israel"></div>
+    </div>
+    <div class="field"><label>Adresse complète</label><input type="text" id="cerfa-adresse" placeholder="Ex: 4 rue d'Avignon, 94700 Maisons-Alfort"></div>
+    <div class="field-row">
+      <div class="field"><label>Email (facultatif)</label><input type="email" id="cerfa-email" placeholder="Ex: israel.cohen@email.com"></div>
+      <div class="field"><label>Montant (€)</label><input type="number" id="cerfa-montant" placeholder="Ex: 1000"></div>
+    </div>
+    <div class="field"><label>Date du don</label><input type="date" id="cerfa-date"></div>
+    <div class="field"><label>Mode de paiement</label>
+      <div class="cat-grid">
+        <button class="cat-btn active" data-mode="especes" onclick="selectCerfaMode(this)">💵 Espèces</button>
+        <button class="cat-btn" data-mode="cb" onclick="selectCerfaMode(this)">💳 CB</button>
+        <button class="cat-btn" data-mode="cheque" onclick="selectCerfaMode(this)">📝 Chèque</button>
+        <button class="cat-btn" data-mode="virement" onclick="selectCerfaMode(this)">🏦 Virement</button>
+        <button class="cat-btn" data-mode="autre" onclick="selectCerfaMode(this)">❔ Autre</button>
+      </div>
+    </div>
+    <button class="btn-main" id="btn-generer-cerfa" onclick="genererCerfa()">✦ Générer le Cerfa</button>
+    <div class="alert ok" id="alert-cerfa-ok"></div>
+    <div class="alert err" id="alert-cerfa-err"></div>
   </div>
   <button class="btn-main" style="margin-bottom:14px" onclick="chargerCerfa()">🔄 Rafraîchir les Cerfa</button>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
@@ -2319,24 +2253,6 @@ function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false
 chargerStatsHome();const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
 function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
-
-function toggleCerfaForm(){
-  const content = document.getElementById('cerfa-form-content');
-  const arrow = document.getElementById('cerfa-arrow');
-  
-  if(content.style.display === 'none'){
-    content.style.display = 'block';
-    content.classList.add('open');
-    arrow.classList.add('open');
-  } else {
-    content.classList.remove('open');
-    arrow.classList.remove('open');
-    setTimeout(() => {
-      content.style.display = 'none';
-    }, 400);
-  }
-}
-
 
 function setTheme(theme){
   localStorage.setItem('shliah_theme', theme);
