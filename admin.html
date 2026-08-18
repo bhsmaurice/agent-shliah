@@ -1485,6 +1485,22 @@ body {
 <div class="main-content">
 <!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+    <div class="stat-card">
+      <div class="stat-icon">💬</div>
+      <div class="stat-content">
+        <div class="stat-label">Nouvelles conversations</div>
+        <div class="stat-number" id="home-conv-count">0</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💳</div>
+      <div class="stat-content">
+        <div class="stat-label">Nouveaux paiements</div>
+        <div class="stat-number" id="home-payment-count">0</div>
+      </div>
+    </div>
+  </div>
   <div class="card">
     <div class="card-title">Nouvelle information</div>
     <div class="field"><label>Catégorie</label>
@@ -1515,22 +1531,6 @@ body {
 </div></div>
 <!-- INFOS -->
 <div class="page" id="tab-infos"><div class="inner">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-    <div class="stat-card">
-      <div class="stat-icon">💬</div>
-      <div class="stat-content">
-        <div class="stat-label">Nouvelles conversations</div>
-        <div class="stat-number" id="conv-count">0</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">💳</div>
-      <div class="stat-content">
-        <div class="stat-label">Nouveaux paiements</div>
-        <div class="stat-number" id="payment-count">0</div>
-      </div>
-    </div>
-  </div>
   <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Rafraîchir les infos</button></div>
   <div class="search-box" id="search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()"></div>
   <div class="filter-chips" id="filter-chips" style="display:none">
@@ -2215,7 +2215,8 @@ function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';
 function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
-function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
+function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';
+chargerStatsHome();const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
 function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
 
@@ -2330,6 +2331,30 @@ async function chargerStatsCarte(){
     }
   }catch(e){}
 }
+
+async function chargerStatsHome(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return;
+  try{
+    const res=await fetch(url+'/admin/questions?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(data.ok){
+      const conversations=data.conversations||[];
+      const nouveauxCount=conversations.filter(c=>!c.lus).length;
+      document.getElementById('home-conv-count').textContent=nouveauxCount;
+    }
+  }catch(e){}
+  try{
+    const resPay=await fetch(url+'/admin/paiements?password='+encodeURIComponent(pw));
+    const dataPay=await resPay.json();
+    if(dataPay.ok){
+      const paiements=dataPay.paiements||[];
+      const nouveaux=paiements.filter(p=>!p.traite).length;
+      document.getElementById('home-payment-count').textContent=nouveaux;
+    }
+  }catch(e){}
+}
+
 
 // ══ HISTOIRES ══
 async function ajouterHistoire(){
