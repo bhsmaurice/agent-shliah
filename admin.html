@@ -2477,7 +2477,8 @@ async function chargerStatsHome(){
       const conversations=data.conversations||[];
       const today=new Date().toISOString().split('T')[0];
       const convAujourdui=conversations.filter(c=>{
-        const convDate=c.timestamp?new Date(c.timestamp).toISOString().split('T')[0]:null;
+        const dateField=c.timestamp||c.created_at||c.date||'';
+        const convDate=dateField?new Date(dateField).toISOString().split('T')[0]:null;
         return convDate===today;
       }).length;
       document.getElementById('home-conv-count').textContent=convAujourdui;
@@ -2491,7 +2492,8 @@ async function chargerStatsHome(){
       const today=new Date().toISOString().split('T')[0];
       const cerfahAujourdui=demandes.filter(d=>{
         if(d.type!=='cerfa')return false;
-        const cerfarDate=d.created_at?new Date(d.created_at).toISOString().split('T')[0]:null;
+        const dateField=d.date||d.created_at||d.timestamp||'';
+        const cerfarDate=dateField?new Date(dateField).toISOString().split('T')[0]:null;
         return cerfarDate===today;
       }).length;
       document.getElementById('home-cerfa-count').textContent=cerfahAujourdui;
