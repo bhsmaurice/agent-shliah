@@ -2378,8 +2378,7 @@ let selectModeActive=false,selectedIds=new Set(),corbeilleSelectMode=false,corbe
 function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,'');}
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
-function showTab(name){
-  setTimeout(() => initAllImageUploads(), 100);document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
+function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
   if(name==='broadcast')loadBroadcastContacts();
   else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
   else if(name==='infos')chargerListe();
@@ -3842,135 +3841,6 @@ document.addEventListener('click', function(e) {
     modal.classList.remove('active');
   }
 });
-
-
-function createImageUploadZone(inputId){
-  const input = document.getElementById(inputId);
-  if(!input || input.dataset.uploadZone) return;
-  
-  // Créer la zone de drop
-  const zone = document.createElement('div');
-  zone.className = 'dropzone';
-  zone.style.marginBottom = '8px';
-  zone.innerHTML = '📸 Glisse une image ici ou clique';
-  zone.style.cursor = 'pointer';
-  
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = 'image/*';
-  fileInput.style.display = 'none';
-  fileInput.onchange = (e) => handleUniversalImageUpload(inputId, e.target.files[0]);
-  
-  zone.onclick = () => fileInput.click();
-  zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('drag'); };
-  zone.ondragleave = () => zone.classList.remove('drag');
-  zone.ondrop = (e) => {
-    e.preventDefault();
-    zone.classList.remove('drag');
-    if(e.dataTransfer.files.length > 0) handleUniversalImageUpload(inputId, e.dataTransfer.files[0]);
-  };
-  
-  input.parentElement.insertBefore(zone, input);
-  input.parentElement.insertBefore(fileInput, input);
-  input.dataset.uploadZone = 'true';
-}
-
-function handleUniversalImageUpload(inputId, file){
-  if(!file || !file.type.startsWith('image/')) return;
-  if(file.size > 5 * 1024 * 1024) {
-    alert('Image trop grande (max 5MB)');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    document.getElementById(inputId).value = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-// Initialiser toutes les zones au chargement
-function initAllImageUploads(){
-  const imageInputs = ['image-url', 'h-image', 'envoi-contacts-image', 'bc-image-unique', 'bc-image-url', 'edit-image', 'edit-h-image', 'envoi-rapide-image-url'];
-  imageInputs.forEach(id => {
-    setTimeout(() => createImageUploadZone(id), 100);
-  });
-}
-
-// Ajouter à restaurerSession - chercher où elle se termine et ajouter l'appel
-if(document.getElementById('app')){
-  document.getElementById('app').addEventListener('DOMNodeInserted', () => {
-    initAllImageUploads();
-  }, false);
-}
-
-
-
-// Auto-ajouter drag-and-drop à tous les inputs URL d'images
-function initAutoImageUploads(){
-  const allInputs = document.querySelectorAll('input[type="url"]');
-  allInputs.forEach(input => {
-    if(input.dataset.autoUpload) return;
-    
-    // Vérifier si c'est un champ image (par le placeholder ou l'id)
-    const isImageField = input.placeholder.includes('http') || 
-                        input.id.includes('image') || 
-                        input.placeholder.includes('://');
-    
-    if(!isImageField) return;
-    
-    // Créer la zone de drop
-    const zone = document.createElement('div');
-    zone.className = 'dropzone';
-    zone.innerHTML = '📸 Glisse une image ici ou clique';
-    zone.style.cursor = 'pointer';
-    zone.style.marginBottom = '8px';
-    
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    
-    fileInput.onchange = () => {
-      if(fileInput.files[0]) uploadAndSetImage(input, fileInput.files[0]);
-    };
-    
-    zone.onclick = () => fileInput.click();
-    zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('drag'); };
-    zone.ondragleave = () => zone.classList.remove('drag');
-    zone.ondrop = (e) => {
-      e.preventDefault();
-      zone.classList.remove('drag');
-      if(e.dataTransfer.files[0]) uploadAndSetImage(input, e.dataTransfer.files[0]);
-    };
-    
-    input.parentElement.insertBefore(zone, input);
-    input.parentElement.insertBefore(fileInput, input);
-    input.dataset.autoUpload = 'true';
-  });
-}
-
-function uploadAndSetImage(inputElement, file){
-  if(!file.type.startsWith('image/')) return;
-  if(file.size > 5 * 1024 * 1024) {
-    alert('Image trop grande (max 5MB)');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    inputElement.value = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-// Initialiser quand la page charge
-window.addEventListener('load', initAutoImageUploads);
-
-// Réinitialiser après chaque changement de page
-const originalShowTab = window.showTab;
-window.showTab = function(tab){
-  if(originalShowTab) originalShowTab(tab);
-  setTimeout(initAutoImageUploads, 100);
-};
 </script>
 
 <div style="position:fixed;bottom:16px;right:16px;padding:8px 12px;font-size:11px;color:#a0a0a0;background:rgba(26,31,50,0.8);border:1px solid rgba(74,158,255,0.2);border-radius:6px;font-family:monospace;z-index:50;">V1</div>
