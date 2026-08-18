@@ -1316,6 +1316,73 @@ body {
   .badge { font-size: 11px; }
 }
 
+
+
+/* STAT CARDS */
+.stat-card {
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.12), rgba(79, 143, 255, 0.12));
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.stat-card:hover {
+  border-color: var(--c-purple);
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.2), rgba(79, 143, 255, 0.2));
+  box-shadow: 0 4px 12px rgba(124, 92, 252, 0.2);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(124, 92, 252, 0.2));
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Frank Ruhl Libre', serif;
+  line-height: 1;
+}
+
+:root.theme-dark .stat-card {
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(79, 143, 255, 0.15));
+}
+
+:root.theme-dark .stat-card:hover {
+  background: linear-gradient(135deg, rgba(124, 92, 252, 0.25), rgba(79, 143, 255, 0.25));
+}
+
+@media (max-width: 480px) {
+  .stat-card { padding: 14px; }
+  .stat-icon { font-size: 28px; }
+  .stat-number { font-size: 24px; }
+}
+
 </style>
 </head>
 <body>
@@ -1448,6 +1515,22 @@ body {
 </div></div>
 <!-- INFOS -->
 <div class="page" id="tab-infos"><div class="inner">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+    <div class="stat-card">
+      <div class="stat-icon">💬</div>
+      <div class="stat-content">
+        <div class="stat-label">Nouvelles conversations</div>
+        <div class="stat-number" id="conv-count">0</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💳</div>
+      <div class="stat-content">
+        <div class="stat-label">Nouveaux paiements</div>
+        <div class="stat-number" id="payment-count">0</div>
+      </div>
+    </div>
+  </div>
   <div class="card"><button class="btn-main" onclick="chargerListe()">🔄 Rafraîchir les infos</button></div>
   <div class="search-box" id="search-wrap" style="display:none"><span class="icon">🔍</span><input type="text" id="search-input" placeholder="Rechercher..." oninput="filtrerInfos()"></div>
   <div class="filter-chips" id="filter-chips" style="display:none">
@@ -2224,6 +2307,30 @@ async function handleImageFile(file,context){
   };
   reader.readAsDataURL(file);
 }
+
+async function chargerStatsCarte(){
+  const url=getUrl(),pw=getAdminPw();
+  if(!url)return;
+  try{
+    const res=await fetch(url+'/admin/questions?password='+encodeURIComponent(pw));
+    const data=await res.json();
+    if(data.ok){
+      const conversations=data.conversations||[];
+      const nouveauxCount=conversations.filter(c=>!c.lus).length;
+      document.getElementById('conv-count').textContent=nouveauxCount;
+    }
+  }catch(e){}
+  try{
+    const resPay=await fetch(url+'/admin/paiements?password='+encodeURIComponent(pw));
+    const dataPay=await resPay.json();
+    if(dataPay.ok){
+      const paiements=dataPay.paiements||[];
+      const nouveaux=paiements.filter(p=>!p.traite).length;
+      document.getElementById('payment-count').textContent=nouveaux;
+    }
+  }catch(e){}
+}
+
 // ══ HISTOIRES ══
 async function ajouterHistoire(){
   const url=getUrl(),pw=getAdminPw();
