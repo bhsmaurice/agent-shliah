@@ -59,7 +59,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 
 .header-left { display: flex; align-items: center; gap: 10px; }
-.header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
+.header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 24px; color: #fff; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 .btn-hamburger { background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 18px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
@@ -1463,6 +1463,13 @@ body {
   margin-top: 14px !important;
 }
 
+
+
+.header-left .site-name:hover {
+  transform: scale(1.05);
+  text-shadow: 0 0 10px rgba(124, 92, 252, 0.4);
+}
+
 </style>
 </head>
 <body>
@@ -1502,7 +1509,7 @@ body {
   <div class="header-left">
     <button class="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
     <div>
-      <div class="site-name">Shliah Bot 🤖</div>
+      <div class="site-name" onclick="location.reload()" style="cursor:pointer;transition:all 0.3s;user-select:none;" title="Actualiser">Shliah Bot 🤖</div>
       <div class="site-sub">Panneau d'administration</div>
     </div>
   </div>
