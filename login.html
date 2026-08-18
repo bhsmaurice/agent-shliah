@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Shliah Bot Admin</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  height: 100vh;
+  background: linear-gradient(135deg, #0F0F23 0%, #1A0F3D 50%, #2D1B4E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+}
+
+/* Animated background elements */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
+  animation: float 15s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: #B8972A;
+  top: -100px;
+  left: -100px;
+}
+
+.orb-2 {
+  width: 250px;
+  height: 250px;
+  background: #4A9EFF;
+  bottom: -50px;
+  right: -50px;
+  animation-delay: 5s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 30px); }
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 450px;
+  padding: 20px;
+}
+
+.login-card {
+  background: rgba(15, 15, 35, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(184, 151, 42, 0.2);
+  border-radius: 20px;
+  padding: 50px 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logo {
+  font-size: 50px;
+  margin-bottom: 15px;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #B8972A 0%, #FFD700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
+}
+
+.user-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.user-btn {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(184, 151, 42, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.user-btn.active {
+  background: rgba(184, 151, 42, 0.2);
+  border-color: #B8972A;
+  color: #B8972A;
+}
+
+.user-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #B8972A;
+}
+
+.code-display {
+  background: rgba(184, 151, 42, 0.1);
+  border: 2px solid rgba(184, 151, 42, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.code-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.dot.filled {
+  background: #B8972A;
+  box-shadow: 0 0 10px rgba(184, 151, 42, 0.5);
+  width: 14px;
+  height: 14px;
+}
+
+.buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-num {
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1.5px solid rgba(184, 151, 42, 0.3);
+  color: white;
+  font-size: 22px;
+  font-weight: 600;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-num:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border-color: #B8972A;
+}
+
+.btn-num:active {
+  transform: scale(0.95);
+  background: rgba(184, 151, 42, 0.3);
+  border-color: #B8972A;
+  box-shadow: 0 0 20px rgba(184, 151, 42, 0.4);
+}
+
+.btn-del {
+  font-size: 18px;
+}
+
+.btn-validate {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #B8972A 0%, #FFD700 100%);
+  color: #0F0F23;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 1px;
+}
+
+.btn-validate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(184, 151, 42, 0.3);
+}
+
+.btn-validate:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 15px rgba(184, 151, 42, 0.3);
+}
+
+.message {
+  margin-top: 15px;
+  text-align: center;
+  font-size: 13px;
+  height: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.message.error {
+  color: #FF6B6B;
+}
+
+.message.success {
+  color: #51CF66;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+</style>
+</head>
+<body>
+
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+
+<div class="container">
+  <div class="login-card">
+    <div class="header">
+      <div class="logo">🤖</div>
+      <div class="title">Shliah Bot</div>
+      <div class="subtitle">PANNEAU D'ADMINISTRATION</div>
+    </div>
+
+    <div class="user-selector">
+      <button class="user-btn active" onclick="selectUser('admin', this)">👤 Admin</button>
+      <button class="user-btn" onclick="selectUser('user2', this)">👥 Utilisateur 2</button>
+    </div>
+
+    <div class="code-display">
+      <div class="code-dots">
+        <div class="dot" id="dot-0"></div>
+        <div class="dot" id="dot-1"></div>
+        <div class="dot" id="dot-2"></div>
+        <div class="dot" id="dot-3"></div>
+        <div class="dot" id="dot-4"></div>
+        <div class="dot" id="dot-5"></div>
+      </div>
+    </div>
+
+    <div class="buttons-grid">
+      <button class="btn-num" onclick="add('1')">1</button>
+      <button class="btn-num" onclick="add('2')">2</button>
+      <button class="btn-num" onclick="add('3')">3</button>
+      <button class="btn-num" onclick="add('4')">4</button>
+      <button class="btn-num" onclick="add('5')">5</button>
+      <button class="btn-num" onclick="add('6')">6</button>
+      <button class="btn-num" onclick="add('7')">7</button>
+      <button class="btn-num" onclick="add('8')">8</button>
+      <button class="btn-num" onclick="add('9')">9</button>
+      <button class="btn-num" onclick="add('*')">*</button>
+      <button class="btn-num" onclick="add('0')">0</button>
+      <button class="btn-num btn-del" onclick="deleteLast()">⌫</button>
+    </div>
+
+    <button class="btn-validate" onclick="validate()">✓ VALIDER</button>
+
+    <div class="message" id="msg"></div>
+
+    <div class="footer">
+      <p>Code sécurisé • Beth Habad</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let code = '';
+let currentUser = 'admin';
+const ADMIN_CODE = '194561';
+const USER2_CODE = localStorage.getItem('user2_code') || 'user2';
+
+function selectUser(user, btn) {
+  currentUser = user;
+  document.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  clearCode();
+}
+
+function updateDots() {
+  for (let i = 0; i < 6; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    if (i < code.length) {
+      dot.classList.add('filled');
+    } else {
+      dot.classList.remove('filled');
+    }
+  }
+}
+
+function add(char) {
+  if (code.length < 6) {
+    code += char;
+    updateDots();
+  }
+}
+
+function deleteLast() {
+  if (code.length > 0) {
+    code = code.slice(0, -1);
+    updateDots();
+    clearMessage();
+  }
+}
+
+function clearCode() {
+  code = '';
+  updateDots();
+  clearMessage();
+}
+
+function clearMessage() {
+  document.getElementById('msg').textContent = '';
+  document.getElementById('msg').className = 'message';
+}
+
+function validate() {
+  if (code.length !== 6) {
+    showError('⚠ Tapez 6 chiffres');
+    return;
+  }
+
+  const expectedCode = currentUser === 'admin' ? ADMIN_CODE : USER2_CODE;
+  
+  if (code === expectedCode) {
+    showSuccess('✓ Accès autorisé!');
+    localStorage.setItem('shliah_session', JSON.stringify({
+      role: currentUser,
+      until: Date.now() + 30*24*60*60*1000
+    }));
+    setTimeout(() => {
+      window.location = 'admin.html';
+    }, 800);
+  } else {
+    showError('✗ Code incorrect');
+    setTimeout(clearCode, 600);
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('msg');
+  el.textContent = msg;
+  el.className = 'message error';
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById('msg');
+  el.textContent = msg;
+  el.className = 'message success';
+}
+
+// Enter pour valider
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    validate();
+  }
+});
+</script>
+
+</body>
+</html>
