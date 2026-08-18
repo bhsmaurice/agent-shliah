@@ -905,121 +905,121 @@ body {
 
 
 
-/* CLEAN BLOCK LAYOUT */
+
+
+
+
+/* CLEAN SPACING SYSTEM */
 .inner {
   width: 100% !important;
   margin: 0 !important;
-  padding: 0 !important;
-  padding-top: 16px !important;
-  padding-bottom: 32px !important;
+  padding: 16px !important;
   box-sizing: border-box;
   display: block;
 }
 
-/* Cards sans spacing - collés ensemble */
+/* Cards avec espace propre entre eux */
 .card {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
+  width: 100% !important;
   margin-top: 0 !important;
-  margin-bottom: 0 !important;
+  margin-bottom: 12px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   padding: 18px !important;
   box-sizing: border-box;
-  border-radius: 12px !important;
-  border: 1.5px solid var(--border-color) !important;
-  border-bottom: none !important;
-}
-
-/* Dernier card a le border complet */
-.card:last-of-type {
-  border-bottom: 1.5px solid var(--border-color) !important;
-  margin-bottom: 12px !important;
-}
-
-.card:first-of-type {
-  border-radius: 12px 12px 0 0 !important;
-}
-
-.card:not(:first-of-type):not(:last-of-type) {
-  border-radius: 0 !important;
+  border-radius: 14px !important;
 }
 
 .card:last-of-type {
-  border-radius: 0 0 12px 12px !important;
-}
-
-/* Si card est seul */
-.card:only-child {
-  border-radius: 12px !important;
-  margin-bottom: 12px !important;
-}
-
-/* Info cards aussi */
-.info-card {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
-  margin-top: 0 !important;
   margin-bottom: 0 !important;
+}
+
+/* Info cards */
+.info-card {
+  width: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
 .info-card:last-of-type {
-  margin-bottom: 12px !important;
+  margin-bottom: 0 !important;
 }
 
 /* Demande cards */
 .demande-card {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
+  width: 100% !important;
   margin-top: 0 !important;
-  margin-bottom: 0 !important;
+  margin-bottom: 10px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
 .demande-card:last-of-type {
-  margin-bottom: 12px !important;
+  margin-bottom: 0 !important;
 }
 
 /* Conv cards */
 .conv-card {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
+  width: 100% !important;
   margin-top: 0 !important;
-  margin-bottom: 0 !important;
+  margin-bottom: 10px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
 .conv-card:last-of-type {
-  margin-bottom: 12px !important;
+  margin-bottom: 0 !important;
 }
 
-.search-box,
-.filter-chips {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
+/* Search & Filter */
+.search-box {
+  width: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 14px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
+.filter-chips {
+  width: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 14px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Buttons */
 .btn-main,
 .btn-secondary {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
-  margin-top: 0 !important;
+  width: 100% !important;
+  margin-top: 8px !important;
   margin-bottom: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
+.btn-main:last-of-type,
+.btn-secondary:last-of-type {
+  margin-bottom: 0 !important;
+}
+
+/* Fields */
 .field {
   margin-bottom: 16px !important;
 }
 
 .field:last-of-type {
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
 }
 
 .field input,
@@ -1029,27 +1029,23 @@ body {
   box-sizing: border-box;
 }
 
+/* Alerts */
 .alert {
-  width: calc(100% - 28px) !important;
-  margin-left: 14px !important;
-  margin-right: 14px !important;
-  margin-top: 8px !important;
+  width: 100% !important;
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
+/* Responsive */
 @media (max-width: 480px) {
-  .inner { padding-top: 12px !important; padding-bottom: 24px !important; }
-  .card, .info-card, .demande-card, .conv-card {
-    width: calc(100% - 24px) !important;
-    margin-left: 12px !important;
-    margin-right: 12px !important;
-    padding: 14px !important;
-  }
-  .btn-main, .btn-secondary, .search-box, .filter-chips {
-    width: calc(100% - 24px) !important;
-    margin-left: 12px !important;
-    margin-right: 12px !important;
-  }
+  .inner { padding: 12px !important; }
+  .card { margin-bottom: 10px !important; padding: 14px !important; }
+  .info-card, .demande-card, .conv-card { margin-bottom: 9px !important; }
+  .btn-main, .btn-secondary { margin-top: 6px !important; }
+  .field { margin-bottom: 14px !important; }
 }
 
 </style>
