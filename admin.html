@@ -56,8 +56,8 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .hsr-empty { padding: 14px; text-align: center; font-size: 12px; color: var(--text-secondary); }
 .header-bell { position: relative; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; cursor: pointer; flex-shrink: 0; }
 .header-bell-badge { position: absolute; top: -4px; right: -4px; background: var(--c-pink); color: #fff; font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
-.header-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
-@media (max-width: 480px) { .header-hebrew { display: none; } }
+
+
 .header-left { display: flex; align-items: center; gap: 10px; }
 .header-left .site-name { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: #fff; font-weight: 700; }
 .header-left .site-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
@@ -66,7 +66,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 
 
 .header-right { display: flex; align-items: center; gap: 10px; }
-.header-hebrew { font-family: 'Frank Ruhl Libre', serif; font-size: 14px; color: var(--gold); }
+
 .btn-logout { background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 12px; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 .user-badge { background: rgba(184,151,42,0.2); border: 1px solid rgba(184,151,42,0.4); color: var(--gold); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
 .theme-btn { padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: 12px; background: transparent; font-family: 'Heebo', sans-serif; font-size: 13px; color: var(--muted-theme); cursor: pointer; transition: all 0.2s; font-weight: 500; }
@@ -1093,7 +1093,7 @@ body {
 }
 
 /* Header icons */
-.header-bell, .header-avatar {
+.header-bell {
   filter: var(--icon-filter);
 }
 
@@ -1517,8 +1517,6 @@ body {
   <div class="header-right">
     <div class="header-bell" onclick="showTab('demandes')" title="Demandes">🔔<span class="header-bell-badge" id="header-bell-badge">0</span></div>
     <span class="user-badge" id="header-user-badge">Admin</span>
-    <span class="header-hebrew">בית חב"ד</span>
-    <div class="header-avatar" id="header-avatar">A</div>
     <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
 </div>
