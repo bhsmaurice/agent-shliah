@@ -466,9 +466,9 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   --tab-text: #B0AEC4;
 }
 
-/* PREVENT OVERFLOW */
-html, body { width: 100%; overflow-x: hidden; max-width: 100%; }
-.page, .inner { width: 100%; box-sizing: border-box; }
+/* REMOVED */
+
+
 .card, .field input, .field textarea { max-width: 100%; }
 
 
@@ -810,6 +810,97 @@ html, body {
   .card { padding: 14px; margin-bottom: 12px; }
   .card-title { font-size: 16px; margin-bottom: 14px; }
   .field { margin-bottom: 14px; }
+}
+
+
+
+/* ABSOLUTE NO OVERFLOW SOLUTION */
+html { 
+  width: 100vw; 
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+
+body { 
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box !important;
+  max-width: 100%;
+}
+
+.page {
+  width: 100% !important;
+  overflow-x: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.inner {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  display: block;
+}
+
+.card {
+  width: calc(100% - 28px) !important;
+  margin-left: 14px !important;
+  margin-right: 14px !important;
+  box-sizing: border-box;
+}
+
+.tabs {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  box-sizing: border-box;
+  overflow-x: auto !important;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: calc(100% - 28px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block;
+  box-sizing: border-box;
+}
+
+.btn-main,
+.btn-secondary {
+  width: calc(100% - 28px) !important;
+  margin-left: 14px !important;
+  margin-right: 14px !important;
+  box-sizing: border-box;
+}
+
+.search-box {
+  width: calc(100% - 28px) !important;
+  margin-left: 14px !important;
+  margin-right: 14px !important;
+}
+
+.filter-chips {
+  width: 100% !important;
+  overflow-x: auto !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .card { width: calc(100% - 24px) !important; margin-left: 12px !important; margin-right: 12px !important; }
+  .field input, .field textarea { width: calc(100% - 24px) !important; }
+  .btn-main, .btn-secondary { width: calc(100% - 24px) !important; margin-left: 12px !important; margin-right: 12px !important; }
 }
 
 </style>
