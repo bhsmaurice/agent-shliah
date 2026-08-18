@@ -2475,11 +2475,21 @@ async function chargerStatsHome(){
     const data=await res.json();
     if(data.ok){
       const conversations=data.conversations||[];
-      const today=new Date().toISOString().split('T')[0];
+      const today=new Date();
+      const todayDD=String(today.getDate()).padStart(2,'0');
+      const todayMM=String(today.getMonth()+1).padStart(2,'0');
+      const todayYYYY=today.getFullYear();
+      const todayStr=`${todayDD}/${todayMM}/${todayYYYY}`;
+      const todayIso=today.toISOString().split('T')[0];
+      
       const convAujourdui=conversations.filter(c=>{
         const dateField=c.timestamp||c.created_at||c.date||'';
-        const convDate=dateField?new Date(dateField).toISOString().split('T')[0]:null;
-        return convDate===today;
+        if(!dateField)return false;
+        // Essayer format DD/MM/YYYY
+        if(dateField.includes('/'))return dateField.startsWith(todayStr);
+        // Essayer format ISO YYYY-MM-DD
+        const convDate=new Date(dateField).toISOString().split('T')[0];
+        return convDate===todayIso;
       }).length;
       document.getElementById('home-conv-count').textContent=convAujourdui;
     }
@@ -2489,12 +2499,22 @@ async function chargerStatsHome(){
     const dataCerfa=await resCerfa.json();
     if(dataCerfa.ok){
       const demandes=dataCerfa.demandes||[];
-      const today=new Date().toISOString().split('T')[0];
+      const today=new Date();
+      const todayDD=String(today.getDate()).padStart(2,'0');
+      const todayMM=String(today.getMonth()+1).padStart(2,'0');
+      const todayYYYY=today.getFullYear();
+      const todayStr=`${todayDD}/${todayMM}/${todayYYYY}`;
+      const todayIso=today.toISOString().split('T')[0];
+      
       const cerfahAujourdui=demandes.filter(d=>{
         if(d.type!=='cerfa')return false;
         const dateField=d.date||d.created_at||d.timestamp||'';
-        const cerfarDate=dateField?new Date(dateField).toISOString().split('T')[0]:null;
-        return cerfarDate===today;
+        if(!dateField)return false;
+        // Essayer format DD/MM/YYYY
+        if(dateField.includes('/'))return dateField.startsWith(todayStr);
+        // Essayer format ISO YYYY-MM-DD
+        const cerfarDate=new Date(dateField).toISOString().split('T')[0];
+        return cerfarDate===todayIso;
       }).length;
       document.getElementById('home-cerfa-count').textContent=cerfahAujourdui;
     }
