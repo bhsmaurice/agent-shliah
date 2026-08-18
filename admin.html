@@ -98,6 +98,15 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .alert { border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 12px; display: none; line-height: 1.5; }
 .alert.ok { background: var(--green-bg); color: var(--green); border: 1px solid #A8D5B8; }
 .alert.err { background: var(--red-bg); color: var(--red); border: 1px solid #F5B7B1; }
+.image-upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 24px 14px; text-align: center; background: var(--white); cursor: pointer; transition: all 0.2s; margin-bottom: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.image-upload-zone:hover { border-color: var(--c-purple); background: #F8F6FF; }
+.image-upload-zone.dragover { border-color: var(--c-purple); border-style: solid; background: #F1EEFF; box-shadow: 0 0 0 3px rgba(124,92,252,0.12); }
+.image-upload-zone.dragover .upload-icon { font-size: 36px; }
+.upload-icon { font-size: 32px; margin-bottom: 8px; display: block; transition: all 0.2s; }
+.upload-text { font-size: 13px; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+.upload-subtext { font-size: 11px; color: var(--muted); }
+.image-url-wrapper { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.image-url-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; display: block; }
 .search-box { position: relative; margin-bottom: 14px; }
 .search-box input { width: 100%; padding: 12px 14px 12px 40px; border: 1.5px solid var(--border); border-radius: var(--r); font-family: 'Heebo', sans-serif; font-size: 14px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; }
 .search-box input:focus { border-color: var(--gold); }
@@ -881,7 +890,16 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
     <div class="field"><label>Message (facultatif si image)</label><textarea id="bc-message-unique" rows="4" placeholder="Ton message..." style="min-height:100px;"></textarea></div>
     <div class="field">
       <label>🖼️ Image / Affiche (facultatif)</label>
-      <input type="url" id="bc-image-unique" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+      <div class="image-upload-zone" id="upload-zone-unique" ondrop="handleDropUnique(event)" ondragover="handleDragOverUnique(event)" ondragleave="handleDragLeaveUnique(event)" onclick="document.getElementById('file-input-unique').click()">
+        <span class="upload-icon">📸</span>
+        <div class="upload-text">Glisse une image ici ou clique</div>
+        <div class="upload-subtext">JPG, PNG, GIF jusqu'à 5MB</div>
+      </div>
+      <input type="file" id="file-input-unique" style="display:none;" accept="image/*" onchange="handleFileSelectUnique(event)">
+      <div class="image-url-wrapper">
+        <span class="image-url-label">ou colle un lien :</span>
+        <input type="url" id="bc-image-unique" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);outline:none;">
+      </div>
     </div>
     <button class="btn-main" onclick="envoyerContactUnique()" id="btn-envoyer-unique">📤 Envoyer</button>
     <div class="alert ok" id="unique-result-ok" style="display:none;"></div>
@@ -916,7 +934,16 @@ Chabbat Chalom à toute la communauté ! 🌟
     <div class="field"><label>Message (facultatif si image)</label><textarea id="bc-texte-libre" rows="6" placeholder="Ton message... (laisser vide pour envoyer uniquement l'image)" style="min-height:140px;"></textarea></div>
     <div class="field">
       <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.9px;margin-bottom:6px;">🖼️ Image / Affiche (facultatif)</label>
-      <input type="url" id="bc-image-url" placeholder="https://bhsmaurice.github.io/agent-shliah/histoires/affiche.jpg" style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;">
+      <div class="image-upload-zone" id="upload-zone-broadcast" ondrop="handleDropBroadcast(event)" ondragover="handleDragOverBroadcast(event)" ondragleave="handleDragLeaveBroadcast(event)" onclick="document.getElementById('file-input-broadcast').click()">
+        <span class="upload-icon">📸</span>
+        <div class="upload-text">Glisse une image ici ou clique</div>
+        <div class="upload-subtext">JPG, PNG, GIF jusqu'à 5MB</div>
+      </div>
+      <input type="file" id="file-input-broadcast" style="display:none;" accept="image/*" onchange="handleFileSelectBroadcast(event)">
+      <div class="image-url-wrapper">
+        <span class="image-url-label">ou colle un lien :</span>
+        <input type="url" id="bc-image-url" placeholder="https://..." style="width:100%;font-family:Heebo,sans-serif;font-size:15px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);outline:none;">
+      </div>
       <p style="font-size:11px;color:var(--muted);margin-top:6px;">Si tu ajoutes une image, elle sera envoyée avec le message.</p>
     </div>
   </div>
@@ -2584,6 +2611,19 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('header-search-wrap');
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
+// Image upload drag-drop functions
+function handleDropUnique(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-unique').classList.remove('dragover');const files=e.dataTransfer.files;if(files.length>0)uploadImageUnique(files[0]);}
+function handleDragOverUnique(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-unique').classList.add('dragover');}
+function handleDragLeaveUnique(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-unique').classList.remove('dragover');}
+function handleFileSelectUnique(e){if(e.target.files.length>0)uploadImageUnique(e.target.files[0]);}
+function uploadImageUnique(file){if(!file.type.startsWith('image/')){alert('Selectionne une image!');return;}if(file.size>5*1024*1024){alert('Image trop grande (max 5MB)');return;}const reader=new FileReader();reader.onload=e=>{const url=e.target.result;document.getElementById('bc-image-unique').value=url;document.getElementById('file-input-unique').value='';};reader.readAsDataURL(file);}
+
+function handleDropBroadcast(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-broadcast').classList.remove('dragover');const files=e.dataTransfer.files;if(files.length>0)uploadImageBroadcast(files[0]);}
+function handleDragOverBroadcast(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-broadcast').classList.add('dragover');}
+function handleDragLeaveBroadcast(e){e.preventDefault();e.stopPropagation();document.getElementById('upload-zone-broadcast').classList.remove('dragover');}
+function handleFileSelectBroadcast(e){if(e.target.files.length>0)uploadImageBroadcast(e.target.files[0]);}
+function uploadImageBroadcast(file){if(!file.type.startsWith('image/')){alert('Selectionne une image!');return;}if(file.size>5*1024*1024){alert('Image trop grande (max 5MB)');return;}const reader=new FileReader();reader.onload=e=>{const url=e.target.result;document.getElementById('bc-image-url').value=url;document.getElementById('file-input-broadcast').value='';};reader.readAsDataURL(file);}
+
 function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
 
