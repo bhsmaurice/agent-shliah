@@ -466,6 +466,12 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   --tab-text: #B0AEC4;
 }
 
+/* PREVENT OVERFLOW */
+html, body { width: 100%; overflow-x: hidden; max-width: 100%; }
+.page, .inner { width: 100%; box-sizing: border-box; }
+.card, .field input, .field textarea { max-width: 100%; }
+
+
 
 /* PROFESSIONAL DESIGN SYSTEM */
 
@@ -787,6 +793,25 @@ html, body {
 .chip { background: var(--card-bg); border-color: var(--border-light); color: var(--text-secondary); }
 .dropzone { background: var(--input-bg); border-color: var(--border-light); }
 .dropzone-text { color: var(--text-secondary); }
+
+
+/* STRICT LAYOUT CONTAINMENT */
+* { max-width: 100%; }
+.tabs { max-width: 100%; padding-left: 14px; padding-right: 14px; }
+.card { max-width: calc(100% - 0px); }
+.field input, .field textarea, .field select { width: 100% !important; }
+.btn-main, .btn-secondary { width: 100% !important; }
+.inner { max-width: 100vw; padding-left: 14px; padding-right: 14px; }
+.page { width: 100%; }
+
+/* RESPONSIVE CARD PADDING */
+@media (max-width: 480px) {
+  .inner { padding: 12px; }
+  .card { padding: 14px; margin-bottom: 12px; }
+  .card-title { font-size: 16px; margin-bottom: 14px; }
+  .field { margin-bottom: 14px; }
+}
+
 </style>
 </head>
 <body>
