@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>Shliah Bot — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -462,8 +459,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
 <div class="tabs" id="main-tabs">
-  <div class="tab active" data-tab="accueil" onclick="showTab('accueil')">🏠<span class="tab-label">Accueil</span></div>
-  <div class="tab" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
+  <div class="tab active" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" data-tab="infos" onclick="showTab('infos')">📋<span class="tab-label">Infos</span></div>
   <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
@@ -482,8 +478,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="sidebar" id="app-sidebar">
   <button class="sidebar-cta" onclick="showTab('cerfa')">✦ Nouveau Cerfa</button>
   <div class="sidebar-nav">
-    <div class="sidenav-item active" data-tab="accueil" onclick="showTab('accueil')"><span class="sidenav-icon">🏠</span>Accueil</div>
-    <div class="sidenav-item" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
+    <div class="sidenav-item active" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
     <div class="sidenav-item" data-tab="infos" onclick="showTab('infos')"><span class="sidenav-icon">📋</span>Infos</div>
     <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
     <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
@@ -502,59 +497,8 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="sidebar-foot"><span class="dot"></span>Shliah Bot IA · En ligne</div>
 </div>
 <div class="main-content">
-<!-- ACCUEIL -->
-<div class="page active" id="tab-accueil"><div class="inner">
-  <div class="card" style="background: linear-gradient(135deg, rgba(184,151,42,0.1) 0%, rgba(123,92,252,0.08) 100%); border: 1px solid rgba(184,151,42,0.2);">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-      <div>
-        <div style="font-size: 18px; font-weight: 600;">Bienvenue ! 👋</div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Levi, tout fonctionne bien</div>
-      </div>
-      <div style="font-size: 32px;">✨</div>
-    </div>
-  </div>
-
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
-    <div class="card" style="text-align: center;">
-      <div style="font-size: 24px; margin-bottom: 8px;">👥</div>
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Contacts</div>
-      <div style="font-size: 18px; font-weight: 700; color: var(--gold); margin-bottom: 4px;">639</div>
-      <div style="font-size: 11px; color: var(--muted);">+12 cette semaine</div>
-    </div>
-    <div class="card" style="text-align: center;">
-      <div style="font-size: 24px; margin-bottom: 8px;">🕯️</div>
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Abonnés Chabbat</div>
-      <div style="font-size: 18px; font-weight: 700; color: var(--gold); margin-bottom: 4px;">3</div>
-      <div style="font-size: 11px; color: var(--muted);">En attente : 5</div>
-    </div>
-    <div class="card" style="text-align: center;">
-      <div style="font-size: 24px; margin-bottom: 8px;">💬</div>
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Messages ce mois</div>
-      <div style="font-size: 18px; font-weight: 700; color: var(--gold); margin-bottom: 4px;">1,247</div>
-      <div style="font-size: 11px; color: var(--muted);">+340 depuis hier</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Actions rapides</div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
-      <button class="btn-secondary" style="text-align: center; padding: 14px 10px;" onclick="showTab('contacts')">👥<div style="margin-top: 6px; font-size: 11px;">Contacts</div></button>
-      <button class="btn-secondary" style="text-align: center; padding: 14px 10px;" onclick="showTab('ajouter')">➕<div style="margin-top: 6px; font-size: 11px;">Ajouter Info</div></button>
-      <button class="btn-secondary" style="text-align: center; padding: 14px 10px;" onclick="showTab('broadcast')">📢<div style="margin-top: 6px; font-size: 11px;">Broadcast</div></button>
-      <button class="btn-secondary" style="text-align: center; padding: 14px 10px;" onclick="showTab('paiements')">💰<div style="margin-top: 6px; font-size: 11px;">Paiements</div></button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Dernières conversations</div>
-    <div id="accueil-convs" style="min-height: 80px; display: flex; align-items: center; justify-content: center;">
-      <div style="font-size: 12px; color: var(--muted);">⏳ Chargement...</div>
-    </div>
-  </div>
-</div></div>
-
 <!-- AJOUTER -->
-<div class="page" id="tab-ajouter"><div class="inner">
+<div class="page active" id="tab-ajouter"><div class="inner">
   <div class="card">
     <div class="card-title">Nouvelle information</div>
     <div class="field"><label>Catégorie</label>
@@ -1261,20 +1205,7 @@ function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);upda
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
-function logout(){
-  localStorage.removeItem(SESSION_KEY);
-  pinBuffer='';
-  updateDots();
-  currentUser='admin';
-  activeLoginUser='admin';
-  document.getElementById('login-error').textContent='';
-  document.getElementById('login-user-label').textContent='👤 Administrateur';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-  setTimeout(() => {
-    window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-  }, 500);
-}
+function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
 function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 // ══ UTILS ══
 let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],allHistoires=[],filterCat='tous',filterDemande='tous';
@@ -1283,8 +1214,7 @@ function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
 function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
-  if(name==='accueil')chargerAccueil();
-  else if(name==='broadcast')loadBroadcastContacts();
+  if(name==='broadcast')loadBroadcastContacts();
   else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
   else if(name==='infos')chargerListe();
   else if(name==='histoires')chargerHistoires();
@@ -1296,7 +1226,6 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='paiements')chargerPaiements();
   else if(name==='prive')chargerInfosPrivees();
 }
-async function chargerAccueil(){const url=getUrl(),pw=getAdminPw();if(!url)return;try{const res=await fetch(url+'/admin/home/recent-conversations?password='+encodeURIComponent(pw));const data=await res.json();if(data.ok&&data.conversations.length>0){const container=document.getElementById('accueil-convs');if(container){container.innerHTML='';data.conversations.slice(0,6).forEach(conv=>{const nom=conv.prenom?conv.prenom+(conv.nom?' '+conv.nom:''):(conv.nom||conv.phone);const preview=(conv.question||'').substring(0,60);const reponsePreview=(conv.reponse||'').substring(0,60);const date=new Date(conv.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const el=document.createElement('div');el.style.cssText='display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer;';el.onclick=()=>showTab('questions');el.innerHTML=`<div style="font-size:20px;">💬</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nom}</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"${preview}${preview.length>=60?'...':''}"</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">${date}</div></div>`;container.appendChild(el);}}}}catch(e){console.error(e);}}
 function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
 function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
 function selectFilter(chip){document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterCat=chip.dataset.filter;afficherInfos();}
@@ -2655,45 +2584,7 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('header-search-wrap');
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
-function restaurerSession(){
-  try{
-    const raw=localStorage.getItem(SESSION_KEY);
-    if(!raw){
-      // Pas de session : rediriger vers la nouvelle page login
-      if(!window.location.href.includes('login.html')){
-        window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-      }
-      return;
-    }
-    
-    const s=JSON.parse(raw);
-    if(!s||!s.role||!s.until){
-      localStorage.removeItem(SESSION_KEY);
-      window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-      return;
-    }
-    
-    if(Date.now()>s.until){
-      localStorage.removeItem(SESSION_KEY);
-      window.location = 'https://bhsmaurice.github.io/agent-shliah/login.html';
-      return;
-    }
-    
-    currentUser=s.role;
-    activeLoginUser=s.role;
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    
-    const u=localStorage.getItem('railway_url');
-    if(u){
-      document.getElementById('server-url').value=u;
-      document.getElementById('current-url').textContent=u;
-    }
-    const p=localStorage.getItem('railway_admin_pw');
-    if(p)document.getElementById('admin-pw-config').value=p;
-    applyUserRole(s.role);
-  }catch(e){}
-}
+function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
 
 // Versions Modal
