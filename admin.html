@@ -2482,6 +2482,9 @@ async function chargerStatsHome(){
       const todayStr=`${todayDD}/${todayMM}/${todayYYYY}`;
       const todayIso=today.toISOString().split('T')[0];
       
+      console.log('🔍 Debug Conversations:', {todayStr, todayIso, totalConv: conversations.length});
+      conversations.slice(0,3).forEach((c,i) => console.log(`Conv ${i}:`, c.timestamp, c.created_at, c.date));
+      
       const convAujourdui=conversations.filter(c=>{
         const dateField=c.timestamp||c.created_at||c.date||'';
         if(!dateField)return false;
@@ -2491,6 +2494,7 @@ async function chargerStatsHome(){
         const convDate=new Date(dateField).toISOString().split('T')[0];
         return convDate===todayIso;
       }).length;
+      console.log('💬 Conversations aujourd\'hui:', convAujourdui);
       document.getElementById('home-conv-count').textContent=convAujourdui;
     }
   }catch(e){}
@@ -2506,6 +2510,9 @@ async function chargerStatsHome(){
       const todayStr=`${todayDD}/${todayMM}/${todayYYYY}`;
       const todayIso=today.toISOString().split('T')[0];
       
+      console.log('🔍 Debug Cerfa:', {todayStr, todayIso, totalDemandes: demandes.length});
+      demandes.slice(0,3).forEach((d,i) => console.log(`Demande ${i}:`, d.type, d.date, d.created_at, d.timestamp));
+      
       const cerfahAujourdui=demandes.filter(d=>{
         if(d.type!=='cerfa')return false;
         const dateField=d.date||d.created_at||d.timestamp||'';
@@ -2516,6 +2523,7 @@ async function chargerStatsHome(){
         const cerfarDate=new Date(dateField).toISOString().split('T')[0];
         return cerfarDate===todayIso;
       }).length;
+      console.log('📊 Cerfa aujourd\'hui:', cerfahAujourdui);
       document.getElementById('home-cerfa-count').textContent=cerfahAujourdui;
     }
   }catch(e){}
