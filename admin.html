@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>Shliah Bot — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -462,8 +459,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 </div>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
 <div class="tabs" id="main-tabs">
-  <div class="tab active" data-tab="accueil" onclick="showTab('accueil')">🏠<span class="tab-label">Accueil</span></div>
-  <div class="tab" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
+  <div class="tab active" data-tab="ajouter" onclick="showTab('ajouter')">➕<span class="tab-label">Ajouter</span></div>
   <div class="tab" data-tab="infos" onclick="showTab('infos')">📋<span class="tab-label">Infos</span></div>
   <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
@@ -482,8 +478,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 <div class="sidebar" id="app-sidebar">
   <button class="sidebar-cta" onclick="showTab('cerfa')">✦ Nouveau Cerfa</button>
   <div class="sidebar-nav">
-    <div class="sidenav-item active" data-tab="accueil" onclick="showTab('accueil')"><span class="sidenav-icon">🏠</span>Accueil</div>
-    <div class="sidenav-item" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
+    <div class="sidenav-item active" data-tab="ajouter" onclick="showTab('ajouter')"><span class="sidenav-icon">➕</span>Ajouter</div>
     <div class="sidenav-item" data-tab="infos" onclick="showTab('infos')"><span class="sidenav-icon">📋</span>Infos</div>
     <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
     <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
@@ -502,96 +497,34 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
   <div class="sidebar-foot"><span class="dot"></span>Shliah Bot IA · En ligne</div>
 </div>
 <div class="main-content">
-<!-- ACCUEIL V2 -->
-<div class="page active" id="tab-accueil"><div class="inner" style="padding: 0;">
-  <!-- Header avec logo et menu -->
-  <div style="background: linear-gradient(135deg, #1a0a3e 0%, #2d1b5e 100%); padding: 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px;">
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-      <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px;">🤖</div>
-      <div>
-        <div style="font-size: 18px; font-weight: 700; color: white;">Shliah Bot</div>
-        <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Panneau d'administration</div>
-      </div>
-      <div style="margin-left: auto; display: flex; gap: 8px;">
-        <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">🔔</button>
-        <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">A</button>
-        <button class="btn-secondary" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;" onclick="logout()">↪️</button>
+<!-- AJOUTER -->
+<div class="page active" id="tab-ajouter"><div class="inner">
+  <div class="card">
+    <div class="card-title">Nouvelle information</div>
+    <div class="field"><label>Catégorie</label>
+      <div class="cat-grid">
+        <button class="cat-btn active" data-cat="priere" onclick="selectCat(this)">🙏 Prière</button>
+        <button class="cat-btn" data-cat="horaire" onclick="selectCat(this)">🕐 Horaire</button>
+        <button class="cat-btn" data-cat="cours" onclick="selectCat(this)">📚 Cours</button>
+        <button class="cat-btn" data-cat="service" onclick="selectCat(this)">🔧 Service</button>
+        <button class="cat-btn" data-cat="evenement" onclick="selectCat(this)">✡️ Événement</button>
+        <button class="cat-btn" data-cat="autre" onclick="selectCat(this)">📝 Autre</button>
       </div>
     </div>
-
-    <!-- Barre de recherche -->
-    <div style="position: relative;">
-      <input type="text" placeholder="🔍 Rechercher..." style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(168,85,247,0.3); border-radius: 12px; color: white; font-size: 13px; outline: none;">
-    </div>
-  </div>
-
-  <!-- Icônes principales (grille) -->
-  <div style="padding: 0 16px; margin-bottom: 30px;">
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; transition: all 0.2s;" onclick="showTab('ajouter')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">➕</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Nouveau</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('demandes')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">📋</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Reçus</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('infos')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">📚</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Cours</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('musiques')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">🎵</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Audio</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('contacts')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">👥</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Contacts</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('paiements')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">💰</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Dons</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('questions')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">💬</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Messages</div>
-      </button>
-      <button class="btn-secondary" style="aspect-ratio: 1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0;" onclick="showTab('export')" onmouseover="this.style.background='rgba(168,85,247,0.2)'" onmouseout="this.style.background=''">
-        <div style="font-size: 24px;">📊</div>
-        <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Rapports</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- Stats rapides -->
-  <div style="padding: 0 16px; margin-bottom: 24px;">
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-      <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(139,92,246,0.1) 100%); border: 1px solid rgba(168,85,247,0.3);">
-        <div style="font-size: 28px; margin-bottom: 8px;">👥</div>
-        <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 4px;">Contacts</div>
-        <div style="font-size: 20px; font-weight: 700; color: #a78bfa;">639</div>
+    <div class="field"><label>Titre</label><input type="text" id="titre" placeholder="Ex: Téfilat HaDerech"></div>
+    <div class="field"><label>Contenu</label><textarea id="contenu" placeholder="Écrivez ici l'information..."></textarea></div>
+    <div class="field"><label>Image (facultatif)</label>
+      <div class="dropzone" id="dropzone-ajouter" onclick="document.getElementById('image-file-ajouter').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleImageDrop(event,'ajouter')">
+        <input type="file" id="image-file-ajouter" accept="image/*" style="display:none" onchange="handleImageFile(this.files[0],'ajouter')">
+        <div class="dropzone-text" id="dropzone-text-ajouter">📷 Glisse une image ici ou clique pour choisir<span>ou colle un lien d'image ci-dessous</span></div>
+        <img id="preview-ajouter" style="display:none">
       </div>
-      <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(139,92,246,0.1) 100%); border: 1px solid rgba(168,85,247,0.3);">
-        <div style="font-size: 28px; margin-bottom: 8px;">🕯️</div>
-        <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 4px;">Chabbat</div>
-        <div style="font-size: 20px; font-weight: 700; color: #a78bfa;">15</div>
-      </div>
-      <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(139,92,246,0.1) 100%); border: 1px solid rgba(168,85,247,0.3);">
-        <div style="font-size: 28px; margin-bottom: 8px;">💬</div>
-        <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 4px;">Messages</div>
-        <div style="font-size: 20px; font-weight: 700; color: #a78bfa;">1.2K</div>
-      </div>
+      <input type="url" id="image-url" placeholder="https://... (rempli automatiquement si tu uploades une image)" style="margin-top:8px;">
     </div>
-  </div>
-
-  <!-- Quick actions -->
-  <div style="padding: 0 16px;">
-    <div class="card" style="background: linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(139,92,246,0.1) 100%); border: 1px solid rgba(168,85,247,0.3);">
-      <div style="display: flex; gap: 10px;">
-        <button class="btn-main" style="flex: 1; background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);" onclick="showTab('broadcast')">📢 Broadcast</button>
-        <button class="btn-secondary" style="flex: 1;" onclick="showTab('cerfa')">🧾 Cerfa</button>
-      </div>
-    </div>
+    <div class="field"><label>Instruction pour l'agent (facultatif)</label><input type="text" id="instruction" placeholder="Ex: Demander la langue avant d'envoyer"></div>
+    <button class="btn-main" id="btn-send" onclick="envoyer()">✦ Envoyer à l'agent</button>
+    <div class="alert ok" id="alert-ok"></div>
+    <div class="alert err" id="alert-err"></div>
   </div>
 </div></div>
 <!-- INFOS -->
@@ -1267,35 +1200,12 @@ function getPin(){return localStorage.getItem(PIN_KEY)||DEFAULT_PIN;}
 function getPin2(){return localStorage.getItem(PIN2_KEY)||'';}
 function getPin2Name(){return localStorage.getItem(PIN2_NAME_KEY)||'2ème utilisateur';}
 function switchUser(){activeLoginUser=activeLoginUser==='admin'?'user2':'admin';pinBuffer='';updateDots();document.getElementById('login-error').textContent='';if(activeLoginUser==='user2'){const name=getPin2Name();document.getElementById('login-user-label').textContent=`👤 ${name}`;if(!getPin2()){document.getElementById('login-error').textContent='Aucun 2ème utilisateur configuré';activeLoginUser='admin';document.getElementById('login-user-label').textContent='👤 Administrateur';}}else{document.getElementById('login-user-label').textContent='👤 Administrateur';}}
-function pinPress(digit){
-  const now=Date.now();
-  if(now<lockUntil){
-    document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;
-    return;
-  }
-  if(pinBuffer.length>=6)return;
-  pinBuffer+=digit;
-  console.log('PIN tapé:', pinBuffer);
-  updateDots();
-  if(pinBuffer.length===6){
-    setTimeout(()=>checkPin(),100);
-  }
-}
+function pinPress(digit){const now=Date.now();if(now<lockUntil){document.getElementById('login-error').textContent=`Bloqué — réessayez dans ${Math.ceil((lockUntil-now)/1000)}s`;return;}if(pinBuffer.length>=6)return;pinBuffer+=digit;updateDots();if(pinBuffer.length===6)setTimeout(()=>checkPin(),100);}
 function pinDelete(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
 function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById('dot-'+i);d.className='pin-dot';if(state==='error')d.classList.add('error');else if(i<pinBuffer.length)d.classList.add('filled');}}
 function checkPin(){const adminPin=getPin(),user2Pin=getPin2();let matched=false,role='';if(activeLoginUser==='admin'&&pinBuffer===adminPin){matched=true;role='admin';}else if(activeLoginUser==='user2'&&user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}else if(pinBuffer===adminPin){matched=true;role='admin';}else if(user2Pin&&pinBuffer===user2Pin){matched=true;role='user2';}if(matched){loginAttempts=0;currentUser=role;localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{loginAttempts++;updateDots('error');document.getElementById('login-error').textContent=loginAttempts>=5?'Trop de tentatives — bloqué 30s':`Code incorrect (${loginAttempts}/5)`;if(loginAttempts>=5){lockUntil=Date.now()+30000;loginAttempts=0;}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
-function logout(){
-  localStorage.removeItem(SESSION_KEY);
-  pinBuffer='';
-  updateDots();
-  currentUser='admin';
-  activeLoginUser='admin';
-  document.getElementById('login-error').textContent='';
-  document.getElementById('login-user-label').textContent='👤 Administrateur';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-}
+function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
 function changerPin(type){if(type==='admin'){const np=document.getElementById('new-pin').value.trim(),cp=document.getElementById('confirm-pin').value.trim(),ok=document.getElementById('alert-pin-ok'),err=document.getElementById('alert-pin-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN_KEY,np);ok.textContent='✓ PIN admin changé !';ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin').value='';document.getElementById('confirm-pin').value='';}else{const np=document.getElementById('new-pin-2').value.trim(),cp=document.getElementById('confirm-pin-2').value.trim(),name=document.getElementById('user2-name').value.trim(),ok=document.getElementById('alert-pin2-ok'),err=document.getElementById('alert-pin2-err');ok.style.display='none';err.style.display='none';if(!/^\d{6}$/.test(np)){err.textContent='Le PIN doit contenir exactement 6 chiffres';err.className='alert err';err.style.display='block';return;}if(np!==cp){err.textContent='Les deux PIN ne correspondent pas';err.className='alert err';err.style.display='block';return;}localStorage.setItem(PIN2_KEY,np);if(name)localStorage.setItem(PIN2_NAME_KEY,name);ok.textContent=`✓ 2ème utilisateur "${name||'Utilisateur'}" enregistré !`;ok.className='alert ok';ok.style.display='block';document.getElementById('new-pin-2').value='';document.getElementById('confirm-pin-2').value='';}}
 // ══ UTILS ══
 let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],allHistoires=[],filterCat='tous',filterDemande='tous';
@@ -1304,8 +1214,7 @@ function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
 function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
-  if(name==='accueil')chargerAccueil();
-  else if(name==='broadcast')loadBroadcastContacts();
+  if(name==='broadcast')loadBroadcastContacts();
   else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
   else if(name==='infos')chargerListe();
   else if(name==='histoires')chargerHistoires();
@@ -1317,7 +1226,6 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='paiements')chargerPaiements();
   else if(name==='prive')chargerInfosPrivees();
 }
-async function chargerAccueil(){const url=getUrl(),pw=getAdminPw();if(!url)return;try{const res=await fetch(url+'/admin/home/recent-conversations?password='+encodeURIComponent(pw));const data=await res.json();if(data.ok&&data.conversations.length>0){const container=document.getElementById('accueil-convs');if(container){container.innerHTML='';data.conversations.slice(0,6).forEach(conv=>{const nom=conv.prenom?conv.prenom+(conv.nom?' '+conv.nom:''):(conv.nom||conv.phone);const preview=(conv.question||'').substring(0,60);const reponsePreview=(conv.reponse||'').substring(0,60);const date=new Date(conv.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const el=document.createElement('div');el.style.cssText='display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer;';el.onclick=()=>showTab('questions');el.innerHTML=`<div style="font-size:20px;">💬</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nom}</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"${preview}${preview.length>=60?'...':''}"</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">${date}</div></div>`;container.appendChild(el);}}}}catch(e){console.error(e);}}
 function selectCat(btn){document.querySelectorAll('#tab-ajouter .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');catSelected=btn.dataset.cat;}
 function selectEditCat(btn){document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');editCatSelected=btn.dataset.cat;}
 function selectFilter(chip){document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');filterCat=chip.dataset.filter;afficherInfos();}
@@ -2676,37 +2584,7 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('header-search-wrap');
   if(wrap&&!wrap.contains(e.target)){const box=document.getElementById('header-search-results');if(box)box.classList.remove('active');}
 });
-function restaurerSession(){
-  try{
-    const raw=localStorage.getItem(SESSION_KEY);
-    if(!raw) return; // Pas de session, le login screen s'affiche déjà
-    
-    const s=JSON.parse(raw);
-    if(!s||!s.role||!s.until){
-      localStorage.removeItem(SESSION_KEY);
-      return;
-    }
-    
-    if(Date.now()>s.until){
-      localStorage.removeItem(SESSION_KEY);
-      return;
-    }
-    
-    currentUser=s.role;
-    activeLoginUser=s.role;
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    
-    const u=localStorage.getItem('railway_url');
-    if(u){
-      document.getElementById('server-url').value=u;
-      document.getElementById('current-url').textContent=u;
-    }
-    const p=localStorage.getItem('railway_admin_pw');
-    if(p)document.getElementById('admin-pw-config').value=p;
-    applyUserRole(s.role);
-  }catch(e){}
-}
+function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
 
 // Versions Modal
