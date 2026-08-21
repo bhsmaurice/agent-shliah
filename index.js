@@ -2236,6 +2236,100 @@ app.post('/api/admin/theme/update', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════
+// TSEDAKA QUOTIDIENNE — enregistrement des abonnés
+// ═══════════════════════════════════════════════
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+
+async function initTsedakaDB() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS tsedaka_abonnes (
+      id SERIAL PRIMARY KEY,
+      phone TEXT UNIQUE NOT NULL,
+      prenom TEXT,
+      nom TEXT,
+      adresse TEXT,
+      stripe_customer_id TEXT,
+      stripe_payment_method_id TEXT,
+      carte_gardee BOOLEAN DEFAULT FALSE,
+      rappel_quotidien BOOLEAN DEFAULT FALSE,
+      dernier_don_le DATE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    console.log('Table tsedaka_abonnes prete');
+  } catch (e) {
+    console.error('Table tsedaka_abonnes error:', e.message);
+  }
+}
+initTsedakaDB();
+
+// Recupere la carte utilisee lors d'un paiement Stripe
+async function stripeGetPaymentMethod(paymentIntentId) {
+  if (!STRIPE_SECRET_KEY || !paymentIntentId) return null;
+  try {
+    const res = await fetch('https://api.stripe.com/v1/payment_intents/' + paymentIntentId, {
+      headers: { Authorization: 'Bearer ' + STRIPE_SECRET_KEY }
+    });
+    const data = await res.json();
+    if (data.error) { console.error('Stripe error:', data.error.message); return null; }
+    return { paymentMethodId: data.payment_method || null, customerId: data.customer || null };
+  } catch (e) {
+    console.error('Stripe fetch error:', e.message);
+    return null;
+  }
+}
+
+// Appele par la page Tsedaka quand la personne coche une case
+app.post('/tsedaka/abonner', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const { phone, prenom, nom, adresse, garder_carte, rappel_quotidien, payment_intent_id, customer_id } = req.body;
+    if (!phone) return;
+    if (!garder_carte && !rappel_quotidien) return;
+
+    let phoneFormatted = String(phone).replace(/\D/g, '');
+    if (phoneFormatted.startsWith('0')) phoneFormatted = '33' + phoneFormatted.slice(1);
+
+    let pmId = null;
+    let custId = customer_id || null;
+    if (garder_carte) {
+      const info = await stripeGetPaymentMethod(payment_intent_id);
+      if (info) {
+        pmId = info.paymentMethodId;
+        custId = info.customerId || custId;
+      }
+    }
+
+    await pool.query(`
+      INSERT INTO tsedaka_abonnes (phone, prenom, nom, adresse, stripe_customer_id, stripe_payment_method_id, carte_gardee, rappel_quotidien)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT (phone) DO UPDATE SET
+        prenom = COALESCE(EXCLUDED.prenom, tsedaka_abonnes.prenom),
+        nom = COALESCE(EXCLUDED.nom, tsedaka_abonnes.nom),
+        adresse = COALESCE(EXCLUDED.adresse, tsedaka_abonnes.adresse),
+        stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, tsedaka_abonnes.stripe_customer_id),
+        stripe_payment_method_id = COALESCE(EXCLUDED.stripe_payment_method_id, tsedaka_abonnes.stripe_payment_method_id),
+        carte_gardee = (EXCLUDED.carte_gardee OR tsedaka_abonnes.carte_gardee),
+        rappel_quotidien = EXCLUDED.rappel_quotidien
+    `, [phoneFormatted, prenom || null, nom || null, adresse || null, custId, pmId, !!garder_carte, !!rappel_quotidien]);
+
+    console.log('Tsedaka abonne enregistre:', phoneFormatted, '| carte:', !!pmId, '| rappel:', !!rappel_quotidien);
+  } catch (e) {
+    console.error('Tsedaka abonner error:', e.message);
+  }
+});
+
+// Voir la liste des abonnes Tsedaka
+app.get('/admin/tsedaka/abonnes', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const r = await pool.query('SELECT phone, prenom, nom, carte_gardee, rappel_quotidien, dernier_don_le, created_at FROM tsedaka_abonnes ORDER BY created_at DESC');
+    res.json({ ok: true, abonnes: r.rows, total: r.rows.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
