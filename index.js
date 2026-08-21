@@ -2492,6 +2492,127 @@ app.get('/test/tsedaka/:password', async (req, res) => {
     res.send('Erreur: ' + e.message);
   }
 });
+// ═══════════════════════════════════════════════
+// CERFA TSEDAKA — recapitulatif mensuel + a la demande
+// ═══════════════════════════════════════════════
+
+pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS cerfa_numero TEXT').catch(() => {});
+
+// Genere UN seul Cerfa qui regroupe tous les dons pas encore factures
+async function genererCerfaTsedaka(phone, avantDate) {
+  try {
+    let sql = 'SELECT id, montant, date_don FROM tsedaka_dons WHERE phone=$1 AND cerfa_numero IS NULL';
+    const params = [phone];
+    if (avantDate) { sql += ' AND date_don < $2'; params.push(avantDate); }
+    sql += ' ORDER BY date_don ASC';
+    const dons = await pool.query(sql, params);
+    if (dons.rows.length === 0) return { ok: false, raison: 'aucun don a facturer' };
+
+    const total = dons.rows.reduce((s, d) => s + parseFloat(d.montant), 0);
+    const ids = dons.rows.map(d => d.id);
+
+    const a = await pool.query('SELECT * FROM tsedaka_abonnes WHERE phone=$1', [phone]);
+    const ab = a.rows[0] || {};
+    const nom = ab.nom || 'Donateur';
+    const prenom = ab.prenom || '-';
+    const adresse = ab.adresse || '';
+
+    const premier = new Date(dons.rows[0].date_don);
+    const dernier = new Date(dons.rows[dons.rows.length - 1].date_don);
+    const periode = premier.toLocaleDateString('fr-FR') + ' au ' + dernier.toLocaleDateString('fr-FR');
+
+    const numero = await getNextCerfaNumero();
+    const dateDon = dernier.toISOString().slice(0, 10);
+    const dateVersement = dernier.toLocaleDateString('fr-FR');
+
+    const pdfBuffer = await generateCerfaPDF({
+      numero,
+      nom: nom,
+      prenom: prenom,
+      adresse: adresse,
+      montant: total,
+      mode: 'Carte bancaire',
+      dateVersement: dateVersement
+    });
+
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [numero, nom, prenom, adresse, total, 'Carte bancaire', dateDon, null]
+    );
+    await pool.query('UPDATE tsedaka_dons SET cerfa_numero=$1 WHERE id = ANY($2)', [numero, ids]);
+
+    const totalAffiche = total.toFixed(2).replace('.', ',');
+    await sendWhatsApp(phone,
+      "Voici ton recu fiscal pour tes Tsedakot.\n\n" +
+      "Periode : " + periode + "\n" +
+      "Nombre de dons : " + dons.rows.length + "\n" +
+      "Total : " + totalAffiche + " euros\n\n" +
+      "Merci beaucoup pour ton soutien !\n\n" + getSignature()
+    );
+    await sendWhatsAppDocument(phone, pdfBuffer, 'Cerfa_' + numero + '.pdf');
+    envoyerBackupCerfa({ numero, nom, prenom, adresse, montant: total, mode: 'Carte bancaire', dateVersement, email: null }, pdfBuffer)
+      .catch(e => console.error('Backup Cerfa Tsedaka:', e.message));
+
+    console.log('Cerfa Tsedaka envoye:', numero, phone, total);
+    return { ok: true, numero: numero, total: total, nb: dons.rows.length };
+  } catch (e) {
+    console.error('genererCerfaTsedaka error:', e.message);
+    return { ok: false, raison: e.message };
+  }
+}
+
+// A LA DEMANDE : la personne ecrit "cerfa" au bot
+async function handleCerfaTsedakaCommand(from, text) {
+  try {
+    const t = (text || '').toLowerCase();
+    const demande = ['cerfa', 'recu fiscal', 'reçu fiscal', 'mon recu', 'mon reçu'].some(m => t.includes(m));
+    if (!demande) return false;
+    const d = await pool.query('SELECT 1 FROM tsedaka_dons WHERE phone=$1 AND cerfa_numero IS NULL LIMIT 1', [from]);
+    if (d.rows.length === 0) return false;
+    await sendWhatsApp(from, "Je prepare ton recu fiscal, un instant...");
+    await genererCerfaTsedaka(from, null);
+    return true;
+  } catch (e) {
+    console.error('handleCerfaTsedakaCommand error:', e.message);
+    return false;
+  }
+}
+
+// AUTOMATIQUE : le 1er de chaque mois a 9h, Cerfa du mois precedent
+function demarrerCronCerfaTsedaka() {
+  setInterval(async () => {
+    const heuresParis = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    if (heuresParis.getDate() !== 1) return;
+    if (heuresParis.getHours() !== 9 || heuresParis.getMinutes() >= 5) return;
+    const cacheKey = 'cerfa_tsedaka_' + heuresParis.toISOString().slice(0, 7);
+    if (global[cacheKey]) return;
+    global[cacheKey] = true;
+    const premierDuMois = heuresParis.toISOString().slice(0, 8) + '01';
+    console.log('Cerfa Tsedaka mensuel : generation en cours...');
+    try {
+      const r = await pool.query('SELECT DISTINCT phone FROM tsedaka_dons WHERE cerfa_numero IS NULL AND date_don < $1', [premierDuMois]);
+      for (const row of r.rows) {
+        await genererCerfaTsedaka(row.phone, premierDuMois);
+        await new Promise(res => setTimeout(res, 500));
+      }
+      console.log('Cerfa Tsedaka mensuel : ' + r.rows.length + ' envoyes');
+    } catch (e) {
+      console.error('Cron Cerfa Tsedaka error:', e.message);
+    }
+  }, 5 * 60 * 1000);
+  console.log('Cron Cerfa Tsedaka mensuel demarre');
+}
+demarrerCronCerfaTsedaka();
+
+// TEST : generer tout de suite le Cerfa d'un numero
+app.get('/test/cerfa-tsedaka/:password/:phone', async (req, res) => {
+  if (req.params.password !== ADMIN_PASSWORD) return res.send('Mot de passe incorrect');
+  const r = await genererCerfaTsedaka(req.params.phone, null);
+  res.send(r.ok
+    ? ('Cerfa ' + r.numero + ' envoye : ' + r.total + ' euros (' + r.nb + ' dons)')
+    : ('Rien a envoyer : ' + r.raison));
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
