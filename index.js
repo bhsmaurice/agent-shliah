@@ -2325,8 +2325,7 @@ app.get('/admin/tsedaka/abonnes', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   try {
-    const r = await pool.query('SELECT phone, prenom, nom, carte_gardee, rappel_quotidien, dernier_don_le, created_at FROM tsedaka_abonnes ORDER BY created_at DESC');
-    res.json({ ok: true, abonnes: r.rows, total: r.rows.length });
+    const r = await pool.query('SELECT * FROM tsedaka_abonnes ORDER BY created_at DESC');    res.json({ ok: true, abonnes: r.rows, total: r.rows.length });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
   }
