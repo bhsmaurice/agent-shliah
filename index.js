@@ -1211,6 +1211,7 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id;
+            if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && isAuthorizedAdminCerfa(from)) {
         if (buttonId === 'valider_chabbat') {
           await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
@@ -2328,6 +2329,168 @@ app.get('/admin/tsedaka/abonnes', async (req, res) => {
     res.json({ ok: true, abonnes: r.rows, total: r.rows.length });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
+  }
+});
+// ═══════════════════════════════════════════════
+// TSEDAKA QUOTIDIENNE — rappel 10h + paiement en 1 clic
+// ═══════════════════════════════════════════════
+
+const TSEDAKA_MONTANTS = {
+  tsedaka_050: 0.50,
+  tsedaka_100: 1,
+  tsedaka_500: 5
+};
+
+async function initTsedakaDons() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS tsedaka_dons (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      montant NUMERIC(10,2) NOT NULL,
+      stripe_payment_intent_id TEXT,
+      date_don DATE DEFAULT CURRENT_DATE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    console.log('Table tsedaka_dons prete');
+  } catch (e) {
+    console.error('Table tsedaka_dons error:', e.message);
+  }
+}
+initTsedakaDons();
+
+// Debite la carte deja enregistree (la personne n'a rien a retaper)
+async function stripeDebiterCarteGardee(customerId, paymentMethodId, montant) {
+  if (!STRIPE_SECRET_KEY) return { ok: false, error: 'STRIPE_SECRET_KEY manquante sur Railway' };
+  if (!customerId || !paymentMethodId) return { ok: false, error: 'Carte non enregistree' };
+  try {
+    const params = new URLSearchParams();
+    params.append('amount', String(Math.round(montant * 100)));
+    params.append('currency', 'eur');
+    params.append('customer', customerId);
+    params.append('payment_method', paymentMethodId);
+    params.append('off_session', 'true');
+    params.append('confirm', 'true');
+    params.append('description', 'Tsedaka quotidienne Beth Habad S. Maurice');
+    const res = await fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + STRIPE_SECRET_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+    const data = await res.json();
+    if (data.error) return { ok: false, error: data.error.message };
+    if (data.status !== 'succeeded') return { ok: false, error: 'Paiement non abouti (' + data.status + ')' };
+    return { ok: true, id: data.id };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Quand la personne clique sur un montant dans WhatsApp
+async function gererBoutonTsedaka(from, buttonId) {
+  const montant = TSEDAKA_MONTANTS[buttonId];
+  if (!montant) return;
+  try {
+    const r = await pool.query('SELECT * FROM tsedaka_abonnes WHERE phone=$1', [from]);
+    if (r.rows.length === 0 || !r.rows[0].carte_gardee || !r.rows[0].stripe_payment_method_id) {
+      await sendWhatsApp(from, "Je ne retrouve pas ta carte enregistree.\n\nTu peux faire ta Tsedaka ici :\nhttps://habadsmauriceplateau.com/Tsedaka/");
+      return;
+    }
+    const ab = r.rows[0];
+    const paiement = await stripeDebiterCarteGardee(ab.stripe_customer_id, ab.stripe_payment_method_id, montant);
+    if (!paiement.ok) {
+      console.error('Tsedaka paiement echoue', from, paiement.error);
+      await sendWhatsApp(from, "Le paiement n'a pas pu passer.\n\nTu peux essayer ici :\nhttps://habadsmauriceplateau.com/Tsedaka/\n\n" + getSignature());
+      return;
+    }
+    await pool.query('INSERT INTO tsedaka_dons (phone, montant, stripe_payment_intent_id) VALUES ($1,$2,$3)', [from, montant, paiement.id]);
+    await pool.query('UPDATE tsedaka_abonnes SET dernier_don_le = CURRENT_DATE WHERE phone=$1', [from]);
+    const montantAffiche = montant === 0.5 ? '0,50' : String(montant);
+    await sendWhatsApp(from, "Tizkou Lemitsvot !\n\nTu as accompli la mitsva de Tsedaka aujourd'hui : " + montantAffiche + " euros\n\n" + getSignature());
+    console.log('Tsedaka quotidienne OK:', from, montant);
+  } catch (e) {
+    console.error('gererBoutonTsedaka error:', e.message);
+  }
+}
+
+// Envoie le rappel a tous les abonnes
+async function envoyerRappelsTsedaka() {
+  try {
+    const r = await pool.query('SELECT phone, prenom FROM tsedaka_abonnes WHERE rappel_quotidien = TRUE');
+    if (r.rows.length === 0) { console.log('Tsedaka: aucun abonne au rappel'); return; }
+    let envoyes = 0;
+    for (const ab of r.rows) {
+      try {
+        const salut = ab.prenom ? 'Chalom ' + ab.prenom + ' !' : 'Chalom !';
+        await sendWhatsAppButtons(
+          ab.phone,
+          salut + "\n\nC'est le moment de ta Tsedaka du jour.\n\nChoisis ton montant :",
+          [
+            { id: 'tsedaka_050', title: '0,50 euros' },
+            { id: 'tsedaka_100', title: '1 euro' },
+            { id: 'tsedaka_500', title: '5 euros' }
+          ]
+        );
+        envoyes++;
+        await new Promise(res => setTimeout(res, 300));
+      } catch (e) {
+        console.error('Rappel Tsedaka erreur', ab.phone, e.message);
+      }
+    }
+    console.log('Tsedaka: ' + envoyes + '/' + r.rows.length + ' rappels envoyes');
+  } catch (e) {
+    console.error('envoyerRappelsTsedaka error:', e.message);
+  }
+}
+
+// Cron : chaque jour a 10h, JAMAIS le samedi (Chabbat)
+function demarrerCronTsedaka() {
+  setInterval(async () => {
+    const heuresParis = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const jour = heuresParis.getDay();
+    const heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
+    if (jour === 6) return; // samedi = Chabbat, on n'envoie rien
+    if (heure === 10 && minute < 5) {
+      const dateAujourdhui = heuresParis.toISOString().slice(0, 10);
+      const cacheKey = 'tsedaka_rappel_' + dateAujourdhui;
+      if (global[cacheKey]) return;
+      global[cacheKey] = true;
+      console.log('Tsedaka: envoi des rappels du jour...');
+      await envoyerRappelsTsedaka();
+    }
+  }, 5 * 60 * 1000);
+  console.log('Cron Tsedaka quotidienne demarre (pas le samedi)');
+}
+demarrerCronTsedaka();
+
+// Voir les dons Tsedaka quotidiens
+app.get('/admin/tsedaka/dons', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const r = await pool.query(`
+      SELECT d.*, a.prenom, a.nom
+      FROM tsedaka_dons d
+      LEFT JOIN tsedaka_abonnes a ON a.phone = d.phone
+      ORDER BY d.created_at DESC LIMIT 200
+    `);
+    const total = r.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    res.json({ ok: true, dons: r.rows, nombre: r.rows.length, total_collecte: total });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+// TEST : ouvrir ce lien pour recevoir le rappel tout de suite
+app.get('/test/tsedaka/:password', async (req, res) => {
+  if (req.params.password !== ADMIN_PASSWORD) return res.send('Mot de passe incorrect');
+  try {
+    await envoyerRappelsTsedaka();
+    res.send('Rappels Tsedaka envoyes ! Regarde ton WhatsApp.');
+  } catch (e) {
+    res.send('Erreur: ' + e.message);
   }
 });
 const PORT = process.env.PORT || 3000;
