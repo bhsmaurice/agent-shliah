@@ -2157,7 +2157,18 @@ app.post('/tsedaka/cerfa', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [numero, nom, prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
     );
-    
+    // Envoyer le Cerfa par email au donateur
+    if (email && email.indexOf('@') > 0) {
+      await pool.query('UPDATE cerfa_receipts SET email=$1 WHERE numero=$2', [email, numero]).catch(() => {});
+      envoyerCerfaDonateur({
+        numero: numero,
+        nom: nom,
+        prenom: prenom,
+        montant: parseFloat(montant),
+        mode: 'Paiement en ligne',
+        email: email
+      }, pdfBuffer).catch(e => console.error('Email Cerfa donateur:', e.message));
+    }
     // Envoyer message de remerciement
     const gratitudeMsg = `Merci pour ta Tsedaka de ${montant}€ aujourd'hui ! 🙏\n\nTon reçu fiscal est en pièce jointe.`;
     await sendWhatsApp(phoneFormatted, gratitudeMsg);
