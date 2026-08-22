@@ -2613,6 +2613,75 @@ app.get('/test/cerfa-tsedaka/:password/:phone', async (req, res) => {
     ? ('Cerfa ' + r.numero + ' envoye : ' + r.total + ' euros (' + r.nb + ' dons)')
     : ('Rien a envoyer : ' + r.raison));
 });
+// ═══════════════════════════════════════════════
+// TSEDAKA — envoi manuel du rappel depuis l'admin
+// ═══════════════════════════════════════════════
+
+async function envoyerBoutonsTsedakaA(phone, prenom) {
+  const salut = prenom ? 'Chalom ' + prenom + ' !' : 'Chalom !';
+  try {
+    const r = await fetch('https://graph.facebook.com/v25.0/' + PHONE_NUMBER_ID + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: salut + "\n\nC'est le moment de ta Tsedaka du jour.\n\nChoisis ton montant :" },
+          action: {
+            buttons: [
+              { type: 'reply', reply: { id: 'tsedaka_050', title: '0,50 euros' } },
+              { type: 'reply', reply: { id: 'tsedaka_100', title: '1 euro' } },
+              { type: 'reply', reply: { id: 'tsedaka_500', title: '5 euros' } }
+            ]
+          }
+        }
+      })
+    });
+    const data = await r.json();
+    return !!(data && data.messages);
+  } catch (e) {
+    return false;
+  }
+}
+
+app.post('/admin/tsedaka/envoyer-rappel', async (req, res) => {
+  const { password, cible } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    let destinataires = [];
+
+    if (cible === 'tous') {
+      const c = await pool.query('SELECT DISTINCT phone FROM contacts');
+      const noms = await pool.query('SELECT phone, prenom FROM tsedaka_abonnes');
+      const map = {};
+      noms.rows.forEach(n => { map[n.phone] = n.prenom; });
+      destinataires = c.rows.map(x => ({ phone: x.phone, prenom: map[x.phone] || null }));
+    } else {
+      const r = await pool.query('SELECT phone, prenom FROM tsedaka_abonnes WHERE rappel_quotidien = TRUE');
+      destinataires = r.rows;
+    }
+
+    if (destinataires.length === 0) {
+      return res.json({ ok: true, envoyes: 0, echecs: 0, total: 0 });
+    }
+
+    let envoyes = 0, echecs = 0;
+    for (const d of destinataires) {
+      const ok = await envoyerBoutonsTsedakaA(d.phone, d.prenom);
+      if (ok) envoyes++; else echecs++;
+      await new Promise(r2 => setTimeout(r2, 300));
+    }
+
+    console.log('Rappel Tsedaka manuel (' + cible + ') : ' + envoyes + '/' + destinataires.length);
+    res.json({ ok: true, envoyes: envoyes, echecs: echecs, total: destinataires.length });
+  } catch (e) {
+    console.error('envoyer-rappel error:', e.message);
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
