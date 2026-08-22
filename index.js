@@ -2698,8 +2698,7 @@ app.post('/admin/tsedaka/envoyer-rappel', async (req, res) => {
 // TSEDAKA — inscription depuis WhatsApp (mot-cle "tsedaka")
 // ═══════════════════════════════════════════════
 
-const LIEN_TSEDAKA = 'https://habadsmauriceplateau.com/Tsedaka/';
-
+const LIEN_TSEDAKA = 'https://habadsmaurice.com/tsedaka/';
 function veutParlerTsedaka(text) {
   const t = (text || '').toLowerCase().trim();
   if (t.indexOf('cerfa') >= 0) return false;
