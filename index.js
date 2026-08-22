@@ -2406,14 +2406,14 @@ async function gererBoutonTsedaka(from, buttonId) {
   try {
     const r = await pool.query('SELECT * FROM tsedaka_abonnes WHERE phone=$1', [from]);
     if (r.rows.length === 0 || !r.rows[0].carte_gardee || !r.rows[0].stripe_payment_method_id) {
-      await sendWhatsApp(from, "Je ne retrouve pas ta carte enregistree.\n\nTu peux faire ta Tsedaka ici :\nhttps://habadsmauriceplateau.com/Tsedaka/");
+      await sendWhatsApp(from, "Je ne retrouve pas ta carte enregistree.\n\nTu peux faire ta Tsedaka ici :\nhttps://habadsmaurice.com/tsedaka/");
       return;
     }
     const ab = r.rows[0];
     const paiement = await stripeDebiterCarteGardee(ab.stripe_customer_id, ab.stripe_payment_method_id, montant);
     if (!paiement.ok) {
       console.error('Tsedaka paiement echoue', from, paiement.error);
-      await sendWhatsApp(from, "Le paiement n'a pas pu passer.\n\nTu peux essayer ici :\nhttps://habadsmauriceplateau.com/Tsedaka/\n\n" + getSignature());
+      await sendWhatsApp(from, "Le paiement n'a pas pu passer.\n\nTu peux essayer ici :\nhttps://habadsmaurice.com/tsedaka/\n\n" + getSignature());
       return;
     }
     await pool.query('INSERT INTO tsedaka_dons (phone, montant, stripe_payment_intent_id) VALUES ($1,$2,$3)', [from, montant, paiement.id]);
