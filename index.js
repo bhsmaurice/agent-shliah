@@ -1212,6 +1212,7 @@ app.post('/webhook', async (req, res) => {
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id;
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
+      if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
       if (buttonId && isAuthorizedAdminCerfa(from)) {
         if (buttonId === 'valider_chabbat') {
           await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
@@ -1257,6 +1258,7 @@ app.post('/webhook', async (req, res) => {
       if (await handleAdminCerfaCommand(from, text)) return;
       if (await handlePriveCommand(from, text)) return;
             if (await handleCerfaTsedakaCommand(from, text)) return;
+            if (await handleInscriptionTsedaka(from, text)) return;
       if (isAuthorizedAdminCerfa(from)) {
         // ÉDITION — l'admin modifie le message Chabbat
         if (global.chabbatEnEdition) {
@@ -2692,6 +2694,101 @@ app.post('/admin/tsedaka/envoyer-rappel', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+// ═══════════════════════════════════════════════
+// TSEDAKA — inscription depuis WhatsApp (mot-cle "tsedaka")
+// ═══════════════════════════════════════════════
+
+const LIEN_TSEDAKA = 'https://habadsmauriceplateau.com/Tsedaka/';
+
+function veutParlerTsedaka(text) {
+  const t = (text || '').toLowerCase().trim();
+  if (t.indexOf('cerfa') >= 0) return false;
+  return ['tsedaka', 'tsedaca', 'tzedaka', 'sedaka', 'tsedakka', 'don quotidien', 'don du jour']
+    .some(m => t.indexOf(m) >= 0);
+}
+
+async function handleInscriptionTsedaka(from, text) {
+  try {
+    if (!veutParlerTsedaka(text)) return false;
+
+    const r = await pool.query('SELECT * FROM tsedaka_abonnes WHERE phone=$1', [from]);
+    const ab = r.rows[0];
+
+    // Deja inscrit au rappel
+    if (ab && ab.rappel_quotidien) {
+      await sendWhatsAppButtons(
+        from,
+        "Tu es deja inscrit a la Tsedaka quotidienne.\n\nTu recois le rappel chaque matin a 10h.\n\nTu veux faire ta Tsedaka maintenant ?",
+        [
+          { id: 'tsedaka_050', title: '0,50 euros' },
+          { id: 'tsedaka_100', title: '1 euro' },
+          { id: 'tsedaka_500', title: '5 euros' }
+        ]
+      );
+      return true;
+    }
+
+    // Carte deja enregistree, il manque juste le rappel
+    if (ab && ab.carte_gardee && ab.stripe_payment_method_id) {
+      await sendWhatsAppButtons(
+        from,
+        "La Tsedaka quotidienne\n\nTa carte est deja enregistree.\n\nJe peux t'envoyer un rappel chaque matin a 10h avec 3 montants au choix. Un clic et ta Tsedaka est faite.",
+        [
+          { id: 'inscription_oui', title: "Je m'inscris" },
+          { id: 'inscription_non', title: 'Plus tard' }
+        ]
+      );
+      return true;
+    }
+
+    // Pas encore de carte
+    await sendWhatsAppButtons(
+      from,
+      "La Tsedaka quotidienne\n\nChaque matin a 10h, je t'envoie un rappel avec 3 montants au choix. Tu cliques, et ta Tsedaka est faite en une seconde.\n\nPour commencer, il faut faire un premier don et cocher les deux cases en bas du formulaire.",
+      [
+        { id: 'inscription_lien', title: 'Je veux le lien' },
+        { id: 'inscription_non', title: 'Plus tard' }
+      ]
+    );
+    return true;
+  } catch (e) {
+    console.error('handleInscriptionTsedaka error:', e.message);
+    return false;
+  }
+}
+
+async function gererBoutonInscription(from, buttonId) {
+  try {
+    if (buttonId === 'inscription_lien') {
+      await sendWhatsApp(from,
+        "Voici le lien :\n" + LIEN_TSEDAKA +
+        "\n\nApres ton don, un petit formulaire s'ouvre. Coche les deux cases tout en bas :\n" +
+        "- Enregistrer ma carte\n" +
+        "- Me rappeler chaque jour\n\n" +
+        "Et c'est tout ! Je m'occupe du reste.\n\n" + getSignature()
+      );
+      return;
+    }
+
+    if (buttonId === 'inscription_oui') {
+      await pool.query('UPDATE tsedaka_abonnes SET rappel_quotidien = TRUE WHERE phone=$1', [from]);
+      await sendWhatsApp(from,
+        "C'est fait !\n\nTu recevras ton rappel Tsedaka chaque matin a 10h (sauf le Chabbat).\n\n" +
+        "Tizkou Lemitsvot !\n\n" + getSignature()
+      );
+      return;
+    }
+
+    if (buttonId === 'inscription_non') {
+      await sendWhatsApp(from,
+        "Pas de souci !\n\nQuand tu voudras, ecris-moi simplement \"tsedaka\" et je te reproposerai.\n\n" + getSignature()
+      );
+      return;
+    }
+  } catch (e) {
+    console.error('gererBoutonInscription error:', e.message);
+  }
+}
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
