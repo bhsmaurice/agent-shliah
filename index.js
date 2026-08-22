@@ -2118,8 +2118,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
   res.sendStatus(200); // Répondre immédiatement
   
   try {
-    const { prenom, nom, adresse, tel, montant, phone } = req.body;
-    
+    const { prenom, nom, adresse, tel, montant, phone, email } = req.body;    
     // Validation
     if (!prenom || !nom || !adresse || !tel || !montant || !phone) {
       console.error('Tsedaka Cerfa: données manquantes', { prenom, nom, adresse, tel, montant, phone });
