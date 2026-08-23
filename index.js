@@ -2159,6 +2159,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [numero, nom, prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
     );
+    await pool.query('UPDATE cerfa_receipts SET phone=$1 WHERE numero=$2', [phoneFormatted, numero]).catch(() => {});
     // Envoyer le Cerfa par email au donateur
     if (email && email.indexOf('@') > 0) {
       await pool.query('UPDATE cerfa_receipts SET email=$1 WHERE numero=$2', [email, numero]).catch(() => {});
@@ -2788,6 +2789,50 @@ async function gererBoutonInscription(from, buttonId) {
     console.error('gererBoutonInscription error:', e.message);
   }
 }
+// ═══════════════════════════════════════════════
+// TSEDAKA — vue complete des dons (site + WhatsApp)
+// ═══════════════════════════════════════════════
+
+(async () => {
+  try {
+    await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS phone TEXT');
+    // Rattraper les anciens Cerfa ou le numero avait ete mis dans la case email
+    await pool.query(`
+      UPDATE cerfa_receipts
+      SET phone = CASE WHEN email LIKE '0%' THEN '33' || substring(email from 2) ELSE email END
+      WHERE phone IS NULL AND email ~ '^[0-9]{9,15}$'
+    `);
+    console.log('Colonne phone sur cerfa_receipts prete');
+  } catch (e) {
+    console.error('Colonne phone cerfa_receipts:', e.message);
+  }
+})();
+
+app.get('/admin/tsedaka/dons-tous', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  try {
+    const r = await pool.query(`
+      SELECT d.phone, d.montant, d.created_at, d.cerfa_numero, 'whatsapp' AS source,
+             a.prenom, a.nom
+      FROM tsedaka_dons d
+      LEFT JOIN tsedaka_abonnes a ON a.phone = d.phone
+      UNION ALL
+      SELECT c.phone, c.montant, c.created_at, c.numero AS cerfa_numero, 'site' AS source,
+             c.prenom, c.nom
+      FROM cerfa_receipts c
+      WHERE c.phone IS NOT NULL
+        AND c.numero NOT IN (SELECT cerfa_numero FROM tsedaka_dons WHERE cerfa_numero IS NOT NULL)
+      ORDER BY created_at DESC
+      LIMIT 300
+    `);
+    const total = r.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    res.json({ ok: true, dons: r.rows, nombre: r.rows.length, total_collecte: total });
+  } catch (e) {
+    console.error('dons-tous error:', e.message);
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
