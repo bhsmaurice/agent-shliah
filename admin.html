@@ -1645,7 +1645,7 @@ async function chargerTsedaka() {
   try {
     var r1 = await fetch(url + '/admin/tsedaka/abonnes?password=' + encodeURIComponent(pw));
     var d1 = await r1.json();
-    var r2 = await fetch(url + '/admin/tsedaka/dons?password=' + encodeURIComponent(pw));
+    var r2 = await fetch(url + '/admin/tsedaka/dons-tous?password=' + encodeURIComponent(pw));
     var d2 = await r2.json();
     if (!d1.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + (d1.message || 'Erreur') + '</p></div>'; return; }
 
