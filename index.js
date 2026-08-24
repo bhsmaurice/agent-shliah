@@ -1202,7 +1202,7 @@ app.post('/webhook', async (req, res) => {
   const body = req.body;
   if (body.object === 'whatsapp_business_account') {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
+       if (message && message.type === 'button') { await handleBoutonTemplate(message); return; }
     if (message && message.type === 'interactive') {
       const from = message.from, msgId = message.id;
       try {
@@ -2833,6 +2833,117 @@ app.get('/admin/tsedaka/dons-tous', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+// ═══════════════════════════════════════════════
+// TSEDAKA — envoi avec repli automatique sur le template Meta
+// Message normal d'abord (gratuit). Si la fenetre 24h est
+// fermee, on bascule sur le template payant.
+// ═══════════════════════════════════════════════
+
+const TEMPLATE_TSEDAKA = 'tsedaka_quotidienne';
+
+// Envoi du template Meta (payant, mais passe meme apres 24h)
+async function envoyerTemplateTsedaka(phone) {
+  try {
+    const r = await fetch('https://graph.facebook.com/v25.0/' + PHONE_NUMBER_ID + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'template',
+        template: {
+          name: TEMPLATE_TSEDAKA,
+          language: { code: 'fr' },
+          components: [
+            { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: 'tsedaka_050' }] },
+            { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: 'tsedaka_100' }] },
+            { type: 'button', sub_type: 'quick_reply', index: '2', parameters: [{ type: 'payload', payload: 'tsedaka_500' }] }
+          ]
+        }
+      })
+    });
+    const data = await r.json();
+    if (data && data.messages) return { ok: true, mode: 'template' };
+    console.error('Template Tsedaka refuse pour', phone, JSON.stringify(data && data.error ? data.error : data));
+    return { ok: false, mode: 'template' };
+  } catch (e) {
+    console.error('Template Tsedaka erreur', phone, e.message);
+    return { ok: false, mode: 'template' };
+  }
+}
+
+// Remplace la version precedente : essaie gratuit, puis template
+async function envoyerBoutonsTsedakaA(phone, prenom) {
+  const salut = prenom ? 'Chalom ' + prenom + ' !' : 'Chalom !';
+  try {
+    const r = await fetch('https://graph.facebook.com/v25.0/' + PHONE_NUMBER_ID + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: salut + "\n\nC'est le moment de ta Tsedaka du jour.\n\nChoisis ton montant :" },
+          action: {
+            buttons: [
+              { type: 'reply', reply: { id: 'tsedaka_050', title: '0,50 euros' } },
+              { type: 'reply', reply: { id: 'tsedaka_100', title: '1 euro' } },
+              { type: 'reply', reply: { id: 'tsedaka_500', title: '5 euros' } }
+            ]
+          }
+        }
+      })
+    });
+    const data = await r.json();
+    if (data && data.messages) return { ok: true, mode: 'gratuit' };
+  } catch (e) {
+    console.error('Message gratuit erreur', phone, e.message);
+  }
+  // La fenetre 24h est fermee : on passe par le template
+  return await envoyerTemplateTsedaka(phone);
+}
+
+// Remplace la version precedente : le rappel de 10h utilise aussi le repli
+async function envoyerRappelsTsedaka() {
+  try {
+    const r = await pool.query('SELECT phone, prenom FROM tsedaka_abonnes WHERE rappel_quotidien = TRUE');
+    if (r.rows.length === 0) { console.log('Tsedaka: aucun abonne au rappel'); return; }
+    let gratuits = 0, templates = 0, echecs = 0;
+    for (const ab of r.rows) {
+      const res = await envoyerBoutonsTsedakaA(ab.phone, ab.prenom);
+      if (!res.ok) echecs++;
+      else if (res.mode === 'template') templates++;
+      else gratuits++;
+      await new Promise(x => setTimeout(x, 300));
+    }
+    console.log('Tsedaka rappels : ' + gratuits + ' gratuits, ' + templates + ' templates payants, ' + echecs + ' echecs');
+  } catch (e) {
+    console.error('envoyerRappelsTsedaka error:', e.message);
+  }
+}
+
+// Les boutons d'un TEMPLATE arrivent en type "button" (pas "interactive")
+async function handleBoutonTemplate(message) {
+  const from = message.from, msgId = message.id;
+  try {
+    const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
+    if (already.rows.length > 0) return;
+    await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
+  } catch (e) { console.error('Dedup bouton template:', e.message); }
+
+  const payload = (message.button && (message.button.payload || message.button.text)) || '';
+  if (payload.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, payload); return; }
+  if (payload.indexOf('inscription_') === 0) { await gererBoutonInscription(from, payload); return; }
+
+  // Repli : on reconnait le montant par le texte du bouton
+  const t = payload.toLowerCase();
+  if (t.indexOf('0,50') >= 0 || t.indexOf('0.50') >= 0) { await gererBoutonTsedaka(from, 'tsedaka_050'); return; }
+  if (t.indexOf('1 euro') >= 0) { await gererBoutonTsedaka(from, 'tsedaka_100'); return; }
+  if (t.indexOf('5 euro') >= 0) { await gererBoutonTsedaka(from, 'tsedaka_500'); return; }
+  console.log('Bouton template non reconnu :', payload);
+}
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
