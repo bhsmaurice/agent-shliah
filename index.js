@@ -2944,6 +2944,196 @@ async function handleBoutonTemplate(message) {
   if (t.indexOf('5 euro') >= 0) { await gererBoutonTsedaka(from, 'tsedaka_500'); return; }
   console.log('Bouton template non reconnu :', payload);
 }
+// ═══════════════════════════════════════════════
+// CALENDRIER JUIF AUTOMATIQUE — Chabbat ET fetes (Hebcal)
+// Paris · allumage 18 min avant le coucher
+// sortie a la tombee de la nuit (8,5 degres)
+// Remplace l'ancienne liste ecrite a la main.
+// ═══════════════════════════════════════════════
+
+const HEBCAL_BASE = 'https://www.hebcal.com/hebcal?v=1&cfg=json'
+  + '&maj=on&min=on&mf=on&ss=on&s=on&c=on&M=on&b=18'
+  + '&geo=geoname&geonameid=2988507&lg=fr&i=off&mod=off&nx=off';
+
+const JOURS_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const MOIS_FR_CAL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+function isoJour(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function heureHebcal(item) {
+  const m = String(item.title || '').match(/(\d{1,2}):(\d{2})/);
+  if (m) return m[1].padStart(2, '0') + 'h' + m[2];
+  const m2 = String(item.date || '').match(/T(\d{2}):(\d{2})/);
+  if (m2) return m2[1] + 'h' + m2[2];
+  return null;
+}
+
+function nomPropre(titre) {
+  return String(titre || '').replace(/^Paras?ha?t?\s+/i, '').trim();
+}
+
+// Recupere le calendrier des prochains jours
+async function getCalendrierHebcal(jours) {
+  const debut = new Date();
+  const fin = new Date(Date.now() + (jours || 30) * 86400000);
+  const url = HEBCAL_BASE + '&start=' + isoJour(debut) + '&end=' + isoJour(fin);
+  for (let essai = 1; essai <= 2; essai++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'ShliahBot/1.0' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      return data.items || [];
+    } catch (e) {
+      console.error('Hebcal essai ' + essai + ' :', e.message);
+      if (essai === 1) await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  return null;
+}
+
+// Prochain allumage de bougies : Chabbat OU fete
+async function getProchainAllumage() {
+  const items = await getCalendrierHebcal(30);
+  if (!items) return null;
+
+  const maintenant = Date.now();
+  const bougies = items.find(i => i.category === 'candles' && new Date(i.date).getTime() > maintenant);
+  if (!bougies) return null;
+
+  const debutMs = new Date(bougies.date).getTime();
+  const havdalah = items.find(i => i.category === 'havdalah' && new Date(i.date).getTime() > debutMs);
+  const finMs = havdalah ? new Date(havdalah.date).getTime() : debutMs + 36 * 3600000;
+
+  const dansLaPeriode = items.filter(i => {
+    const t = new Date(i.date).getTime();
+    return t >= debutMs - 3600000 && t <= finMs;
+  });
+
+  const parashat = dansLaPeriode.find(i => i.category === 'parashat');
+  const fete = dansLaPeriode.find(i => i.category === 'holiday' && i.yomtov);
+  const feteMineure = dansLaPeriode.find(i => i.category === 'holiday' && !i.yomtov);
+
+  const d = new Date(bougies.date);
+  const dateLabel = JOURS_FR[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_FR_CAL[d.getMonth()] + ' ' + d.getFullYear();
+
+  const entree = heureHebcal(bougies);
+  const sortie = havdalah ? heureHebcal(havdalah) : '-';
+  const nomFete = fete ? fete.title : (feteMineure ? feteMineure.title : null);
+  const paracha = parashat ? nomPropre(parashat.title) : (nomFete || 'N/A');
+  const estFete = !!fete;
+
+  let texte = 'HORAIRES - PARIS :\n📅 ' + dateLabel + '\n';
+  if (nomFete) texte += '✡️ ' + nomFete + '\n';
+  if (parashat) texte += '📖 Paracha ' + nomPropre(parashat.title) + '\n';
+  texte += '🕯️ Allumage des bougies : ' + entree + '\n✨ Sortie : ' + sortie;
+
+  console.log('Hebcal OK :', dateLabel, '|', nomFete || ('Paracha ' + paracha), '|', entree, '->', sortie);
+  return { texte, paracha, fete: nomFete, estFete, date: dateLabel, entree, sortie, jourSemaine: d.getDay() };
+}
+
+// Remplace l'ancienne fonction : le reste du bot l'utilise deja
+async function getHorairesChabbat() {
+  const h = await getProchainAllumage();
+  if (!h) { console.error('Hebcal indisponible - aucun horaire renvoye'); return null; }
+  return h;
+}
+
+// Remplace l'ancienne : le message s'adapte aux fetes
+async function prepararerMessageCalendrier() {
+  const h = await getProchainAllumage();
+  if (!h) return null;
+  let msg;
+  if (h.estFete) {
+    msg = '✡️ ' + h.fete + '\n\n';
+    msg += '📅 ' + h.date + '\n';
+    if (h.paracha && h.paracha !== h.fete && h.paracha !== 'N/A') msg += '📖 Paracha ' + h.paracha + '\n';
+    msg += '🕯️ Allumage des bougies : ' + h.entree + '\n';
+    msg += '✨ Sortie : ' + h.sortie + '\n\n';
+    msg += 'Hag Saméah à toute la communauté !\n\n🏛️ Beth Habad S. Maurice';
+  } else {
+    msg = '🕯️ Chabbat Chalom !\n\n';
+    msg += '📖 Paracha ' + h.paracha + '\n';
+    msg += '📅 ' + h.date + '\n';
+    msg += '🕯️ Allumage des bougies : ' + h.entree + '\n';
+    msg += '✨ Havdalah (sortie) : ' + h.sortie + '\n\n';
+    msg += 'Chabbat Chalom à toute la famille !\n\n🏛️ Beth Habad S. Maurice';
+  }
+  return msg;
+}
+
+async function prepararerValidationCalendrier() {
+  try {
+    const message = await prepararerMessageCalendrier();
+    if (!message) { console.error('Cron: impossible de recuperer les horaires'); return; }
+    await sendWhatsAppButtons(
+      ADMIN_PHONE,
+      '📢 VALIDATION MESSAGE\n\n' + message + "\n\nValider l'envoi ?",
+      [
+        { id: 'valider_chabbat', title: '✓ Envoyer' },
+        { id: 'editer_chabbat', title: '✎ Éditer' },
+        { id: 'annuler_chabbat', title: '✗ Annuler' }
+      ]
+    );
+    global.chabbatEnAttente = { message, dateAujourdhui: new Date().toISOString().slice(0, 10) };
+    console.log('Message envoye a admin pour validation');
+  } catch (e) {
+    console.error('Validation calendrier error:', e.message);
+  }
+}
+
+// Remplace l'ancienne fonction utilisee par le cron du vendredi
+async function preparerValidationChabbat() {
+  return await prepararerValidationCalendrier();
+}
+
+// Cron fetes : chaque jour a 9h, si allumage aujourd'hui hors vendredi
+function demarrerCronFetes() {
+  setInterval(async () => {
+    const heuresParis = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const jour = heuresParis.getDay(), heure = heuresParis.getHours(), minute = heuresParis.getMinutes();
+    if (jour === 5) return; // vendredi : deja gere par le cron Chabbat
+    if (heure !== 9 || minute >= 5) return;
+    const dateAujourdhui = isoJour(heuresParis);
+    const cacheKey = 'fete_en_attente_' + dateAujourdhui;
+    if (global[cacheKey]) return;
+    try {
+      const h = await getProchainAllumage();
+      if (!h || !h.estFete) return;
+      const dateAllumage = h.date;
+      // On ne previent que si l'allumage est aujourd'hui
+      if (dateAllumage.indexOf(String(heuresParis.getDate()) + ' ' + MOIS_FR_CAL[heuresParis.getMonth()]) === -1) return;
+      global[cacheKey] = true;
+      console.log('Preparation message fete pour validation...');
+      await prepararerValidationCalendrier();
+    } catch (e) {
+      console.error('Cron fetes error:', e.message);
+    }
+  }, 5 * 60 * 1000);
+  console.log('Cron fetes demarre');
+}
+demarrerCronFetes();
+
+// Voir les horaires a tout moment
+app.get('/test/horaires/:password', async (req, res) => {
+  if (req.params.password !== ADMIN_PASSWORD) return res.send('Mot de passe incorrect');
+  chabbatCache.data = null;
+  const h = await getProchainAllumage();
+  if (!h) return res.send('Impossible de recuperer les horaires pour le moment.');
+  res.json(h);
+});
+
+// Voir les prochaines fetes
+app.get('/test/fetes/:password', async (req, res) => {
+  if (req.params.password !== ADMIN_PASSWORD) return res.send('Mot de passe incorrect');
+  const items = await getCalendrierHebcal(120);
+  if (!items) return res.send('Hebcal indisponible.');
+  const fetes = items
+    .filter(i => i.category === 'holiday')
+    .map(i => ({ date: String(i.date).slice(0, 10), nom: i.title, yomtov: !!i.yomtov }));
+  res.json({ ok: true, nombre: fetes.length, fetes: fetes });
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
