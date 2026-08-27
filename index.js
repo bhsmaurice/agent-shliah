@@ -1073,6 +1073,85 @@ async function sendWhatsAppImage(to, imageUrl, caption = '') {
     body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
   });
 }
+let sessionsSeferTorah = {};
+
+async function gererSeferTorah(from, text) {
+  const session = sessionsSeferTorah[from];
+  const lower = text.trim().toLowerCase();
+  
+  // Accepter "retour", "menu" ou "0" pour annuler à n'importe quel moment
+  if (lower === 'retour' || lower === 'menu' || text.trim() === '0') {
+    delete sessionsSeferTorah[from];
+    return "D'accord ! 👋";
+  }
+  
+  if (!session) {
+    // Étape 1 : Créer la session
+    sessionsSeferTorah[from] = { etape: 1, reponses: {} };
+    await sendWhatsAppButtons(from, `📖 Lettre dans le Sefer Torah\nÉtape 1/4\n\nC'est pour un garçon ou une fille ?`, [
+      { id: 'sefergarcon', title: 'Garçon' },
+      { id: 'seferfille', title: 'Fille' },
+      { id: 'seferannuler', title: 'Annuler' }
+    ]);
+    return null; // On a envoyé les boutons directement
+  }
+  
+  // Gérer les réponses aux boutons de l'étape 1
+  if (session.etape === 1 && (text === 'Garçon' || text === 'Fille')) {
+    sessionsSeferTorah[from].reponses.genre = text;
+    sessionsSeferTorah[from].etape = 2;
+    return `📖 Étape 2/4\n\nQuel est le prénom et le nom de l'enfant ?\n\n(écris "annuler" pour arrêter)`;
+  }
+  
+  // Étape 2-4 : Réponses texte libre
+  if (session.etape === 2) {
+    sessionsSeferTorah[from].reponses.prenomNom = text;
+    sessionsSeferTorah[from].etape = 3;
+    return `📖 Étape 3/4\n\nQuel âge a-t-il/elle, et quel est le prénom de la maman ?\n\n(exemple : 8 ans, Sarah)\n\n(écris "annuler" pour arrêter)`;
+  }
+  
+  if (session.etape === 3) {
+    sessionsSeferTorah[from].reponses.ageMaman = text;
+    sessionsSeferTorah[from].etape = 4;
+    return `📖 Étape 4/4\n\nL'adresse complète et un numéro de téléphone ?\n\n(écris "annuler" pour arrêter)`;
+  }
+  
+  if (session.etape === 4) {
+    sessionsSeferTorah[from].reponses.adresseTel = text;
+    sessionsSeferTorah[from].etape = 5;
+    // Étape 5 : Vérification
+    const recap = session.reponses;
+    const message = `📖 Vérifie avant d'envoyer :\n\nGarçon ou fille ? ${recap.genre}\nPrénom et nom ? ${recap.prenomNom}\nÂge et maman ? ${recap.ageMaman}\nAdresse et tél ? ${recap.adresseTel}\n\nC'est bon ?`;
+    await sendWhatsAppButtons(from, message, [
+      { id: 'seferbonok', title: '✓ C\'est bon' },
+      { id: 'seferrecommencer', title: '⚠ Recommencer' }
+    ]);
+    return null; // On a envoyé les boutons directement
+  }
+  
+  if (session.etape === 5 && text === '✓ C\'est bon') {
+    const recap = session.reponses;
+    const recap_texte = `Garçon ou fille ? ${recap.genre}\nPrénom et nom ? ${recap.prenomNom}\nÂge et maman ? ${recap.ageMaman}\nAdresse et tél ? ${recap.adresseTel}`;
+    await sauvegarderDemande('sefer_torah', from, recap_texte);
+    envoyerEmailDemande('sefer_torah', from, recap_texte).catch(e => console.error('Email error:', e));
+    delete sessionsSeferTorah[from];
+    return `✅ C'est enregistré !\n\n${recap.prenomNom}, ${recap.ageMaman}\n\nNous te contactons très vite.\n\nKol Touv !`;
+  }
+  
+  if (session.etape === 5 && text === '⚠ Recommencer') {
+    delete sessionsSeferTorah[from];
+    sessionsSeferTorah[from] = { etape: 1, reponses: {} };
+    await sendWhatsAppButtons(from, `📖 Lettre dans le Sefer Torah\nÉtape 1/4\n\nC'est pour un garçon ou une fille ?`, [
+      { id: 'sefergarcon', title: 'Garçon' },
+      { id: 'seferfille', title: 'Fille' },
+      { id: 'seferannuler', title: 'Annuler' }
+    ]);
+    return null; // On a envoyé les boutons directement
+  }
+  
+  return "Je n'ai pas compris. Peux-tu réessayer ?";
+}
+
 const TYPES_DEMANDES = {
   cerfa: {
     label: 'Reçu Fiscal (Cerfa)',
@@ -1084,7 +1163,7 @@ const TYPES_DEMANDES = {
     label: 'Lettre dans le Sefer Torah',
     detecter: (msg) => { const lower = msg.toLowerCase(); return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m)); },
     questions: [{ cle: 'infos', question: '' }],
-    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi en un seul message :\n\n1. Garçon ou fille\n2. Nom de famille\n3. Âge\n4. Prénom de la mère\n5. Adresse complète\n6. Téléphone\n\n0. ← Retour`
+    messageDebut: () => `Géré par gererSeferTorah`
   },
   location_salle: {
     label: 'Location de Salle',
@@ -1230,6 +1309,21 @@ app.post('/webhook', async (req, res) => {
       const buttonId = message.interactive?.button_reply?.id;
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
+      if (buttonId && buttonId.indexOf('sefer') === 0) { 
+        let textReponse = '';
+        if (buttonId === 'sefergarcon') textReponse = 'Garçon';
+        else if (buttonId === 'seferfille') textReponse = 'Fille';
+        else if (buttonId === 'seferannuler') textReponse = 'annuler';
+        else if (buttonId === 'seferbonok') textReponse = '✓ C\'est bon';
+        else if (buttonId === 'seferrecommencer') textReponse = '⚠ Recommencer';
+        if (textReponse) {
+          const reply = await gererSeferTorah(from, textReponse);
+          if (reply !== null) {
+            await sendWhatsApp(from, reply);
+          }
+        }
+        return; 
+      }
       if (buttonId && isAuthorizedAdminCerfa(from)) {
         if (buttonId === 'valider_chabbat') {
           await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
@@ -1347,7 +1441,16 @@ app.post('/webhook', async (req, res) => {
       try { const sr = await pool.query('SELECT * FROM sessions_demande WHERE phone=$1', [from]); if (sr.rows.length > 0) session = sr.rows[0]; } catch(e) {}
       if (session && session.terminee) { await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{}); session = null; }
       const infoImageMatch = !session ? await trouverInfoImageSansContenu(text) : null;
-      if (session) {
+      
+      // Gérer Sefer Torah avec le nouveau système
+      if (sessionsSeferTorah[from] || (text.toLowerCase().includes('sefer') && !session)) {
+        reply = await gererSeferTorah(from, text);
+        estUneDemande = true;
+        if (reply === null) {
+          // Boutons envoyés directement, pas besoin de continuer
+          return;
+        }
+      } else if (session) {
         estUneDemande = true;
         const lower = text.trim().toLowerCase();
         
@@ -1392,7 +1495,13 @@ app.post('/webhook', async (req, res) => {
         idsInfosAEnvoyer = [infoImageMatch.id];
       } else {
         const typeDemande = detecterTypeDemande(text);
-        if (typeDemande) {
+        if (typeDemande === 'sefer_torah') {
+          estUneDemande = true;
+          reply = await gererSeferTorah(from, text);
+          if (reply === null) {
+            return; // Boutons envoyés directement
+          }
+        } else if (typeDemande) {
           estUneDemande = true;
           const config = TYPES_DEMANDES[typeDemande];
           try {
