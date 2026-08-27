@@ -929,10 +929,18 @@ let sessionsMusiqueType = {};
 async function gererMusique(from, text, type) {
   const session = sessionsMusiqueType[from];
   if (session && session.etape === 'ambiance') {
+    const lower = text.trim().toLowerCase();
+    
+    // Accepter "retour", "menu" ou "0" pour revenir
+    if (lower === 'retour' || lower === 'menu' || text.trim() === '0') {
+      delete sessionsMusiqueType[from];
+      return "D'accord ! 👋";
+    }
+    
     const choix = text.trim();
     const ambiance = AMBIANCES[choix];
     if (!ambiance) {
-      return `Réponds avec 1, 2 ou 3 :\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat`;
+      return `Réponds avec 1, 2 ou 3 :\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat\n\n0. ← Retour`;
     }
     const modeType = session.mode;
     delete sessionsMusiqueType[from];
@@ -955,7 +963,7 @@ async function gererMusique(from, text, type) {
     }
   }
   sessionsMusiqueType[from] = { etape: 'ambiance', mode: type };
-  return `Quelle ambiance tu cherches ? 🎵\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat\n\nRéponds avec 1, 2 ou 3.`;
+  return `Quelle ambiance tu cherches ? 🎵\n\n1. 🎶 Douce et relaxante\n2. 🔥 Qui bouge\n3. 🕯️ Nigounim / Chabbat\n\n0. ← Retour\n\nRéponds avec 1, 2, 3 ou 0.`;
 }
 function parleDeMikve(msg) { return ['mikve', 'mikvé', 'bain rituel'].some(m => msg.toLowerCase().includes(m)); }
 function parleDevenements(msg) { return ['événement', 'evenement', 'agenda', 'programme', 'activité', 'activite', 'cette semaine', 'ce mois', 'soirée', 'soiree'].some(m => msg.toLowerCase().includes(m)); }
@@ -1070,19 +1078,19 @@ const TYPES_DEMANDES = {
     label: 'Reçu Fiscal (Cerfa)',
     detecter: (msg) => { const lower = msg.toLowerCase(); return ['cerfa', 'reçu fiscal', 'recu fiscal', 'attestation don', 'déduction impôt', 'deduction impot'].some(m => lower.includes(m)); },
     questions: [{ cle: 'infos', question: '' }],
-    messageDebut: () => `Pour votre reçu fiscal (Cerfa) :\n\nSi vous avez payé via Kehila ou AlloDons, téléchargez-le directement :\n👉 https://kehila.io/export-cerfas\n\n👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr\n\nPour un virement ou autre paiement, envoyez-moi en un seul message :\n\n1. Société ou particulier ?\n2. Nom complet\n3. Adresse complète\n4. Email\n5. Montant du don\n6. Mode de paiement`
+    messageDebut: () => `Pour votre reçu fiscal (Cerfa) :\n\nSi vous avez payé via Kehila ou AlloDons, téléchargez-le directement :\n👉 https://kehila.io/export-cerfas\n\n👉 https://www.allodons.fr/landing/pages/cerfa?locale=fr\n\nPour un virement ou autre paiement, envoyez-moi en un seul message :\n\n1. Société ou particulier ?\n2. Nom complet\n3. Adresse complète\n4. Email\n5. Montant du don\n6. Mode de paiement\n\n0. ← Retour`
   },
   sefer_torah: {
     label: 'Lettre dans le Sefer Torah',
     detecter: (msg) => { const lower = msg.toLowerCase(); return ['sefer torah', 'séfer torah', 'lettre torah', 'lettre dans le sefer', 'sefer', 'lettre sefer'].some(m => lower.includes(m)); },
     questions: [{ cle: 'infos', question: '' }],
-    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi en un seul message :\n\n1. Garçon ou fille\n2. Nom de famille\n3. Âge\n4. Prénom de la mère\n5. Adresse complète\n6. Téléphone`
+    messageDebut: () => `Pour inscrire une lettre dans le Sefer Torah, envoyez-moi en un seul message :\n\n1. Garçon ou fille\n2. Nom de famille\n3. Âge\n4. Prénom de la mère\n5. Adresse complète\n6. Téléphone\n\n0. ← Retour`
   },
   location_salle: {
     label: 'Location de Salle',
     detecter: (msg) => { const lower = msg.toLowerCase(); return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m)); },
     questions: [{ cle: 'infos', question: '' }],
-    messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone`
+    messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone\n\n0. ← Retour`
   }
 };
 function detecterTypeDemande(msg) {
@@ -1341,21 +1349,29 @@ app.post('/webhook', async (req, res) => {
       const infoImageMatch = !session ? await trouverInfoImageSansContenu(text) : null;
       if (session) {
         estUneDemande = true;
-        const config = TYPES_DEMANDES[session.type];
-        let reponses = session.reponses || {};
-        if (typeof reponses === 'string') { try { reponses = JSON.parse(reponses); } catch(e) { reponses = {}; } }
-        const questions = config.questions, etapeActuelle = parseInt(session.etape) || 0;
-        if (etapeActuelle < questions.length) reponses[questions[etapeActuelle].cle] = text;
-        const prochaineEtape = etapeActuelle + 1;
-        if (prochaineEtape < questions.length) {
-          await pool.query('UPDATE sessions_demande SET etape=$1, reponses=$2 WHERE phone=$3', [prochaineEtape, JSON.stringify(reponses), from]);
-          reply = questions[prochaineEtape].question;
+        const lower = text.trim().toLowerCase();
+        
+        // Accepter "retour", "menu" ou "0" pour annuler la demande
+        if (lower === 'retour' || lower === 'menu' || text.trim() === '0') {
+          await pool.query('DELETE FROM sessions_demande WHERE phone=$1', [from]).catch(()=>{});
+          reply = "D'accord ! 👋";
         } else {
-          await pool.query('UPDATE sessions_demande SET terminee=TRUE WHERE phone=$1', [from]);
-          const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
-          await sauvegarderDemande(session.type, from, recap);
-          envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
-          reply = `Merci, votre demande a bien été reçue !\n\nNous vous contacterons très rapidement.\n\nSi c'est urgent : 07 70 24 17 46.\n\n${getSignature()}`;
+          const config = TYPES_DEMANDES[session.type];
+          let reponses = session.reponses || {};
+          if (typeof reponses === 'string') { try { reponses = JSON.parse(reponses); } catch(e) { reponses = {}; } }
+          const questions = config.questions, etapeActuelle = parseInt(session.etape) || 0;
+          if (etapeActuelle < questions.length) reponses[questions[etapeActuelle].cle] = text;
+          const prochaineEtape = etapeActuelle + 1;
+          if (prochaineEtape < questions.length) {
+            await pool.query('UPDATE sessions_demande SET etape=$1, reponses=$2 WHERE phone=$3', [prochaineEtape, JSON.stringify(reponses), from]);
+            reply = questions[prochaineEtape].question;
+          } else {
+            await pool.query('UPDATE sessions_demande SET terminee=TRUE WHERE phone=$1', [from]);
+            const recap = Object.entries(reponses).map(([k,v]) => k + ': ' + v).join('\n');
+            await sauvegarderDemande(session.type, from, recap);
+            envoyerEmailDemande(session.type, from, recap).catch(e => console.error('Email error:', e));
+            reply = `Merci, votre demande a bien été reçue !\n\nNous vous contacterons très rapidement.\n\nSi c'est urgent : 07 70 24 17 46.\n\n${getSignature()}`;
+          }
         }
       } else if (sessionsMusiqueType[from]) {
         reply = await gererMusique(from, text, sessionsMusiqueType[from]?.mode || 'musique');
