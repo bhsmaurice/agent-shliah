@@ -1699,20 +1699,75 @@ function afficherTsedaka() {
     });
   } else {
     if (!tsedakaDons.length) { container.innerHTML = '<div class="empty"><p>Aucun don quotidien pour le moment</p></div>'; return; }
+    
+    // Afficher tableau des paiements
+    var html_table = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html_table += '<thead><tr style="background:#F7F6FC;border-bottom:2px solid var(--border);">';
+    html_table += '<th style="text-align:left;padding:12px 8px;font-weight:600;color:var(--navy);">Téléphone</th>';
+    html_table += '<th style="text-align:center;padding:12px 8px;font-weight:600;color:var(--navy);">Montant</th>';
+    html_table += '<th style="text-align:left;padding:12px 8px;font-weight:600;color:var(--navy);">Date/Heure</th>';
+    html_table += '<th style="text-align:center;padding:12px 8px;font-weight:600;color:var(--navy);">Action</th>';
+    html_table += '</tr></thead><tbody>';
+    
     tsedakaDons.forEach(function(d) {
-      var nom = ((d.prenom || '') + ' ' + (d.nom || '')).trim() || ('+' + d.phone);
-      var date = d.created_at ? new Date(d.created_at).toLocaleDateString('fr-FR') + ' à ' + new Date(d.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-      var cerfa = d.cerfa_numero ? ('Cerfa ' + d.cerfa_numero) : 'Pas encore de Cerfa';
-      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
-        '<div><div style="font-weight:600;font-size:14px;">' + nom + '</div>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + date + ' · ' + cerfa + '</div></div>' +
-        '<div style="font-weight:700;color:var(--green);white-space:nowrap;">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + ' €</div>' +
-      '</div>';
+      html_table += '<tr style="border-bottom:1px solid var(--border);">';
+      html_table += '<td style="padding:12px 8px;"><strong>+' + d.phone + '</strong></td>';
+      html_table += '<td style="padding:12px 8px;text-align:center;font-weight:700;color:var(--c-purple-dark);">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + ' €</td>';
+      html_table += '<td style="padding:12px 8px;font-size:12px;color:var(--muted);">' + (d.date_paiement || '') + '<br>' + (d.heure_paiement || '') + '</td>';
+      html_table += '<td style="padding:12px 8px;text-align:center;">';
+      if (!d.cerfa_numero) {
+        html_table += '<button onclick="openGenererCerfaModal(' + d.id + ',\'' + (d.phone || '') + '\')" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">+ Cerfa</button>';
+      } else {
+        html_table += '<span style="color:var(--green);font-weight:600;">' + d.cerfa_numero + '</span>';
+      }
+      html_table += '</td></tr>';
     });
+    
+    html_table += '</tbody></table>';
+    container.innerHTML = html_table;
   }
-
-  container.innerHTML = html;
 }
+
+function openGenererCerfaModal(donId, phone) {
+  var nom = prompt('Nom du donateur ?');
+  if (!nom) return;
+  var adresse = prompt('Adresse complète ?');
+  if (!adresse) return;
+  var mode = prompt('Mode de paiement ? (Carte bancaire / Virement / Espèces / Chèque)');
+  if (!mode) return;
+  
+  genererCerfaTsedaka(donId, phone, nom, adresse, mode);
+}
+
+async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
+  var url = getUrl(), pw = getAdminPw();
+  if (!url) { alert('Configurez l\'adresse dans Config'); return; }
+  
+  try {
+    var r = await fetch(url + '/admin/tsedaka/don/' + donId + '/cerfa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw, nom: nom, adresse: adresse, mode: mode })
+    });
+    
+    if (!r.ok) {
+      var e = await r.json();
+      alert('Erreur: ' + (e.message || 'Impossible de générer le Cerfa'));
+      return;
+    }
+    
+    // Télécharger le PDF
+    var blob = await r.blob();
+    var linkEl = document.createElement('a');
+    linkEl.href = URL.createObjectURL(blob);
+    linkEl.download = 'Cerfa_' + donId + '.pdf';
+    linkEl.click();
+    
+    alert('✅ Cerfa généré et téléchargé!');
+    chargerTsedaka();
+  } catch (e) {
+    alert('Erreur: ' + e.message);
+  }
 </script>
   <!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
