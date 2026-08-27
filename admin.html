@@ -1567,126 +1567,82 @@ body {
 </div>
 <div class="main-content">
 <!-- TSEDAKA -->
+<!-- TSEDAKA PAIEMENTS -->
 <div class="page" id="tab-tsedaka"><div class="inner">
-  <div id="tsedaka-stats-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;"></div>
-
   <div style="display:flex;gap:8px;margin-bottom:14px;">
-    <div class="chip active" id="chip-ts-abonnes" onclick="filtrerTsedaka('abonnes')" style="cursor:pointer;">Abonnés</div>
+    <div class="stat-card" style="flex:1;">
+      <div class="stat-icon">💰</div>
+      <div class="stat-content">
+        <div class="stat-label">Total collecté</div>
+        <div class="stat-number" id="tsedaka-total">0€</div>
+      </div>
+    </div>
+    <div class="stat-card" style="flex:1;">
+      <div class="stat-icon">📊</div>
+      <div class="stat-content">
+        <div class="stat-label">Nombre de dons</div>
+        <div class="stat-number" id="tsedaka-count">0</div>
+      </div>
+    </div>
   </div>
 
-<div style="display:flex;gap:8px;margin-bottom:14px;">
-  <button onclick="envoyerRappelTsedaka('abonnes')" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Envoyer aux abonnés</button>
-  <button onclick="envoyerRappelTsedaka('tous')" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Envoyer à tout le monde</button>
-</div>
-<div id="tsedaka-envoi-resultat" style="display:none;font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:14px;"></div>
-
-<div id="tsedaka-container"></div>
+  <div id="tsedaka-container" style="overflow-x:auto;"></div>
 
 <script>
-async function envoyerRappelTsedaka(cible) {
-  var libelle = (cible === 'tous') ? 'TOUS les contacts du bot' : 'les abonnés Tsedaka';
-  if (!confirm('Envoyer le rappel Tsedaka à ' + libelle + ' ?')) return;
-
+async function chargerTsedakaPaiements() {
   var url = getUrl(), pw = getAdminPw();
-  var box = document.getElementById('tsedaka-envoi-resultat');
-  box.style.display = 'block';
-  box.style.background = '#F7F6FC';
-  box.style.color = 'var(--muted)';
-  box.textContent = 'Envoi en cours...';
-
+  var container = document.getElementById('tsedaka-container');
+  container.innerHTML = '<p style="text-align:center;color:var(--muted);">Chargement...</p>';
+  
   try {
-    var r = await fetch(url + '/admin/tsedaka/envoyer-rappel', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw, cible: cible })
-    });
-    var d = await r.json();
-    if (!d.ok) {
-      box.style.background = '#FDECEC';
-      box.style.color = 'var(--red)';
-      box.textContent = d.message || 'Erreur';
+    var r = await fetch(url + '/admin/tsedaka/dons?password=' + encodeURIComponent(pw));
+    var data = await r.json();
+    
+    if (!data.ok) {
+      container.innerHTML = '<p style="color:var(--red);">Erreur: ' + (data.message || 'Erreur') + '</p>';
       return;
     }
-    box.style.background = '#EAF7F0';
-    box.style.color = 'var(--green)';
-    var txt = d.envoyes + ' message(s) envoyé(s) sur ' + d.total;
-    if (d.echecs > 0) txt += ' — ' + d.echecs + ' non reçu(s) (ces personnes n\'ont pas écrit au bot depuis 24h)';
-    box.textContent = txt;
-  } catch (e) {
-    box.style.background = '#FDECEC';
-    box.style.color = 'var(--red)';
-    box.textContent = 'Erreur de connexion';
-  }
-}
-</script></div></div>
-
-<script>
-var tsedakaVue = 'abonnes';
-var tsedakaAbonnes = [];
-var tsedakaDons = [];
-
-function filtrerTsedaka(vue) {
-  tsedakaVue = vue;
-  var a = document.getElementById('chip-ts-abonnes');
-  var d = document.getElementById('chip-ts-dons');
-  if (a && d) {
-    a.classList.toggle('active', vue === 'abonnes');
-    d.classList.toggle('active', vue === 'dons');
-  }
-  afficherTsedaka();
-}
-
-async function chargerTsedaka() {
-  var url = getUrl(), pw = getAdminPw();
-  var container = document.getElementById('tsedaka-container');
-  if (!url) { container.innerHTML = '<div class="empty"><p>Configurez l\'adresse dans Config</p></div>'; return; }
-  container.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
-  try {
-    var r1 = await fetch(url + '/admin/tsedaka/abonnes?password=' + encodeURIComponent(pw));
-    var d1 = await r1.json();
-    var r2 = await fetch(url + '/admin/tsedaka/dons-tous?password=' + encodeURIComponent(pw));
-    var d2 = await r2.json();
-    if (!d1.ok) { container.innerHTML = '<div class="empty"><p style="color:var(--red)">' + (d1.message || 'Erreur') + '</p></div>'; return; }
-
-    tsedakaAbonnes = d1.abonnes || [];
-    tsedakaDons = (d2 && d2.dons) ? d2.dons : [];
-
-    var avecCarte = tsedakaAbonnes.filter(function(a) { return a.carte_gardee && a.stripe_payment_method_id; }).length;
-    var totalCollecte = tsedakaDons.reduce(function(s, d) { return s + parseFloat(d.montant || 0); }, 0);
-
-    document.getElementById('tsedaka-stats-row').innerHTML =
-      '<div class="stat-box"><div class="stat-num">' + tsedakaAbonnes.length + '</div><div class="stat-label">Abonnés</div></div>' +
-      '<div class="stat-box"><div class="stat-num">' + avecCarte + '</div><div class="stat-label">Cartes gardées</div></div>' +
-      '<div class="stat-box"><div class="stat-num">' + totalCollecte.toFixed(2).replace('.', ',') + ' €</div><div class="stat-label">Collecté</div></div>';
-
-    afficherTsedaka();
-  } catch (e) {
-    container.innerHTML = '<div class="empty"><p style="color:var(--red)">Erreur de connexion</p></div>';
+    
+    var dons = data.dons || [];
+    if (!dons.length) {
+      container.innerHTML = '<p style="text-align:center;color:var(--muted);">Aucun paiement Tsedaka</p>';
+      document.getElementById('tsedaka-total').textContent = '0€';
+      document.getElementById('tsedaka-count').textContent = '0';
+      return;
+    }
+    
+    // Calculer le total
+    var total = 0;
+    dons.forEach(d => { total += parseFloat(d.montant || 0); });
+    document.getElementById('tsedaka-total').textContent = total.toFixed(2).replace('.', ',') + '€';
+    document.getElementById('tsedaka-count').textContent = dons.length;
+    
+    // Créer le tableau
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr style="background:#F7F6FC;border-bottom:2px solid var(--border);"><th style="padding:12px;text-align:left;font-weight:600;">Téléphone</th><th style="padding:12px;text-align:center;font-weight:600;">Montant</th><th style="padding:12px;text-align:left;font-weight:600;">Date/Heure</th><th style="padding:12px;text-align:center;font-weight:600;">Carte gardée</th><th style="padding:12px;text-align:center;font-weight:600;">Cerfa</th></tr></thead><tbody>';
+    
+    dons.forEach(d => {
+      var carteStatus = d.carte_gardee ? '✅ Oui' : '❌ Non';
+      var carteColor = d.carte_gardee ? 'var(--green)' : 'var(--muted)';
+      var cerfaStatus = d.cerfa_numero ? ('✅ ' + d.cerfa_numero) : '❌ Non';
+      var cerfaColor = d.cerfa_numero ? 'var(--green)' : 'var(--orange)';
+      
+      html += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:12px;font-weight:600;">+' + d.phone + '</td><td style="padding:12px;text-align:center;font-weight:700;color:var(--c-purple-dark);">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + '€</td><td style="padding:12px;font-size:12px;color:var(--muted);">' + d.date_paiement + '<br>' + d.heure_paiement + '</td><td style="padding:12px;text-align:center;color:' + carteColor + ';font-weight:600;">' + carteStatus + '</td><td style="padding:12px;text-align:center;color:' + cerfaColor + ';font-weight:600;">' + cerfaStatus + '</td></tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--red);">Erreur: ' + e.message + '</p>';
   }
 }
 
-function afficherTsedaka() {
-  var container = document.getElementById('tsedaka-container');
-  if (!container) return;
-  var html = '';
+// Charger au démarrage
+setTimeout(chargerTsedakaPaiements, 500);
+</script>
+</div></div>
 
-  if (tsedakaVue === 'abonnes') {
-    if (!tsedakaAbonnes.length) { container.innerHTML = '<div class="empty"><p>Aucun abonné pour le moment</p></div>'; return; }
-    tsedakaAbonnes.forEach(function(a) {
-      var nom = ((a.prenom || '') + ' ' + (a.nom || '')).trim() || 'Sans nom';
-      var carte = (a.carte_gardee && a.stripe_payment_method_id) ? 'Carte enregistrée' : 'Pas de carte';
-      var carteCouleur = (a.carte_gardee && a.stripe_payment_method_id) ? 'var(--green)' : 'var(--muted)';
-      var rappel = a.rappel_quotidien ? 'Rappel 10h actif' : 'Pas de rappel';
-      var rappelCouleur = a.rappel_quotidien ? 'var(--c-purple-dark)' : 'var(--muted)';
-      var dernier = a.dernier_don_le ? new Date(a.dernier_don_le).toLocaleDateString('fr-FR') : 'jamais';
-      var totalPersonne = tsedakaDons
-        .filter(function(d) { return d.phone === a.phone; })
-        .reduce(function(s, d) { return s + parseFloat(d.montant || 0); }, 0);
-
-      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
-          '<div><div style="font-weight:600;font-size:15px;">' + nom + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">+' + a.phone + '</div></div>' +
+' +
           '<div style="font-weight:700;color:var(--c-purple-dark);white-space:nowrap;">' + totalPersonne.toFixed(2).replace('.', ',') + ' €</div>' +
         '</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">' +
