@@ -2618,6 +2618,55 @@ function demarrerCronTsedaka() {
 demarrerCronTsedaka();
 
 // Voir les dons Tsedaka quotidiens
+app.post('/admin/tsedaka/don/:id/cerfa', async (req, res) => {
+  const { password, nom, prenom, adresse, mode } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!nom || !adresse) return res.status(400).json({ ok: false, message: "Nom et adresse requis" });
+  try {
+    // Récupérer le don
+    const donResult = await pool.query('SELECT * FROM tsedaka_dons WHERE id = $1', [req.params.id]);
+    if (donResult.rows.length === 0) return res.status(404).json({ ok: false, message: "Don introuvable" });
+    
+    const don = donResult.rows[0];
+    const montantNum = parseFloat(don.montant);
+    const modeLower = (mode || 'Carte bancaire').toLowerCase();
+    let modeFinal = "Carte bancaire";
+    if (/especes/.test(modeLower)) modeFinal = "Remise d'espèces";
+    else if (/virement/.test(modeLower)) modeFinal = 'Virement';
+    else if (/cheque/.test(modeLower)) modeFinal = 'Chèque';
+    
+    const numero = await getNextCerfaNumero();
+    const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
+    const dateDon = new Date(don.date_don).toISOString().slice(0, 10);
+    const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
+    
+    const pdfBuffer = await generateCerfaPDF({ 
+      numero, 
+      nom: nom.trim(), 
+      prenom: prenomFinal, 
+      adresse: adresse.trim(), 
+      montant: montantNum, 
+      mode: modeFinal, 
+      dateVersement 
+    });
+    
+    // Enregistrer le Cerfa
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, dateDon, null]
+    );
+    
+    // Lier le Cerfa au don Tsedaka
+    await pool.query('UPDATE tsedaka_dons SET cerfa_numero = $1 WHERE id = $2', [numero, req.params.id]);
+    
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
 app.get('/admin/tsedaka/dons', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -2628,8 +2677,20 @@ app.get('/admin/tsedaka/dons', async (req, res) => {
       LEFT JOIN tsedaka_abonnes a ON a.phone = d.phone
       ORDER BY d.created_at DESC LIMIT 200
     `);
-    const total = r.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
-    res.json({ ok: true, dons: r.rows, nombre: r.rows.length, total_collecte: total });
+    const dons = r.rows.map(d => ({
+      id: d.id,
+      phone: d.phone,
+      montant: parseFloat(d.montant),
+      prenom: d.prenom,
+      nom: d.nom,
+      date_don: d.date_don,
+      date_paiement: new Date(d.created_at).toLocaleDateString('fr-FR'),
+      heure_paiement: new Date(d.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      cerfa_numero: d.cerfa_numero,
+      created_at: d.created_at
+    }));
+    const total = dons.reduce((s, x) => s + (x.montant || 0), 0);
+    res.json({ ok: true, dons, nombre: dons.length, total_collecte: total });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
   }
