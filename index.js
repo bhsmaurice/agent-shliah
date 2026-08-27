@@ -971,6 +971,15 @@ let sessionsHistoires = {};
 async function gererHistoire(from, text) {
   const session = sessionsHistoires[from];
   if (session && session.etape === 'choix') {
+    const lower = text.trim().toLowerCase();
+    
+    // Accepter "retour", "menu" ou "0" pour revenir au menu
+    if (lower === 'retour' || lower === 'menu' || text.trim() === '0') {
+      delete sessionsHistoires[from];
+      // Retourner undefined pour que le flux principal relance les autres options
+      return undefined;
+    }
+    
     const num = parseInt(text.trim());
     if (!isNaN(num) && num >= 1 && num <= session.histoires.length) {
       const histoire = session.histoires[num - 1];
@@ -982,14 +991,14 @@ async function gererHistoire(from, text) {
       }
       return `📖 ${histoire.titre}\n\n${histoire.texte}\n\nKol Touv !`;
     } else {
-      return `Réponds avec un numéro entre 1 et ${session.histoires.length}.`;
+      return `Réponds avec un numéro entre 1 et ${session.histoires.length}.\n\nOu tape "0" pour revenir au menu.`;
     }
   }
   const result = await pool.query('SELECT id, titre, texte, image_url FROM histoires ORDER BY created_at DESC');
   if (result.rows.length === 0) return "Aucune histoire disponible pour le moment. Reviens bientôt !";
   sessionsHistoires[from] = { etape: 'choix', histoires: result.rows };
   const liste = result.rows.map((h, i) => `${i + 1}. ${h.titre}`).join('\n');
-  return `📖 Histoires du Rabbi\n\nChoisis une histoire :\n\n${liste}\n\nRéponds avec le numéro de ton choix.`;
+  return `📖 Histoires du Rabbi\n\nChoisis une histoire :\n\n${liste}\n\n0. ← Retour\n\nRéponds avec le numéro de ton choix.`;
 }
 // ─── ENVOI AUTOMATIQUE DE L'IMAGE D'UNE INFO QUAND LE BOT L'UTILISE ──────
 // Claude ajoute un marqueur invisible [[INFO:id]] à la fin de sa réponse
@@ -1213,7 +1222,6 @@ app.post('/webhook', async (req, res) => {
       const buttonId = message.interactive?.button_reply?.id;
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
-            if (buttonId && buttonId.indexOf('sefer_') === 0) { await gererBoutonSefer(from, buttonId); return; }
       if (buttonId && isAuthorizedAdminCerfa(from)) {
         if (buttonId === 'valider_chabbat') {
           await sendWhatsApp(from, '✓ Envoi du message Chabbat en cours...');
@@ -1258,7 +1266,6 @@ app.post('/webhook', async (req, res) => {
 
       if (await handleAdminCerfaCommand(from, text)) return;
       if (await handlePriveCommand(from, text)) return;
-            if (await handleSeferTorah(from, text)) return;
             if (await handleCerfaTsedakaCommand(from, text)) return;
             if (await handleInscriptionTsedaka(from, text)) return;
       if (isAuthorizedAdminCerfa(from)) {
@@ -1357,7 +1364,13 @@ app.post('/webhook', async (req, res) => {
       } else if (parlDeMusique(text)) {
         reply = await gererMusique(from, text, 'musique');
       } else if (sessionsHistoires[from] || parleDeHistoire(text)) {
-        reply = await gererHistoire(from, text);
+        const replyHistoire = await gererHistoire(from, text);
+        if (replyHistoire !== undefined) {
+          reply = replyHistoire;
+        } else {
+          // Utilisateur a appuyé sur "retour/menu/0" : on envoie un message court
+          reply = "D'accord ! 👋";
+        }
       } else if (infoImageMatch) {
         reply = `📋 ${infoImageMatch.titre}`;
         idsInfosAEnvoyer = [infoImageMatch.id];
@@ -3136,207 +3149,6 @@ app.get('/test/fetes/:password', async (req, res) => {
     .map(i => ({ date: String(i.date).slice(0, 10), nom: i.title, yomtov: !!i.yomtov }));
   res.json({ ok: true, nombre: fetes.length, fetes: fetes });
 });
-// ═══════════════════════════════════════════════
-// LETTRE DANS LE SEFER TORAH — formulaire guide en 4 etapes
-// ═══════════════════════════════════════════════
-
-(async () => {
-  try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS sessions_sefer (
-      phone TEXT PRIMARY KEY,
-      etape INTEGER DEFAULT 1,
-      data JSONB DEFAULT '{}',
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
-    console.log('Table sessions_sefer prete');
-  } catch (e) {
-    console.error('Table sessions_sefer:', e.message);
-  }
-})();
-
-function parleDeSeferTorah(text) {
-  const t = (text || '').toLowerCase();
-  return ['sefer torah', 'séfer torah', 'sefer thora', 'lettre torah', 'lettre dans le sefer',
-    'lettre sefer', 'sefer', 'séfer'].some(m => t.indexOf(m) >= 0);
-}
-
-function veutAnnuler(text) {
-  const t = (text || '').toLowerCase().trim();
-  return t === 'annuler' || t === 'stop' || t === 'arreter' || t === 'arrêter' || t === 'annule';
-}
-
-async function getSessionSefer(phone) {
-  try {
-    const r = await pool.query('SELECT * FROM sessions_sefer WHERE phone=$1', [phone]);
-    if (r.rows.length === 0) return null;
-    // Une session abandonnee depuis plus de 2h est oubliee
-    const age = Date.now() - new Date(r.rows[0].updated_at).getTime();
-    if (age > 2 * 3600 * 1000) {
-      await pool.query('DELETE FROM sessions_sefer WHERE phone=$1', [phone]);
-      return null;
-    }
-    return r.rows[0];
-  } catch (e) { return null; }
-}
-
-async function majSessionSefer(phone, etape, data) {
-  await pool.query(
-    `INSERT INTO sessions_sefer (phone, etape, data, updated_at) VALUES ($1,$2,$3,NOW())
-     ON CONFLICT (phone) DO UPDATE SET etape=$2, data=$3, updated_at=NOW()`,
-    [phone, etape, JSON.stringify(data || {})]
-  );
-}
-
-async function finSessionSefer(phone) {
-  await pool.query('DELETE FROM sessions_sefer WHERE phone=$1', [phone]).catch(() => {});
-}
-
-async function demarrerSeferTorah(from) {
-  await majSessionSefer(from, 1, {});
-  await sendWhatsAppButtons(
-    from,
-    "📖 Lettre dans le Sefer Torah\nÉtape 1/4\n\nC'est pour un garçon ou une fille ?",
-    [
-      { id: 'sefer_garcon', title: 'Garçon' },
-      { id: 'sefer_fille', title: 'Fille' },
-      { id: 'sefer_annuler', title: 'Annuler' }
-    ]
-  );
-}
-
-function recapSefer(d) {
-  let r = "📖 Vérifie avant d'envoyer :\n\n";
-  r += (d.genre || '-') + "\n";
-  r += (d.nom_complet || '-') + (d.age ? ', ' + d.age : '') + "\n";
-  if (d.mere) r += (d.genre === 'Fille' ? 'Fille de ' : 'Fils de ') + d.mere + "\n";
-  if (d.contact) r += "\n" + d.contact;
-  return r;
-}
-
-async function handleSeferTorah(from, text) {
-  try {
-    let session = await getSessionSefer(from);
-
-    // Demarrage
-    if (!session) {
-      if (!parleDeSeferTorah(text)) return false;
-      await demarrerSeferTorah(from);
-      return true;
-    }
-
-    if (veutAnnuler(text)) {
-      await finSessionSefer(from);
-      await sendWhatsApp(from, "C'est annulé.\n\nÉcris-moi \"sefer torah\" quand tu veux recommencer.\n\n" + getSignature());
-      return true;
-    }
-
-    const d = session.data || {};
-    const etape = session.etape;
-
-    if (etape === 1) {
-      // On attend un bouton, mais on accepte aussi le texte
-      const t = text.toLowerCase();
-      if (t.indexOf('gar') >= 0 || t === 'g') { await seferEtape2(from, d, 'Garçon'); return true; }
-      if (t.indexOf('fil') >= 0 || t === 'f') { await seferEtape2(from, d, 'Fille'); return true; }
-      await sendWhatsAppButtons(from, "📖 Étape 1/4\n\nC'est pour un garçon ou une fille ?", [
-        { id: 'sefer_garcon', title: 'Garçon' },
-        { id: 'sefer_fille', title: 'Fille' },
-        { id: 'sefer_annuler', title: 'Annuler' }
-      ]);
-      return true;
-    }
-
-    if (etape === 2) {
-      d.nom_complet = text.trim();
-      await majSessionSefer(from, 3, d);
-      await sendWhatsApp(from, "📖 Étape 3/4\n\nQuel âge a-t-il/elle, et quel est le prénom de la maman ?\n\n(exemple : 8 ans, Sarah)");
-      return true;
-    }
-
-    if (etape === 3) {
-      const brut = text.trim();
-      const m = brut.match(/^([^,;\n]+)[,;\n]+(.+)$/);
-      if (m) { d.age = m[1].trim(); d.mere = m[2].trim(); }
-      else { d.age = brut; d.mere = ''; }
-      await majSessionSefer(from, 4, d);
-      await sendWhatsApp(from, "📖 Étape 4/4\n\nL'adresse complète et un numéro de téléphone ?");
-      return true;
-    }
-
-    if (etape === 4) {
-      d.contact = text.trim();
-      await majSessionSefer(from, 5, d);
-      await sendWhatsAppButtons(from, recapSefer(d) + "\n\nC'est bon ?", [
-        { id: 'sefer_valider', title: "✓ C'est bon" },
-        { id: 'sefer_recommencer', title: '↺ Recommencer' },
-        { id: 'sefer_annuler', title: '✗ Annuler' }
-      ]);
-      return true;
-    }
-
-    if (etape === 5) {
-      await sendWhatsAppButtons(from, recapSefer(d) + "\n\nC'est bon ?", [
-        { id: 'sefer_valider', title: "✓ C'est bon" },
-        { id: 'sefer_recommencer', title: '↺ Recommencer' },
-        { id: 'sefer_annuler', title: '✗ Annuler' }
-      ]);
-      return true;
-    }
-
-    return false;
-  } catch (e) {
-    console.error('handleSeferTorah error:', e.message);
-    return false;
-  }
-}
-
-async function seferEtape2(from, d, genre) {
-  d.genre = genre;
-  await majSessionSefer(from, 2, d);
-  await sendWhatsApp(from, "📖 Étape 2/4\n\nQuel est le prénom et le nom de l'enfant ?\n\n(écris \"annuler\" pour arrêter)");
-}
-
-async function gererBoutonSefer(from, buttonId) {
-  try {
-    if (buttonId === 'sefer_annuler') {
-      await finSessionSefer(from);
-      await sendWhatsApp(from, "C'est annulé.\n\nÉcris-moi \"sefer torah\" quand tu veux recommencer.\n\n" + getSignature());
-      return;
-    }
-    if (buttonId === 'sefer_recommencer') {
-      await demarrerSeferTorah(from);
-      return;
-    }
-    const session = await getSessionSefer(from);
-    const d = (session && session.data) || {};
-
-    if (buttonId === 'sefer_garcon') { await seferEtape2(from, d, 'Garçon'); return; }
-    if (buttonId === 'sefer_fille') { await seferEtape2(from, d, 'Fille'); return; }
-
-    if (buttonId === 'sefer_valider') {
-      if (!session) { await sendWhatsApp(from, "La demande a expiré. Écris \"sefer torah\" pour recommencer."); return; }
-      const recap =
-        'Genre : ' + (d.genre || '-') + '\n' +
-        'Enfant : ' + (d.nom_complet || '-') + '\n' +
-        'Age : ' + (d.age || '-') + '\n' +
-        'Prenom de la mere : ' + (d.mere || '-') + '\n' +
-        'Adresse et telephone : ' + (d.contact || '-');
-      await sauvegarderDemande('sefer_torah', from, recap);
-      envoyerEmailDemande('sefer_torah', from, recap).catch(e => console.error('Email sefer:', e.message));
-      await finSessionSefer(from);
-      await sendWhatsApp(from,
-        "✅ C'est enregistré !\n\n" +
-        (d.nom_complet || '') + (d.age ? ', ' + d.age : '') + "\n" +
-        (d.mere ? ((d.genre === 'Fille' ? 'Fille de ' : 'Fils de ') + d.mere + "\n") : '') +
-        "\nNous te contactons très vite.\n\n" + getSignature()
-      );
-      console.log('Demande Sefer Torah enregistree :', from);
-      return;
-    }
-  } catch (e) {
-    console.error('gererBoutonSefer error:', e.message);
-  }
-}
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
