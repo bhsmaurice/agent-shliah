@@ -8,106 +8,49 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
     .container { max-width: 1200px; margin: 0 auto; }
-    .header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
-    .header h1 { font-size: 28px; color: #333; }
+    .login-box { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 1px 3px; margin-bottom: 20px; }
+    .login-box input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; }
+    .login-box button { background: #7c3aed; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-    .stat { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .stat-label { font-size: 13px; color: #666; margin-bottom: 5px; }
+    .stat { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px; }
     .stat-value { font-size: 32px; font-weight: 700; color: #7c3aed; }
-    .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead { background: #f7f6fc; border-bottom: 2px solid #e5e4f0; }
-    th { padding: 12px; text-align: left; font-weight: 600; color: #4f46e5; }
-    td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
-    tr:hover { background: #fafaf9; }
-    .badge-ok { color: #16a34a; font-weight: 600; }
-    .badge-no { color: #ea580c; font-weight: 600; }
-    .loading { text-align: center; padding: 40px; color: #999; }
     .error { color: #dc2626; padding: 20px; background: #fee2e2; border-radius: 8px; }
-    .debug { font-size: 11px; color: #666; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-family: monospace; }
+    .debug { font-size: 12px; color: #666; background: #f0f0f0; padding: 15px; border-radius: 6px; margin-top: 10px; font-family: monospace; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>💰 Tsedaka - Paiements</h1>
-    </div>
-
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-label">Total collecté</div>
-        <div class="stat-value" id="total">0€</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Nombre de paiements</div>
-        <div class="stat-value" id="count">0</div>
-      </div>
-    </div>
-
-    <div class="table-container">
-      <div id="content"></div>
-      <div id="debug" class="debug"></div>
+    <div class="login-box">
+      <h2>Tsedaka - Paiements</h2>
+      <label>Mot de passe :</label>
+      <input type="password" id="pw" value="levi770">
+      <button onclick="tester()">Tester</button>
+      <div id="result" class="debug" style="margin-top: 15px;"></div>
     </div>
   </div>
 
   <script>
-    var ADMIN_URL = 'https://agent-shliah-production.up.railway.app';
-    var ADMIN_PW = 'levi770';
-
-    function log(msg) {
-      console.log(msg);
-      document.getElementById('debug').innerHTML += msg + '<br>';
-    }
-
-    async function chargerPaiements() {
-      var content = document.getElementById('content');
-      content.innerHTML = '<div class="loading">Chargement...</div>';
-
-      try {
-        var url = ADMIN_URL + '/admin/tsedaka/dons?password=' + encodeURIComponent(ADMIN_PW);
-        log('URL: ' + url);
-        log('Password: ' + ADMIN_PW);
-
-        var r = await fetch(url);
-        log('Status: ' + r.status);
-        
-        var data = await r.json();
-        log('Response ok: ' + data.ok);
-        log('Response message: ' + (data.message || 'none'));
-
-        if (!data.ok) {
-          content.innerHTML = '<div class="error">Erreur: ' + data.message + '</div>';
-          return;
-        }
-
-        if (!data.dons || !data.dons.length) {
-          content.innerHTML = '<div class="loading">Aucun paiement</div>';
-          return;
-        }
-
-        log('Dons found: ' + data.dons.length);
-
-        var total = 0;
-        data.dons.forEach(d => { total += parseFloat(d.montant || 0); });
-        document.getElementById('total').textContent = total.toFixed(2).replace('.', ',') + '€';
-        document.getElementById('count').textContent = data.dons.length;
-
-        var html = '<table><thead><tr><th>Téléphone</th><th style="text-align:center;">Montant</th><th>Date/Heure</th><th style="text-align:center;">Cerfa</th></tr></thead><tbody>';
-
-        data.dons.forEach(d => {
-          var cerfa = d.cerfa_numero ? ('<span class="badge-ok">✅ ' + d.cerfa_numero + '</span>') : '<span class="badge-no">❌ Non</span>';
-          html += '<tr><td>+' + d.phone + '</td><td style="text-align:center;font-weight:700;">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + '€</td><td style="font-size:12px;color:#999;">' + d.date_paiement + '<br>' + d.heure_paiement + '</td><td style="text-align:center;">' + cerfa + '</td></tr>';
+    function tester() {
+      var pw = document.getElementById('pw').value;
+      var url = 'https://agent-shliah-production.up.railway.app/admin/tsedaka/dons?password=' + encodeURIComponent(pw);
+      
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          var html = 'Mot de passe: <strong>' + pw + '</strong><br>';
+          html += 'OK: ' + data.ok + '<br>';
+          html += 'Message: ' + (data.message || 'Aucun') + '<br>';
+          if (data.dons) html += 'Dons trouvés: ' + data.dons.length;
+          document.getElementById('result').innerHTML = html;
+        })
+        .catch(e => {
+          document.getElementById('result').innerHTML = 'ERREUR: ' + e.message;
         });
-
-        html += '</tbody></table>';
-        content.innerHTML = html;
-      } catch(e) {
-        log('ERROR: ' + e.message);
-        content.innerHTML = '<div class="error">Erreur: ' + e.message + '</div>';
-      }
     }
-
-    chargerPaiements();
+    
+    // Tester automatiquement au chargement
+    tester();
   </script>
 </body>
 </html>
