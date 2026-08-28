@@ -3335,6 +3335,22 @@ app.get('/test/fetes/:password', async (req, res) => {
     .map(i => ({ date: String(i.date).slice(0, 10), nom: i.title, yomtov: !!i.yomtov }));
   res.json({ ok: true, nombre: fetes.length, fetes: fetes });
 });
+// Page Tsedaka - HTML complete
+app.get("/tsedaka", async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).send("Mot de passe incorrect");
+  try {
+    const result = await pool.query(`SELECT d.*, a.prenom, a.nom FROM tsedaka_dons d LEFT JOIN tsedaka_abonnes a ON d.phone = a.phone ORDER BY d.id DESC`);
+    const dons = result.rows;
+    let total = 0;
+    dons.forEach(d => { total += parseFloat(d.montant || 0); });
+    let html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Tsedaka</title><style>body{font-family:sans-serif;background:#f5f5f5;padding:20px}table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden}th{background:#f7f6fc;padding:12px;text-align:left}td{padding:12px;border-bottom:1px solid #f0f0f0}.stat{background:white;padding:20px;border-radius:8px;margin-bottom:20px}.total{font-size:32px;font-weight:700;color:#7c3aed}</style></head><body><div style="max-width:1200px;margin:0 auto"><h1>Tsedaka Paiements</h1><div class="stat">Total: <span class="total">${total.toFixed(2)}€</span> (${dons.length} paiements)</div><table><thead><tr><th>Tel</th><th style="text-align:center">Montant</th><th>Date</th><th style="text-align:center">Cerfa</th></tr></thead><tbody>`;
+    dons.forEach(d => { html += `<tr><td>+${d.phone}</td><td style="text-align:center;font-weight:700">${parseFloat(d.montant).toFixed(2)}€</td><td>${d.date_paiement} ${d.heure_paiement}</td><td style="text-align:center">${d.cerfa_numero ? "✅ " + d.cerfa_numero : "❌"}</td></tr>`; });
+    html += `</tbody></table></div></body></html>`;
+    res.send(html);
+  } catch (e) { res.status(500).send("Erreur: " + e.message); }
+});
+
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
