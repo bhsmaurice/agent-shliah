@@ -10,11 +10,6 @@
     .container { max-width: 1200px; margin: 0 auto; }
     .header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
     .header h1 { font-size: 28px; color: #333; }
-    .login-box { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; }
-    .login-box label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-    .login-box input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
-    .login-box button { width: 100%; padding: 10px; background: #7c3aed; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-    .login-box button:hover { background: #6d28d9; }
     .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
     .stat { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .stat-label { font-size: 13px; color: #666; margin-bottom: 5px; }
@@ -31,7 +26,6 @@
     .badge-no { color: #ea580c; font-weight: 600; }
     .loading { text-align: center; padding: 40px; color: #999; }
     .error { color: #dc2626; padding: 20px; background: #fee2e2; border-radius: 8px; }
-    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -40,27 +34,19 @@
       <h1>💰 Tsedaka - Paiements</h1>
     </div>
 
-    <div id="loginSection" class="login-box">
-      <label>Mot de passe admin :</label>
-      <input type="password" id="passwordInput" placeholder="Entrez le mot de passe">
-      <button onclick="validerMotDePasse()">Se connecter</button>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Total collecté</div>
+        <div class="stat-value" id="total">0€</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Nombre de paiements</div>
+        <div class="stat-value" id="count">0</div>
+      </div>
     </div>
 
-    <div id="dataSection" class="hidden">
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-label">Total collecté</div>
-          <div class="stat-value" id="total">0€</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Nombre de paiements</div>
-          <div class="stat-value" id="count">0</div>
-        </div>
-      </div>
-
-      <div class="table-container">
-        <div id="content"></div>
-      </div>
+    <div class="table-container">
+      <div id="content"></div>
     </div>
   </div>
 
@@ -68,33 +54,22 @@
     var ADMIN_URL = 'https://agent-shliah-production.up.railway.app';
     var ADMIN_PW = 'levi770';
 
-    function validerMotDePasse() {
-      ADMIN_PW = document.getElementById('passwordInput').value;
-      if (!ADMIN_PW) { alert('Entrez le mot de passe'); return; }
-      document.getElementById('loginSection').classList.add('hidden');
-      document.getElementById('dataSection').classList.remove('hidden');
-      chargerPaiements();
-    }
-
     async function chargerPaiements() {
       var content = document.getElementById('content');
       content.innerHTML = '<div class="loading">Chargement...</div>';
 
       try {
+        console.log('Appel: ' + ADMIN_URL + '/admin/tsedaka/dons?password=' + ADMIN_PW);
         var r = await fetch(ADMIN_URL + '/admin/tsedaka/dons?password=' + encodeURIComponent(ADMIN_PW));
         var data = await r.json();
 
         if (!data.ok) {
           content.innerHTML = '<div class="error">Erreur: ' + data.message + '</div>';
-          document.getElementById('loginSection').classList.remove('hidden');
-          document.getElementById('dataSection').classList.add('hidden');
           return;
         }
 
         if (!data.dons || !data.dons.length) {
           content.innerHTML = '<div class="loading">Aucun paiement</div>';
-          document.getElementById('total').textContent = '0€';
-          document.getElementById('count').textContent = '0';
           return;
         }
 
@@ -103,12 +78,11 @@
         document.getElementById('total').textContent = total.toFixed(2).replace('.', ',') + '€';
         document.getElementById('count').textContent = data.dons.length;
 
-        var html = '<table><thead><tr><th>Téléphone</th><th style="text-align:center;">Montant</th><th>Date/Heure</th><th style="text-align:center;">Cerfa</th><th style="text-align:center;">Action</th></tr></thead><tbody>';
+        var html = '<table><thead><tr><th>Téléphone</th><th style="text-align:center;">Montant</th><th>Date/Heure</th><th style="text-align:center;">Cerfa</th></tr></thead><tbody>';
 
         data.dons.forEach(d => {
           var cerfa = d.cerfa_numero ? ('<span class="badge-ok">✅ ' + d.cerfa_numero + '</span>') : '<span class="badge-no">❌ Non</span>';
-          var action = d.cerfa_numero ? '' : ('<button class="btn-cerfa" onclick="genererCerfa(' + d.id + ', \'' + d.phone + '\')">+ Cerfa</button>');
-          html += '<tr><td>+' + d.phone + '</td><td style="text-align:center;font-weight:700;">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + '€</td><td style="font-size:12px;color:#999;">' + d.date_paiement + '<br>' + d.heure_paiement + '</td><td style="text-align:center;">' + cerfa + '</td><td style="text-align:center;">' + action + '</td></tr>';
+          html += '<tr><td>+' + d.phone + '</td><td style="text-align:center;font-weight:700;">' + parseFloat(d.montant).toFixed(2).replace('.', ',') + '€</td><td style="font-size:12px;color:#999;">' + d.date_paiement + '<br>' + d.heure_paiement + '</td><td style="text-align:center;">' + cerfa + '</td></tr>';
         });
 
         html += '</tbody></table>';
@@ -118,30 +92,7 @@
       }
     }
 
-    function genererCerfa(donId, phone) {
-      var nom = prompt('Nom du donateur ?');
-      if (!nom) return;
-      var adresse = prompt('Adresse complète ?');
-      if (!adresse) return;
-      var mode = prompt('Mode de paiement ?\n(Carte bancaire / Virement / Espèces / Chèque)');
-      if (!mode) return;
-
-      fetch(ADMIN_URL + '/admin/tsedaka/don/' + donId + '/cerfa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PW, nom: nom, adresse: adresse, mode: mode })
-      })
-      .then(r => r.ok ? r.blob() : r.json().then(e => { throw e; }))
-      .then(blob => {
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'Cerfa_' + donId + '.pdf';
-        link.click();
-        alert('Cerfa genere!');
-        chargerPaiements();
-      })
-      .catch(e => alert('Erreur: ' + (e.message || 'Impossible')));
-    }
+    chargerPaiements();
   </script>
 </body>
 </html>
