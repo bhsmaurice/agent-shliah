@@ -3340,7 +3340,7 @@ app.get("/tsedaka", async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).send("Mot de passe incorrect");
   try {
-    const result = await pool.query(`SELECT a.phone, COALESCE(a.prenom, '') as prenom, COALESCE(a.nom, '') as nom, COALESCE(a.adresse, '') as adresse, COALESCE(a.carte_gardee, false) as carte_gardee, COALESCE(a.rappel_quotidien, false) as rappel_quotidien, COALESCE(d.montant, 0) as montant, TO_CHAR(d.created_at, 'DD/MM/YYYY') as date_paiement, TO_CHAR(d.created_at, 'HH:MM') as heure_paiement, d.cerfa_numero FROM tsedaka_abonnes a LEFT JOIN tsedaka_dons d ON a.phone = d.phone ORDER BY d.created_at DESC`);
+    const result = await pool.query(`SELECT d.id, d.phone, COALESCE(a.prenom, '') as prenom, COALESCE(a.nom, '') as nom, COALESCE(a.adresse, '') as adresse, COALESCE(a.carte_gardee, false) as carte_gardee, COALESCE(a.rappel_quotidien, false) as rappel_quotidien, d.montant, TO_CHAR(d.created_at, 'DD/MM/YYYY') as date_paiement, TO_CHAR(d.created_at, 'HH:MM') as heure_paiement, d.cerfa_numero FROM tsedaka_dons d LEFT JOIN tsedaka_abonnes a ON d.phone = a.phone ORDER BY d.created_at DESC`);
     const dons = result.rows;
     let total = 0;
     dons.forEach(d => { if (parseFloat(d.montant) > 0) total += parseFloat(d.montant); });
