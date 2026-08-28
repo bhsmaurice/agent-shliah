@@ -3340,7 +3340,7 @@ app.get("/tsedaka", async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).send("Mot de passe incorrect");
   try {
-    const result = await pool.query(`SELECT d.*, a.prenom, a.nom FROM tsedaka_dons d LEFT JOIN tsedaka_abonnes a ON d.phone = a.phone ORDER BY d.id DESC`);
+    const result = await pool.query(`SELECT d.id, d.phone, d.montant, d.date_paiement, d.heure_paiement, d.cerfa_numero, a.prenom, a.nom FROM tsedaka_dons d LEFT JOIN tsedaka_abonnes a ON d.phone = a.phone ORDER BY d.id DESC`);
     const dons = result.rows;
     let total = 0;
     dons.forEach(d => { total += parseFloat(d.montant || 0); });
