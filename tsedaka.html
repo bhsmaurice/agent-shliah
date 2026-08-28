@@ -20,12 +20,11 @@
     th { padding: 12px; text-align: left; font-weight: 600; color: #4f46e5; }
     td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
     tr:hover { background: #fafaf9; }
-    .btn-cerfa { background: #7c3aed; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-cerfa:hover { background: #6d28d9; }
     .badge-ok { color: #16a34a; font-weight: 600; }
     .badge-no { color: #ea580c; font-weight: 600; }
     .loading { text-align: center; padding: 40px; color: #999; }
     .error { color: #dc2626; padding: 20px; background: #fee2e2; border-radius: 8px; }
+    .debug { font-size: 11px; color: #666; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-family: monospace; }
   </style>
 </head>
 <body>
@@ -47,6 +46,7 @@
 
     <div class="table-container">
       <div id="content"></div>
+      <div id="debug" class="debug"></div>
     </div>
   </div>
 
@@ -54,14 +54,26 @@
     var ADMIN_URL = 'https://agent-shliah-production.up.railway.app';
     var ADMIN_PW = 'levi770';
 
+    function log(msg) {
+      console.log(msg);
+      document.getElementById('debug').innerHTML += msg + '<br>';
+    }
+
     async function chargerPaiements() {
       var content = document.getElementById('content');
       content.innerHTML = '<div class="loading">Chargement...</div>';
 
       try {
-        console.log('Appel: ' + ADMIN_URL + '/admin/tsedaka/dons?password=' + ADMIN_PW);
-        var r = await fetch(ADMIN_URL + '/admin/tsedaka/dons?password=' + encodeURIComponent(ADMIN_PW));
+        var url = ADMIN_URL + '/admin/tsedaka/dons?password=' + encodeURIComponent(ADMIN_PW);
+        log('URL: ' + url);
+        log('Password: ' + ADMIN_PW);
+
+        var r = await fetch(url);
+        log('Status: ' + r.status);
+        
         var data = await r.json();
+        log('Response ok: ' + data.ok);
+        log('Response message: ' + (data.message || 'none'));
 
         if (!data.ok) {
           content.innerHTML = '<div class="error">Erreur: ' + data.message + '</div>';
@@ -72,6 +84,8 @@
           content.innerHTML = '<div class="loading">Aucun paiement</div>';
           return;
         }
+
+        log('Dons found: ' + data.dons.length);
 
         var total = 0;
         data.dons.forEach(d => { total += parseFloat(d.montant || 0); });
@@ -88,6 +102,7 @@
         html += '</tbody></table>';
         content.innerHTML = html;
       } catch(e) {
+        log('ERROR: ' + e.message);
         content.innerHTML = '<div class="error">Erreur: ' + e.message + '</div>';
       }
     }
