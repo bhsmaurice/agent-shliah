@@ -1995,6 +1995,20 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
          WHERE (email = $4 OR phone = $5) AND statut = 'en_attente' LIMIT 1`,
         [prenomFinal, nom.trim(), phoneFinal, emailFinal, phoneFinal]
       ).catch(() => {});
+      
+      // BONUS 2: Mettre à jour ou créer l'entrée dans tsedaka_abonnes (pour que la ligne affiche les bonnes infos)
+      if (phoneFinal) {
+        await pool.query(
+          `INSERT INTO tsedaka_abonnes (phone, prenom, nom, adresse, email)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (phone) DO UPDATE SET
+             prenom = COALESCE(EXCLUDED.prenom, tsedaka_abonnes.prenom),
+             nom = COALESCE(EXCLUDED.nom, tsedaka_abonnes.nom),
+             adresse = COALESCE(EXCLUDED.adresse, tsedaka_abonnes.adresse),
+             email = COALESCE(EXCLUDED.email, tsedaka_abonnes.email)`,
+          [phoneFinal, prenomFinal, nom.trim(), adresse.trim(), emailFinal]
+        ).catch(() => {});
+      }
     }
     
     // Envoyer les emails
@@ -2482,6 +2496,7 @@ async function initTsedakaDB() {
       prenom TEXT,
       nom TEXT,
       adresse TEXT,
+      email TEXT,
       stripe_customer_id TEXT,
       stripe_payment_method_id TEXT,
       carte_gardee BOOLEAN DEFAULT FALSE,
@@ -2489,6 +2504,7 @@ async function initTsedakaDB() {
       dernier_don_le DATE,
       created_at TIMESTAMP DEFAULT NOW()
     )`);
+    await pool.query('ALTER TABLE tsedaka_abonnes ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
     console.log('Table tsedaka_abonnes prete');
   } catch (e) {
     console.error('Table tsedaka_abonnes error:', e.message);
