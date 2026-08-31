@@ -2300,6 +2300,13 @@ app.post('/tsedaka/cerfa', async (req, res) => {
       [numero, nom, prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
     );
     await pool.query('UPDATE cerfa_receipts SET phone=$1 WHERE numero=$2', [phoneFormatted, numero]).catch(() => {});
+    
+    // Enregistrer le don dans tsedaka_dons (pour suivi dans /tsedaka)
+    await pool.query(
+      'INSERT INTO tsedaka_dons (phone, montant, statut, email) VALUES ($1, $2, $3, $4)',
+      [phoneFormatted, parseFloat(montant), 'complet', email || tel]
+    ).catch(() => {});
+    
     // Envoyer le Cerfa par email au donateur
     if (email && email.indexOf('@') > 0) {
       await pool.query('UPDATE cerfa_receipts SET email=$1 WHERE numero=$2', [email, numero]).catch(() => {});
