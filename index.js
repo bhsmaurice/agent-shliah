@@ -2441,6 +2441,7 @@ async function stripeGetPaymentMethod(paymentIntentId) {
 }
 
 // Enregistrer un paiement Stripe (avant que le formulaire soit rempli)
+// Version POST (pour le formulaire)
 app.post('/tsedaka/enregistrer-paiement', async (req, res) => {
   res.sendStatus(200);
   try {
@@ -2455,6 +2456,27 @@ app.post('/tsedaka/enregistrer-paiement', async (req, res) => {
     console.log('Paiement Tsedaka enregistré (en attente):', paymentIntentId, montant + '€');
   } catch (e) {
     console.error('Tsedaka enregistrer-paiement error:', e.message);
+  }
+});
+
+// Version GET très simple (pour les appels simples)
+app.get('/tsedaka/log-paiement', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const { id, montant } = req.query;
+    if (!id || !montant) return;
+    
+    const montantNum = parseFloat(montant);
+    if (isNaN(montantNum) || montantNum <= 0) return;
+    
+    // Enregistrer le paiement avec statut "en_attente"
+    await pool.query(
+      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut) VALUES ($1,$2,$3)',
+      [String(id), montantNum, 'en_attente']
+    );
+    console.log('✅ Paiement Tsedaka log-paiement:', id, montantNum + '€');
+  } catch (e) {
+    console.error('Tsedaka log-paiement error:', e.message);
   }
 });
 
