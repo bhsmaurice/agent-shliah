@@ -2618,12 +2618,16 @@ app.get('/tsedaka', async (req, res) => {
   try {
     // Dons COMPLETS (avec prénom/nom/adresse)
     const complets = await pool.query(`
-      SELECT d.id, d.montant, d.created_at, a.prenom, a.nom, a.adresse, a.phone
+      SELECT d.id, d.montant, d.created_at, a.prenom, a.nom, a.adresse, a.phone, a.carte_gardee
       FROM tsedaka_dons d
       LEFT JOIN tsedaka_abonnes a ON a.phone = d.phone
       WHERE d.statut = 'complet'
       ORDER BY d.created_at DESC LIMIT 500
     `);
+    
+    // Séparer en 2 catégories
+    const completsSansCarte = complets.rows.filter(d => !d.carte_gardee);
+    const completsAvecCarte = complets.rows.filter(d => d.carte_gardee);
     
     // Dons EN ATTENTE (pas encore de formulaire)
     const enAttente = await pool.query(`
@@ -2633,7 +2637,9 @@ app.get('/tsedaka', async (req, res) => {
       ORDER BY d.created_at DESC LIMIT 500
     `);
     
-    const totalComplets = complets.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    const totalCompletsSansCarte = completsSansCarte.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    const totalCompletsAvecCarte = completsAvecCarte.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    const totalComplets = totalCompletsSansCarte + totalCompletsAvecCarte;
     const totalEnAttente = enAttente.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
     
     // Format date pour affichage
@@ -2776,14 +2782,40 @@ app.get('/tsedaka', async (req, res) => {
   <div class="section">
     <h2>✅ Dons COMPLETS (Formulaire rempli)</h2>
     <p><strong>Total: ${totalComplets.toFixed(2)}€</strong> (${complets.rows.length} dons)</p>
+    
+    <h3 style="color: #8B4513; margin-top: 15px;">💳 Avec carte enregistrée (Tsedaka quotidienne)</h3>
+    <p><strong>Total: ${totalCompletsAvecCarte.toFixed(2)}€</strong> (${completsAvecCarte.length} dons)</p>
     <table>
       <tr><th>Nom</th><th>Tel</th><th>Adresse</th><th>Montant</th><th>Date</th></tr>
 `;
     
-    if (complets.rows.length === 0) {
-      html += '<tr><td colspan="5" class="empty">Aucun don complet</td></tr>';
+    if (completsAvecCarte.length === 0) {
+      html += '<tr><td colspan="5" class="empty">Aucun don avec carte enregistrée</td></tr>';
     } else {
-      complets.rows.forEach(d => {
+      completsAvecCarte.forEach(d => {
+        html += `<tr class="complet">
+          <td>${d.prenom || ''} ${d.nom || ''}</td>
+          <td>${d.phone || '-'}</td>
+          <td>${d.adresse || '-'}</td>
+          <td>${d.montant}€</td>
+          <td>${formatDate(d.created_at)}</td>
+        </tr>`;
+      });
+    }
+    
+    html += `
+    </table>
+    
+    <h3 style="color: #8B4513; margin-top: 15px;">📋 Sans carte (Don unique)</h3>
+    <p><strong>Total: ${totalCompletsSansCarte.toFixed(2)}€</strong> (${completsSansCarte.length} dons)</p>
+    <table>
+      <tr><th>Nom</th><th>Tel</th><th>Adresse</th><th>Montant</th><th>Date</th></tr>
+`;
+    
+    if (completsSansCarte.length === 0) {
+      html += '<tr><td colspan="5" class="empty">Aucun don sans carte</td></tr>';
+    } else {
+      completsSansCarte.forEach(d => {
         html += `<tr class="complet">
           <td>${d.prenom || ''} ${d.nom || ''}</td>
           <td>${d.phone || '-'}</td>
