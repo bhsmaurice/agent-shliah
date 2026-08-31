@@ -1992,7 +1992,7 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
     if (emailFinal || phoneFinal) {
       await pool.query(
         `UPDATE tsedaka_dons SET statut = 'complet', prenom = $1, nom = $2, phone = $3 
-         WHERE (email = $4 OR phone = $5) AND statut = 'en_attente' LIMIT 1`,
+         WHERE (email = $4 OR phone = $5) AND statut = 'en_attente'`,
         [prenomFinal, nom.trim(), phoneFinal, emailFinal, phoneFinal]
       ).catch(() => {});
       
