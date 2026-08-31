@@ -2845,15 +2845,22 @@ app.get('/tsedaka', async (req, res) => {
       statusDiv.className = '';
       statusDiv.style.display = 'block';
       
+      // Forcer le rafraîchissement après 8 secondes même si fetch n'a pas fini
+      const forceRefreshTimeout = setTimeout(() => {
+        statusDiv.textContent = '✅ Rafraîchissement forcé...';
+        setTimeout(() => { window.location.reload(); }, 1000);
+      }, 8000);
+      
       fetch('/admin/creer-cerfa-tsedaka', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({password: 'levi770', nom, prenom, email, phone, adresse, montant, date_paiement: date, don_id: donId})
       })
       .then(r => {
+        clearTimeout(forceRefreshTimeout); // Annuler le timeout de force
         if (r.ok) {
           statusDiv.className = 'success';
-          statusDiv.textContent = '✅ Cerfa créée! Rafraîchissement en cours...';
+          statusDiv.textContent = '✅ Cerfa créée! Rafraîchissement...';
           // Télécharger le PDF en arrière-plan
           r.blob().then(blob => {
             const url = window.URL.createObjectURL(blob);
@@ -2862,9 +2869,11 @@ app.get('/tsedaka', async (req, res) => {
             a.download = 'Cerfa.pdf';
             a.click();
           }).catch(() => {});
-          // Rafraîchir la page après 2 secondes
+          // Rafraîchir après 2 secondes
           setTimeout(() => { window.location.reload(); }, 2000);
         } else {
+          statusDiv.className = 'error';
+          statusDiv.textContent = '❌ Erreur';
           return r.json().then(data => { throw new Error(data.message); });
         }
       })
