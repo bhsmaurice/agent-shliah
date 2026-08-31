@@ -31,6 +31,8 @@ async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_counters (year INT PRIMARY KEY, last_number INT NOT NULL DEFAULT 0)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_receipts (id SERIAL PRIMARY KEY, numero TEXT UNIQUE NOT NULL, nom TEXT, prenom TEXT, adresse TEXT, montant NUMERIC(10,2) NOT NULL, mode_paiement TEXT, date_don DATE NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
+  await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS phone TEXT').catch(()=>{});
   await pool.query(`CREATE TABLE IF NOT EXISTS paiements (id SERIAL PRIMARY KEY, phone TEXT NOT NULL, montant NUMERIC(10,2) NOT NULL, description TEXT, lien_paiement TEXT, statut TEXT DEFAULT 'en_attente', nb_relances INTEGER DEFAULT 0, derniere_relance TIMESTAMP, delai_relance_jours INTEGER DEFAULT 3, max_relances INTEGER DEFAULT 3, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS infos_privees (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, contenu TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   // AJOUT — stockage des images uploadées depuis WhatsApp (servies via /media/:id)
@@ -1948,6 +1950,76 @@ app.get('/admin/cerfa/:id/pdf', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+
+// Créer une Cerfa TSEDAKA rapidement (pour Gabriel Boudara etc qui ont payé mais pas rempli le formulaire)
+app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
+  const { password, nom, prenom, adresse, phone, email, montant, date_paiement } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!nom || !adresse || !montant) return res.status(400).json({ ok: false, message: "Nom, adresse et montant requis" });
+  
+  try {
+    const montantNum = parseFloat(String(montant).replace(',', '.'));
+    if (isNaN(montantNum)) return res.status(400).json({ ok: false, message: "Montant invalide" });
+    
+    const numero = await getNextCerfaNumero();
+    const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
+    const emailFinal = email && email.trim() ? email.trim() : null;
+    const phoneFinal = phone && phone.trim() ? phone.trim() : null;
+    
+    const dateDon = date_paiement && /^\d{4}-\d{2}-\d{2}$/.test(date_paiement) 
+      ? date_paiement 
+      : new Date().toISOString().slice(0, 10);
+    const dateVersement = new Date(dateDon + 'T00:00:00').toLocaleDateString('fr-FR');
+    
+    // Générer la Cerfa
+    const pdfBuffer = await generateCerfaPDF({ 
+      numero, 
+      nom: nom.trim(), 
+      prenom: prenomFinal, 
+      adresse: adresse.trim(), 
+      montant: montantNum, 
+      mode: 'Carte bancaire',
+      dateVersement 
+    });
+    
+    // Enregistrer dans cerfa_receipts
+    await pool.query(
+      `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email, phone) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, 'Carte bancaire', dateDon, emailFinal, phoneFinal]
+    );
+    
+    // BONUS: Mettre à jour tsedaka_dons si on a un email/phone (lier le don)
+    if (emailFinal || phoneFinal) {
+      await pool.query(
+        `UPDATE tsedaka_dons SET statut = 'complet', prenom = $1, nom = $2, phone = $3 
+         WHERE (email = $4 OR phone = $5) AND statut = 'en_attente' LIMIT 1`,
+        [prenomFinal, nom.trim(), phoneFinal, emailFinal, phoneFinal]
+      ).catch(() => {});
+    }
+    
+    // Envoyer les emails
+    envoyerBackupCerfa({ 
+      numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), 
+      montant: montantNum, mode: 'Carte bancaire', dateVersement, email: emailFinal 
+    }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
+    
+    envoyerCerfaDonateur({ 
+      numero, nom: nom.trim(), prenom: prenomFinal, 
+      montant: montantNum, mode: 'Carte bancaire', email: emailFinal 
+    }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
+    
+    console.log('✅ Cerfa Tsedaka créée:', numero, nom.trim(), montantNum + '€');
+    
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (e) {
+    console.error('creer-cerfa-tsedaka error:', e.message);
+    res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 app.get('/admin/broadcast/contacts', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
