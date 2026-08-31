@@ -2040,7 +2040,8 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
     // Envoyer par WhatsApp si on a un phone
     if (phoneFinal && mediaId) {
       try {
-        const messageText = `Bonjour! 📄\n\nVotre reçu fiscal (Cerfa) ${numero} est prêt!\n\nDon: ${montantNum}€\n\n🙏 Todah Rabah!`;
+        // Envoyer d'abord le message de notification
+        const messageText = `📄 Votre reçu fiscal (Cerfa) est prêt!\n\nDon: ${montantNum}€\nNuméro: ${numero}\n\n🙏 Todah Rabah!`;
         
         const bodyWA = JSON.stringify({
           messaging_product: 'whatsapp',
@@ -2053,9 +2054,9 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
           body: bodyWA
-        }).catch(e => console.error('WhatsApp send error:', e));
+        }).catch(e => console.error('WhatsApp message error:', e));
         
-        console.log('✅ Cerfa notifiée par WhatsApp:', phoneFinal, 'ID:', mediaId);
+        console.log('✅ Cerfa notifiée par WhatsApp:', phoneFinal);
       } catch (e) {
         console.error('WhatsApp Cerfa error:', e.message);
       }
