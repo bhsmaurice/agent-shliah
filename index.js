@@ -2657,11 +2657,113 @@ app.get('/tsedaka', async (req, res) => {
     .attente { background: #fff3e0; }
     .total { font-weight: bold; background: #f0f0f0; }
     .empty { color: #999; font-style: italic; }
+    .form-group { margin: 10px 0; display: inline-block; margin-right: 15px; }
+    .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 3px; }
+    .form-group input { padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+    .form-group input:focus { outline: none; border-color: #8B4513; }
+    button { padding: 8px 15px; background: #8B4513; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #6B2F0B; }
+    #cerfa-status { margin-top: 10px; padding: 10px; border-radius: 3px; display: none; }
+    .success { background: #e8f5e9; color: #2e7d32; }
+    .error { background: #ffebee; color: #c62828; }
   </style>
 </head>
 <body>
   <h1>💰 Tsedaka Beth Habad S. Maurice</h1>
   
+  <div class="section">
+    <h2>⚡ Créer une Cerfa Rapide</h2>
+    <div style="display: flex; flex-wrap: wrap;">
+      <div class="form-group">
+        <label>Nom *</label>
+        <input type="text" id="cerfa-nom" placeholder="Boudara">
+      </div>
+      <div class="form-group">
+        <label>Prénom</label>
+        <input type="text" id="cerfa-prenom" placeholder="Gabriel">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="cerfa-email" placeholder="gabriel@example.com">
+      </div>
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input type="text" id="cerfa-phone" placeholder="+33...">
+      </div>
+      <div class="form-group">
+        <label>Adresse *</label>
+        <input type="text" id="cerfa-adresse" placeholder="8 rue..." style="width: 200px;">
+      </div>
+      <div class="form-group">
+        <label>Montant *</label>
+        <input type="number" id="cerfa-montant" placeholder="22.00" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Date paiement</label>
+        <input type="date" id="cerfa-date">
+      </div>
+      <div class="form-group" style="padding-top: 22px;">
+        <button onclick="creerCerfaRapide()">✅ Créer Cerfa</button>
+      </div>
+    </div>
+    <div id="cerfa-status"></div>
+  </div>
+  
+  <script>
+    function creerCerfaRapide() {
+      const nom = document.getElementById('cerfa-nom').value.trim();
+      const prenom = document.getElementById('cerfa-prenom').value.trim();
+      const email = document.getElementById('cerfa-email').value.trim();
+      const phone = document.getElementById('cerfa-phone').value.trim();
+      const adresse = document.getElementById('cerfa-adresse').value.trim();
+      const montant = document.getElementById('cerfa-montant').value.trim();
+      const date = document.getElementById('cerfa-date').value;
+      const statusDiv = document.getElementById('cerfa-status');
+      
+      if (!nom || !adresse || !montant) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = '❌ Nom, adresse et montant obligatoires';
+        statusDiv.style.display = 'block';
+        return;
+      }
+      
+      statusDiv.textContent = '⏳ Création en cours...';
+      statusDiv.className = '';
+      statusDiv.style.display = 'block';
+      
+      fetch('/admin/creer-cerfa-tsedaka', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: 'habad2024', nom, prenom, email, phone, adresse, montant, date_paiement: date})
+      })
+      .then(r => {
+        if (r.ok) {
+          statusDiv.className = 'success';
+          statusDiv.textContent = '✅ Cerfa créée! PDF en téléchargement...';
+          document.getElementById('cerfa-nom').value = '';
+          document.getElementById('cerfa-prenom').value = '';
+          document.getElementById('cerfa-email').value = '';
+          document.getElementById('cerfa-phone').value = '';
+          document.getElementById('cerfa-adresse').value = '';
+          document.getElementById('cerfa-montant').value = '';
+          document.getElementById('cerfa-date').value = '';
+          return r.blob().then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Cerfa.pdf';
+            a.click();
+          });
+        } else {
+          return r.json().then(data => { throw new Error(data.message); });
+        }
+      })
+      .catch(e => {
+        statusDiv.className = 'error';
+        statusDiv.textContent = '❌ Erreur: ' + e.message;
+      });
+    }
+  </script>
   <div class="section">
     <h2>✅ Dons COMPLETS (Formulaire rempli)</h2>
     <p><strong>Total: ${totalComplets.toFixed(2)}€</strong> (${complets.rows.length} dons)</p>
