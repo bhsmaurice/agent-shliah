@@ -2742,7 +2742,7 @@ app.get('/tsedaka', async (req, res) => {
       fetch('/admin/creer-cerfa-tsedaka', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: 'habad2024', nom, prenom, email, phone, adresse, montant, date_paiement: date})
+        body: JSON.stringify({password: 'levi770', nom, prenom, email, phone, adresse, montant, date_paiement: date})
       })
       .then(r => {
         if (r.ok) {
