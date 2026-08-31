@@ -1964,7 +1964,26 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
     const numero = await getNextCerfaNumero();
     const prenomFinal = prenom && prenom.trim() ? prenom.trim() : '-';
     const emailFinal = email && email.trim() ? email.trim() : null;
-    const phoneFinal = phone && phone.trim() ? phone.trim() : null;
+    
+    // Normaliser le téléphone pour WhatsApp (format: +33...)
+    let phoneFinal = phone && phone.trim() ? phone.trim() : null;
+    if (phoneFinal) {
+      // Supprimer tous les espaces et caractères non-numériques sauf +
+      phoneFinal = phoneFinal.replace(/[\s\-()\.]/g, '');
+      // Convertir 0633... en +33633...
+      if (phoneFinal.startsWith('0')) {
+        phoneFinal = '+33' + phoneFinal.slice(1);
+      }
+      // Ajouter +33 si manquant (ex: 33633... → +33633...)
+      if (!phoneFinal.startsWith('+') && phoneFinal.startsWith('33')) {
+        phoneFinal = '+' + phoneFinal;
+      }
+      // Valider format
+      if (!/^\+33\d{9,}$/.test(phoneFinal)) {
+        console.log('Format téléphone invalide:', phone);
+        phoneFinal = null; // Format invalide, ignorer pour WhatsApp
+      }
+    }
     
     const dateDon = date_paiement && /^\d{4}-\d{2}-\d{2}$/.test(date_paiement) 
       ? date_paiement 
