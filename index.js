@@ -1953,7 +1953,7 @@ app.get('/admin/cerfa/:id/pdf', async (req, res) => {
 
 // Créer une Cerfa TSEDAKA rapidement (pour Gabriel Boudara etc qui ont payé mais pas rempli le formulaire)
 app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
-  const { password, nom, prenom, adresse, phone, email, montant, date_paiement } = req.body;
+  const { password, nom, prenom, adresse, phone, email, montant, date_paiement, don_id } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
   if (!nom || !adresse || !montant) return res.status(400).json({ ok: false, message: "Nom, adresse et montant requis" });
   
@@ -1988,27 +1988,34 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
       [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, 'Carte bancaire', dateDon, emailFinal, phoneFinal]
     );
     
-    // BONUS: Mettre à jour tsedaka_dons si on a un email/phone (lier le don)
-    if (emailFinal || phoneFinal) {
+    // UPDATE tsedaka_dons — utiliser don_id si disponible, sinon chercher par email/phone
+    if (don_id) {
       await pool.query(
-        `UPDATE tsedaka_dons SET statut = 'complet', prenom = $1, nom = $2, phone = $3 
-         WHERE (email = $4 OR phone = $5) AND statut = 'en_attente'`,
-        [prenomFinal, nom.trim(), phoneFinal, emailFinal, phoneFinal]
+        `UPDATE tsedaka_dons SET statut = 'complet', prenom = $1, nom = $2, phone = $3, email = $4
+         WHERE id = $5`,
+        [prenomFinal, nom.trim(), phoneFinal, emailFinal, don_id]
       ).catch(() => {});
-      
-      // BONUS 2: Mettre à jour ou créer l'entrée dans tsedaka_abonnes (pour que la ligne affiche les bonnes infos)
-      if (phoneFinal) {
-        await pool.query(
-          `INSERT INTO tsedaka_abonnes (phone, prenom, nom, adresse, email)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (phone) DO UPDATE SET
-             prenom = COALESCE(EXCLUDED.prenom, tsedaka_abonnes.prenom),
-             nom = COALESCE(EXCLUDED.nom, tsedaka_abonnes.nom),
-             adresse = COALESCE(EXCLUDED.adresse, tsedaka_abonnes.adresse),
-             email = COALESCE(EXCLUDED.email, tsedaka_abonnes.email)`,
-          [phoneFinal, prenomFinal, nom.trim(), adresse.trim(), emailFinal]
-        ).catch(() => {});
-      }
+    } else if (emailFinal || phoneFinal) {
+      // Fallback: chercher par email/phone
+      await pool.query(
+        `UPDATE tsedaka_dons SET statut = 'complet', prenom = $1, nom = $2, phone = $3, email = $4
+         WHERE (email = $5 OR phone = $6) AND statut = 'en_attente'`,
+        [prenomFinal, nom.trim(), phoneFinal, emailFinal, emailFinal, phoneFinal]
+      ).catch(() => {});
+    }
+    
+    // Mettre à jour ou créer l'entrée dans tsedaka_abonnes
+    if (phoneFinal) {
+      await pool.query(
+        `INSERT INTO tsedaka_abonnes (phone, prenom, nom, adresse, email)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (phone) DO UPDATE SET
+           prenom = COALESCE(EXCLUDED.prenom, tsedaka_abonnes.prenom),
+           nom = COALESCE(EXCLUDED.nom, tsedaka_abonnes.nom),
+           adresse = COALESCE(EXCLUDED.adresse, tsedaka_abonnes.adresse),
+           email = COALESCE(EXCLUDED.email, tsedaka_abonnes.email)`,
+        [phoneFinal, prenomFinal, nom.trim(), adresse.trim(), emailFinal]
+      ).catch(() => {});
     }
     
     // Envoyer les emails
@@ -2695,6 +2702,7 @@ app.get('/tsedaka', async (req, res) => {
   
   <div class="section">
     <h2>⚡ Créer une Cerfa Rapide</h2>
+    <input type="hidden" id="cerfa-don-id">
     <div style="display: flex; flex-wrap: wrap;">
       <div class="form-group">
         <label>Nom *</label>
@@ -2732,7 +2740,8 @@ app.get('/tsedaka', async (req, res) => {
   </div>
   
   <script>
-    function remplirFormulaireCerfa(email, montant, date) {
+    function remplirFormulaireCerfa(email, montant, date, donId) {
+      document.getElementById('cerfa-don-id').value = donId || '';
       document.getElementById('cerfa-email').value = email;
       document.getElementById('cerfa-montant').value = montant;
       document.getElementById('cerfa-date').value = date;
@@ -2741,6 +2750,7 @@ app.get('/tsedaka', async (req, res) => {
     }
     
     function creerCerfaRapide() {
+      const donId = document.getElementById('cerfa-don-id').value;
       const nom = document.getElementById('cerfa-nom').value.trim();
       const prenom = document.getElementById('cerfa-prenom').value.trim();
       const email = document.getElementById('cerfa-email').value.trim();
@@ -2764,7 +2774,7 @@ app.get('/tsedaka', async (req, res) => {
       fetch('/admin/creer-cerfa-tsedaka', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: 'levi770', nom, prenom, email, phone, adresse, montant, date_paiement: date})
+        body: JSON.stringify({password: 'levi770', nom, prenom, email, phone, adresse, montant, date_paiement: date, don_id: donId})
       })
       .then(r => {
         if (r.ok) {
@@ -2865,7 +2875,7 @@ app.get('/tsedaka', async (req, res) => {
           <td>${d.email || '-'}</td>
           <td>${d.montant}€</td>
           <td>${formatDate(d.created_at)}</td>
-          <td><button onclick="remplirFormulaireCerfa('${d.email || ''}', '${d.montant}', '${dateIso}')" style="padding: 4px 8px; font-size: 11px;">➕ Cerfa</button></td>
+          <td><button onclick="remplirFormulaireCerfa('${d.email || ''}', '${d.montant}', '${dateIso}', '${d.id}')" style="padding: 4px 8px; font-size: 11px;">➕ Cerfa</button></td>
         </tr>`;
       });
     }
