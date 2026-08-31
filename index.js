@@ -2710,6 +2710,14 @@ app.get('/tsedaka', async (req, res) => {
   </div>
   
   <script>
+    function remplirFormulaireCerfa(email, montant, date) {
+      document.getElementById('cerfa-email').value = email;
+      document.getElementById('cerfa-montant').value = montant;
+      document.getElementById('cerfa-date').value = date;
+      document.getElementById('cerfa-nom').focus();
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+    
     function creerCerfaRapide() {
       const nom = document.getElementById('cerfa-nom').value.trim();
       const prenom = document.getElementById('cerfa-prenom').value.trim();
@@ -2793,19 +2801,22 @@ app.get('/tsedaka', async (req, res) => {
     <h2>⏳ Dons EN ATTENTE (Paiement OK, formulaire pas encore rempli)</h2>
     <p><strong>Total: ${totalEnAttente.toFixed(2)}€</strong> (${enAttente.rows.length} dons)</p>
     <table>
-      <tr><th>Nom</th><th>Email</th><th>Montant</th><th>Date du paiement</th></tr>
+      <tr><th>Nom</th><th>Email</th><th>Montant</th><th>Date du paiement</th><th>Action</th></tr>
 `;
     
     if (enAttente.rows.length === 0) {
-      html += '<tr><td colspan="4" class="empty">Aucun don en attente</td></tr>';
+      html += '<tr><td colspan="5" class="empty">Aucun don en attente</td></tr>';
     } else {
       enAttente.rows.forEach(d => {
         const nomComplet = (d.prenom || '') + (d.nom ? ' ' + d.nom : '');
+        const dateObj = new Date(d.created_at);
+        const dateIso = dateObj.toISOString().slice(0, 10);
         html += `<tr class="attente">
           <td>${nomComplet || '-'}</td>
           <td>${d.email || '-'}</td>
           <td>${d.montant}€</td>
           <td>${formatDate(d.created_at)}</td>
+          <td><button onclick="remplirFormulaireCerfa('${d.email || ''}', '${d.montant}', '${dateIso}')" style="padding: 4px 8px; font-size: 11px;">➕ Cerfa</button></td>
         </tr>`;
       });
     }
