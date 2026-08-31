@@ -2853,22 +2853,17 @@ app.get('/tsedaka', async (req, res) => {
       .then(r => {
         if (r.ok) {
           statusDiv.className = 'success';
-          statusDiv.textContent = '✅ Cerfa créée! PDF en téléchargement... Rafraîchissement...';
-          document.getElementById('cerfa-nom').value = '';
-          document.getElementById('cerfa-prenom').value = '';
-          document.getElementById('cerfa-email').value = '';
-          document.getElementById('cerfa-phone').value = '';
-          document.getElementById('cerfa-adresse').value = '';
-          document.getElementById('cerfa-montant').value = '';
-          document.getElementById('cerfa-date').value = '';
-          return r.blob().then(blob => {
+          statusDiv.textContent = '✅ Cerfa créée! Rafraîchissement en cours...';
+          // Télécharger le PDF en arrière-plan
+          r.blob().then(blob => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'Cerfa.pdf';
             a.click();
-            setTimeout(() => { window.location.reload(); }, 2000);
-          });
+          }).catch(() => {});
+          // Rafraîchir la page après 2 secondes
+          setTimeout(() => { window.location.reload(); }, 2000);
         } else {
           return r.json().then(data => { throw new Error(data.message); });
         }
