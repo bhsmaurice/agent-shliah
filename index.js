@@ -2029,11 +2029,37 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
       montant: montantNum, mode: 'Carte bancaire', email: emailFinal 
     }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     
-    console.log('✅ Cerfa Tsedaka créée:', numero, nom.trim(), montantNum + '€');
+    // Sauvegarder le PDF dans medias pour pouvoir l'envoyer via WhatsApp
+    const mediaResult = await pool.query(
+      'INSERT INTO medias (data, mime_type) VALUES ($1, $2) RETURNING id',
+      [pdfBuffer, 'application/pdf']
+    ).catch(() => null);
     
-    res.set('Content-Type', 'application/pdf');
-    res.set('Content-Disposition', `attachment; filename="Cerfa_${numero}.pdf"`);
-    res.send(pdfBuffer);
+    const mediaId = mediaResult && mediaResult.rows[0] ? mediaResult.rows[0].id : null;
+    
+    // Envoyer par WhatsApp si on a un phone
+    if (phoneFinal && mediaId) {
+      try {
+        const messageText = `Bonjour! 📄\n\nVotre reçu fiscal (Cerfa) ${numero} est prêt!\n\nDon: ${montantNum}€\n\n🙏 Todah Rabah!`;
+        
+        const bodyWA = JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: phoneFinal,
+          type: 'text',
+          text: { body: messageText }
+        });
+        
+        await fetch('https://graph.facebook.com/v25.0/' + PHONE_NUMBER_ID + '/messages', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+          body: bodyWA
+        }).catch(e => console.error('WhatsApp send error:', e));
+        
+        console.log('✅ Cerfa notifiée par WhatsApp:', phoneFinal, 'ID:', mediaId);
+      } catch (e) {
+        console.error('WhatsApp Cerfa error:', e.message);
+      }
+    }
   } catch (e) {
     console.error('creer-cerfa-tsedaka error:', e.message);
     res.status(500).json({ ok: false, message: e.message });
