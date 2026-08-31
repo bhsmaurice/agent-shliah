@@ -2664,7 +2664,7 @@ async function initTsedakaDons() {
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS tsedaka_dons (
       id SERIAL PRIMARY KEY,
-      phone TEXT NOT NULL,
+      phone TEXT,
       montant NUMERIC(10,2) NOT NULL,
       stripe_payment_intent_id TEXT,
       statut TEXT DEFAULT 'en_attente',
@@ -2675,6 +2675,8 @@ async function initTsedakaDons() {
     // Ajouter les colonnes si elles n'existent pas
     await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT \'en_attente\'').catch(()=>{});
     await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
+    // Rendre phone nullable si nécessaire (pour les dons sans formulaire)
+    await pool.query('ALTER TABLE tsedaka_dons ALTER COLUMN phone DROP NOT NULL').catch(()=>{});
     console.log('Table tsedaka_dons prete');
   } catch (e) {
     console.error('Table tsedaka_dons error:', e.message);
