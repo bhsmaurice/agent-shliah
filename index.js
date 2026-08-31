@@ -2038,25 +2038,53 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
     const mediaId = mediaResult && mediaResult.rows[0] ? mediaResult.rows[0].id : null;
     
     // Envoyer par WhatsApp si on a un phone
-    if (phoneFinal && mediaId) {
+    if (phoneFinal) {
       try {
-        // Envoyer d'abord le message de notification
-        const messageText = `📄 Votre reçu fiscal (Cerfa) est prêt!\n\nDon: ${montantNum}€\nNuméro: ${numero}\n\n🙏 Todah Rabah!`;
+        // Uploader le PDF sur WhatsApp et l'envoyer directement
+        const form = new (require('form-data'))();
+        form.append('messaging_product', 'whatsapp');
+        form.append('file', pdfBuffer, { filename: `Cerfa_${numero}.pdf`, contentType: 'application/pdf' });
+        form.append('type', 'application/pdf');
         
-        const bodyWA = JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: phoneFinal,
-          type: 'text',
-          text: { body: messageText }
-        });
-        
-        await fetch('https://graph.facebook.com/v25.0/' + PHONE_NUMBER_ID + '/messages', {
+        const uploadRes = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/media`, {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
-          body: bodyWA
-        }).catch(e => console.error('WhatsApp message error:', e));
+          headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` },
+          body: form,
+        });
+        const uploadData = await uploadRes.json();
         
-        console.log('✅ Cerfa notifiée par WhatsApp:', phoneFinal);
+        if (uploadData.id) {
+          // Envoyer le PDF comme document
+          const bodyDoc = JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phoneFinal,
+            type: 'document',
+            document: { id: uploadData.id, filename: `Cerfa_${numero}.pdf`, caption: `📄 Reçu fiscal - Don ${montantNum}€` }
+          });
+          
+          await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+            body: bodyDoc
+          });
+          
+          console.log('✅ Cerfa PDF envoyée par WhatsApp:', phoneFinal);
+        } else {
+          // Fallback: envoyer juste un message texte
+          const msgText = `📄 Votre reçu fiscal (Cerfa) est prêt!\n\nDon: ${montantNum}€\nNuméro: ${numero}\n\n🙏 Todah Rabah!`;
+          const bodyText = JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phoneFinal,
+            type: 'text',
+            text: { body: msgText }
+          });
+          
+          await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+            body: bodyText
+          });
+        }
       } catch (e) {
         console.error('WhatsApp Cerfa error:', e.message);
       }
