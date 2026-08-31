@@ -3216,17 +3216,13 @@ app.get('/admin/sync-stripe-paiements', async (req, res) => {
     // Récupérer les Payment Intents réussis des 7 derniers jours
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
     
-    const params = new URLSearchParams();
-    params.append('limit', '100');
-    params.append('created[gte]', String(sevenDaysAgo));
+    const stripeUrl = 'https://api.stripe.com/v1/payment_intents?limit=100&created[gte]=' + sevenDaysAgo;
     
-    const response = await fetch('https://api.stripe.com/v1/payment_intents', {
+    const response = await fetch(stripeUrl, {
       method: 'GET',
       headers: {
-        'Authorization': 'Bearer ' + STRIPE_SECRET_KEY,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
+        'Authorization': 'Bearer ' + STRIPE_SECRET_KEY
+      }
     });
     
     const data = await response.json();
