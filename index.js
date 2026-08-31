@@ -3248,17 +3248,30 @@ app.get('/admin/sync-stripe-paiements', async (req, res) => {
         const piId = pi.id;
         
         // Extraire les infos du client depuis le Payment Intent
-        let email = pi.receipt_email || (pi.charges && pi.charges.data && pi.charges.data[0] && pi.charges.data[0].receipt_email) || null;
+        let email = pi.receipt_email || null;
         let nom = null;
         let prenom = null;
         
-        // Essayer de récupérer le nom depuis billing_details
-        if (pi.charges && pi.charges.data && pi.charges.data[0] && pi.charges.data[0].billing_details) {
-          const bd = pi.charges.data[0].billing_details;
-          if (bd.name) {
-            const nameParts = bd.name.split(' ');
+        // Chercher le nom à plusieurs endroits dans Stripe
+        // 1. Depuis billing_details des charges
+        if (pi.charges && pi.charges.data && pi.charges.data[0]) {
+          const charge = pi.charges.data[0];
+          if (charge.billing_details && charge.billing_details.name) {
+            const nameParts = charge.billing_details.name.split(' ');
             prenom = nameParts[0];
             nom = nameParts.slice(1).join(' ') || prenom;
+          }
+          // 2. Depuis receipt_email si pas de nom
+          if (!email && charge.receipt_email) {
+            email = charge.receipt_email;
+          }
+        }
+        
+        // 3. Depuis le statut description si disponible
+        if (!prenom && pi.description) {
+          // Essayer d'extraire le nom de la description si elle contient "Donateur"
+          if (pi.description.includes('Donateur')) {
+            // Garder comme est
           }
         }
         
