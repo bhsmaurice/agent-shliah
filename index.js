@@ -2555,7 +2555,7 @@ app.get('/tsedaka', async (req, res) => {
     
     // Dons EN ATTENTE (pas encore de formulaire)
     const enAttente = await pool.query(`
-      SELECT d.id, d.montant, d.email, d.created_at
+      SELECT d.id, d.montant, d.email, d.prenom, d.nom, d.created_at
       FROM tsedaka_dons d
       WHERE d.statut = 'en_attente'
       ORDER BY d.created_at DESC LIMIT 500
@@ -2619,14 +2619,16 @@ app.get('/tsedaka', async (req, res) => {
     <h2>⏳ Dons EN ATTENTE (Paiement OK, formulaire pas encore rempli)</h2>
     <p><strong>Total: ${totalEnAttente.toFixed(2)}€</strong> (${enAttente.rows.length} dons)</p>
     <table>
-      <tr><th>Email</th><th>Montant</th><th>Date du paiement</th></tr>
+      <tr><th>Nom</th><th>Email</th><th>Montant</th><th>Date du paiement</th></tr>
 `;
     
     if (enAttente.rows.length === 0) {
-      html += '<tr><td colspan="3" class="empty">Aucun don en attente</td></tr>';
+      html += '<tr><td colspan="4" class="empty">Aucun don en attente</td></tr>';
     } else {
       enAttente.rows.forEach(d => {
+        const nomComplet = (d.prenom || '') + (d.nom ? ' ' + d.nom : '');
         html += `<tr class="attente">
+          <td>${nomComplet || '-'}</td>
           <td>${d.email || '-'}</td>
           <td>${d.montant}€</td>
           <td>${formatDate(d.created_at)}</td>
@@ -2665,6 +2667,8 @@ async function initTsedakaDons() {
     await pool.query(`CREATE TABLE IF NOT EXISTS tsedaka_dons (
       id SERIAL PRIMARY KEY,
       phone TEXT,
+      prenom TEXT,
+      nom TEXT,
       montant NUMERIC(10,2) NOT NULL,
       stripe_payment_intent_id TEXT,
       statut TEXT DEFAULT 'en_attente',
@@ -2675,6 +2679,8 @@ async function initTsedakaDons() {
     // Ajouter les colonnes si elles n'existent pas
     await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT \'en_attente\'').catch(()=>{});
     await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
+    await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS prenom TEXT').catch(()=>{});
+    await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS nom TEXT').catch(()=>{});
     // Rendre phone nullable si nécessaire (pour les dons sans formulaire)
     await pool.query('ALTER TABLE tsedaka_dons ALTER COLUMN phone DROP NOT NULL').catch(()=>{});
     console.log('Table tsedaka_dons prete');
@@ -3265,8 +3271,8 @@ app.get('/admin/sync-stripe-paiements', async (req, res) => {
         if (existing.rows.length === 0) {
           // Enregistrer le nouveau paiement avec les infos du client
           await pool.query(
-            'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut, email) VALUES ($1, $2, $3, $4)',
-            [piId, amount, 'en_attente', email]
+            'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut, email, prenom, nom) VALUES ($1, $2, $3, $4, $5, $6)',
+            [piId, amount, 'en_attente', email, prenom, nom]
           );
           count++;
           console.log(`✅ Paiement Stripe enregistré: ${piId} | ${amount}€ | ${email || 'pas d\'email'}`);
