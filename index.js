@@ -2433,6 +2433,24 @@ async function stripeGetPaymentMethod(paymentIntentId) {
   }
 }
 
+// Enregistrer un paiement Stripe (avant que le formulaire soit rempli)
+app.post('/tsedaka/enregistrer-paiement', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const { paymentIntentId, montant, email } = req.body;
+    if (!paymentIntentId || !montant) return;
+    
+    // Enregistrer le paiement avec statut "en_attente" (formulaire pas encore rempli)
+    await pool.query(
+      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, email, statut) VALUES ($1,$2,$3,$4)',
+      [paymentIntentId, montant, email || null, 'en_attente']
+    );
+    console.log('Paiement Tsedaka enregistré (en attente):', paymentIntentId, montant + '€');
+  } catch (e) {
+    console.error('Tsedaka enregistrer-paiement error:', e.message);
+  }
+});
+
 // Appele par la page Tsedaka quand la personne coche une case
 app.post('/tsedaka/abonner', async (req, res) => {
   res.sendStatus(200);
@@ -2467,6 +2485,14 @@ app.post('/tsedaka/abonner', async (req, res) => {
         rappel_quotidien = EXCLUDED.rappel_quotidien
     `, [phoneFormatted, prenom || null, nom || null, adresse || null, custId, pmId, !!garder_carte, !!rappel_quotidien]);
 
+    // Mettre à jour le don Tsedaka si un payment_intent_id est fourni
+    if (payment_intent_id) {
+      await pool.query(
+        'UPDATE tsedaka_dons SET phone=$1, statut=$2 WHERE stripe_payment_intent_id=$3 AND statut=$4',
+        [phoneFormatted, 'complet', payment_intent_id, 'en_attente']
+      );
+    }
+
     console.log('Tsedaka abonne enregistre:', phoneFormatted, '| carte:', !!pmId, '| rappel:', !!rappel_quotidien);
   } catch (e) {
     console.error('Tsedaka abonner error:', e.message);
@@ -2483,6 +2509,118 @@ app.get('/admin/tsedaka/abonnes', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+
+// PAGE TSEDAKA — Affiche les dons complets et en attente
+app.get('/tsedaka', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).send('Mot de passe incorrect');
+  try {
+    // Dons COMPLETS (avec prénom/nom/adresse)
+    const complets = await pool.query(`
+      SELECT d.id, d.montant, d.created_at, a.prenom, a.nom, a.adresse, a.phone
+      FROM tsedaka_dons d
+      LEFT JOIN tsedaka_abonnes a ON a.phone = d.phone
+      WHERE d.statut = 'complet'
+      ORDER BY d.created_at DESC LIMIT 500
+    `);
+    
+    // Dons EN ATTENTE (pas encore de formulaire)
+    const enAttente = await pool.query(`
+      SELECT d.id, d.montant, d.email, d.created_at
+      FROM tsedaka_dons d
+      WHERE d.statut = 'en_attente'
+      ORDER BY d.created_at DESC LIMIT 500
+    `);
+    
+    const totalComplets = complets.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    const totalEnAttente = enAttente.rows.reduce((s, x) => s + parseFloat(x.montant || 0), 0);
+    
+    // Format date pour affichage
+    const formatDate = (d) => new Date(d).toLocaleDateString('fr-FR') + ' ' + new Date(d).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tsedaka - Beth Habad</title>
+  <style>
+    body { font-family: Arial; margin: 20px; background: #f5f5f5; }
+    h1 { color: #8B4513; }
+    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #8B4513; color: white; padding: 10px; text-align: left; }
+    td { padding: 8px; border-bottom: 1px solid #eee; }
+    tr:hover { background: #f9f9f9; }
+    .complet { background: #e8f5e9; }
+    .attente { background: #fff3e0; }
+    .total { font-weight: bold; background: #f0f0f0; }
+    .empty { color: #999; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>💰 Tsedaka Beth Habad S. Maurice</h1>
+  
+  <div class="section">
+    <h2>✅ Dons COMPLETS (Formulaire rempli)</h2>
+    <p><strong>Total: ${totalComplets.toFixed(2)}€</strong> (${complets.rows.length} dons)</p>
+    <table>
+      <tr><th>Nom</th><th>Tel</th><th>Adresse</th><th>Montant</th><th>Date</th></tr>
+`;
+    
+    if (complets.rows.length === 0) {
+      html += '<tr><td colspan="5" class="empty">Aucun don complet</td></tr>';
+    } else {
+      complets.rows.forEach(d => {
+        html += `<tr class="complet">
+          <td>${d.prenom || ''} ${d.nom || ''}</td>
+          <td>${d.phone || '-'}</td>
+          <td>${d.adresse || '-'}</td>
+          <td>${d.montant}€</td>
+          <td>${formatDate(d.created_at)}</td>
+        </tr>`;
+      });
+    }
+    
+    html += `
+    </table>
+  </div>
+  
+  <div class="section">
+    <h2>⏳ Dons EN ATTENTE (Paiement OK, formulaire pas encore rempli)</h2>
+    <p><strong>Total: ${totalEnAttente.toFixed(2)}€</strong> (${enAttente.rows.length} dons)</p>
+    <table>
+      <tr><th>Email</th><th>Montant</th><th>Date du paiement</th></tr>
+`;
+    
+    if (enAttente.rows.length === 0) {
+      html += '<tr><td colspan="3" class="empty">Aucun don en attente</td></tr>';
+    } else {
+      enAttente.rows.forEach(d => {
+        html += `<tr class="attente">
+          <td>${d.email || '-'}</td>
+          <td>${d.montant}€</td>
+          <td>${formatDate(d.created_at)}</td>
+        </tr>`;
+      });
+    }
+    
+    html += `
+    </table>
+  </div>
+  
+  <div class="section" style="text-align: center; color: #666; font-size: 12px;">
+    <p>Tsedaka quotidienne - Beth Habad S. Maurice</p>
+  </div>
+</body>
+</html>`;
+    
+    res.send(html);
+  } catch (e) {
+    res.status(500).send('Erreur: ' + e.message);
+  }
+});
+
 // ═══════════════════════════════════════════════
 // TSEDAKA QUOTIDIENNE — rappel 10h + paiement en 1 clic
 // ═══════════════════════════════════════════════
@@ -2500,9 +2638,14 @@ async function initTsedakaDons() {
       phone TEXT NOT NULL,
       montant NUMERIC(10,2) NOT NULL,
       stripe_payment_intent_id TEXT,
+      statut TEXT DEFAULT 'en_attente',
+      email TEXT,
       date_don DATE DEFAULT CURRENT_DATE,
       created_at TIMESTAMP DEFAULT NOW()
     )`);
+    // Ajouter les colonnes si elles n'existent pas
+    await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT \'en_attente\'').catch(()=>{});
+    await pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
     console.log('Table tsedaka_dons prete');
   } catch (e) {
     console.error('Table tsedaka_dons error:', e.message);
