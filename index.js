@@ -3206,6 +3206,66 @@ app.get('/admin/tsedaka/dons-tous', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+
+// Synchroniser les paiements Stripe avec la base (récupère tous les paiements réussis)
+app.get('/admin/sync-stripe-paiements', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).send('Mot de passe incorrect');
+  
+  try {
+    // Récupérer les Payment Intents réussis des 7 derniers jours
+    const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+    
+    const params = new URLSearchParams();
+    params.append('limit', '100');
+    params.append('created[gte]', String(sevenDaysAgo));
+    
+    const response = await fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + STRIPE_SECRET_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+    
+    const data = await response.json();
+    
+    if (!data.data) {
+      return res.send('Pas de données Stripe');
+    }
+    
+    let count = 0;
+    
+    // Pour chaque paiement réussi
+    for (const pi of data.data) {
+      if (pi.status === 'succeeded') {
+        const amount = pi.amount / 100; // Convertir centimes en euros
+        const piId = pi.id;
+        
+        // Vérifier si ce paiement est déjà enregistré
+        const existing = await pool.query(
+          'SELECT id FROM tsedaka_dons WHERE stripe_payment_intent_id = $1',
+          [piId]
+        );
+        
+        if (existing.rows.length === 0) {
+          // Enregistrer le nouveau paiement
+          await pool.query(
+            'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut) VALUES ($1, $2, $3)',
+            [piId, amount, 'en_attente']
+          );
+          count++;
+        }
+      }
+    }
+    
+    res.send('✅ ' + count + ' paiements synchronisés depuis Stripe');
+  } catch (e) {
+    res.send('❌ Erreur: ' + e.message);
+  }
+});
+
 // ═══════════════════════════════════════════════
 // TSEDAKA — envoi avec repli automatique sur le template Meta
 // Message normal d'abord (gratuit). Si la fenetre 24h est
