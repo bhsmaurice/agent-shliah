@@ -2747,7 +2747,7 @@ app.get('/tsedaka', async (req, res) => {
       .then(r => {
         if (r.ok) {
           statusDiv.className = 'success';
-          statusDiv.textContent = '✅ Cerfa créée! PDF en téléchargement...';
+          statusDiv.textContent = '✅ Cerfa créée! PDF en téléchargement... Rafraîchissement...';
           document.getElementById('cerfa-nom').value = '';
           document.getElementById('cerfa-prenom').value = '';
           document.getElementById('cerfa-email').value = '';
@@ -2761,6 +2761,7 @@ app.get('/tsedaka', async (req, res) => {
             a.href = url;
             a.download = 'Cerfa.pdf';
             a.click();
+            setTimeout(() => { window.location.reload(); }, 2000);
           });
         } else {
           return r.json().then(data => { throw new Error(data.message); });
