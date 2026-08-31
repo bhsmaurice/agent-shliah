@@ -3209,7 +3209,7 @@ app.get('/admin/tsedaka/dons-tous', async (req, res) => {
   }
 });
 
-// Synchroniser les paiements Stripe avec la base (récupère tous les paiements réussis)
+// Synchroniser les paiements Stripe avec la base (récupère tous les paiements réussis + infos client)
 app.get('/admin/sync-stripe-paiements', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.status(401).send('Mot de passe incorrect');
@@ -3241,6 +3241,21 @@ app.get('/admin/sync-stripe-paiements', async (req, res) => {
         const amount = pi.amount / 100; // Convertir centimes en euros
         const piId = pi.id;
         
+        // Extraire les infos du client depuis le Payment Intent
+        let email = pi.receipt_email || (pi.charges && pi.charges.data && pi.charges.data[0] && pi.charges.data[0].receipt_email) || null;
+        let nom = null;
+        let prenom = null;
+        
+        // Essayer de récupérer le nom depuis billing_details
+        if (pi.charges && pi.charges.data && pi.charges.data[0] && pi.charges.data[0].billing_details) {
+          const bd = pi.charges.data[0].billing_details;
+          if (bd.name) {
+            const nameParts = bd.name.split(' ');
+            prenom = nameParts[0];
+            nom = nameParts.slice(1).join(' ') || prenom;
+          }
+        }
+        
         // Vérifier si ce paiement est déjà enregistré
         const existing = await pool.query(
           'SELECT id FROM tsedaka_dons WHERE stripe_payment_intent_id = $1',
@@ -3248,12 +3263,13 @@ app.get('/admin/sync-stripe-paiements', async (req, res) => {
         );
         
         if (existing.rows.length === 0) {
-          // Enregistrer le nouveau paiement
+          // Enregistrer le nouveau paiement avec les infos du client
           await pool.query(
-            'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut) VALUES ($1, $2, $3)',
-            [piId, amount, 'en_attente']
+            'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut, email) VALUES ($1, $2, $3, $4)',
+            [piId, amount, 'en_attente', email]
           );
           count++;
+          console.log(`✅ Paiement Stripe enregistré: ${piId} | ${amount}€ | ${email || 'pas d\'email'}`);
         }
       }
     }
