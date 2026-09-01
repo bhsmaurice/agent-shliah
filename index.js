@@ -2967,55 +2967,43 @@ app.get('/tsedaka', async (req, res) => {
     
     /* BUTTONS */
     .btn {
-      padding: 0.95rem 2.2rem;
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      padding: 1.3rem 3rem;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
       color: white;
       border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 700;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 800;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       position: relative;
       overflow: hidden;
       display: inline-flex;
       align-items: center;
       gap: 0.8rem;
-    }
-    
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
+      min-width: 200px;
+      justify-content: center;
     }
     
     .btn:hover {
-      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
-      transform: translateY(-3px);
-    }
-    
-    .btn:hover::before {
-      left: 100%;
+      background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
+      box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
+      transform: translateY(-4px);
     }
     
     .btn:active {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
     }
     
     .btn-sm {
-      padding: 0.65rem 1.2rem;
+      padding: 0.7rem 1.4rem;
       font-size: 13px;
       letter-spacing: 0.5px;
+      min-width: auto;
     }
     
     /* STATUS MESSAGE */
