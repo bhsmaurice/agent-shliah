@@ -2780,7 +2780,7 @@ app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
     await pool.query('INSERT INTO tsedaka_abonnes (phone, prenom, nom, email) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [phone, prenom, nom, email]);
     await sendWhatsAppDocument(phone, pdfBuffer, numero + '.pdf');
     const societeText = societe ? `<br/><strong>Organisme :</strong> ${societe}` : '';
-    await envoyerEmail({ to: email, subject: 'Votre reçu fiscal Tsedaka - ' + numero, html: `Chère ${prenom},<br/><br/>Merci pour votre donation de ${montant}€ à Beit Habad.${societeText}<br/>Votre reçu fiscal (numéro ${numero}) est ci-joint.<br/><br/>Kol Touv,<br/>Beit Habad Saint-Maurice` });
+    await envoyerEmail({ to: email, subject: 'Votre reçu fiscal Tsedaka - ' + numero, html: `Chère ${prenom},<br/><br/>Merci pour votre donation de ${montant}€ à Beit Habad.${societeText}<br/>Votre reçu fiscal (numéro ${numero}) est ci-joint.<br/><br/>Kol Touv,<br/>Beit Habad Saint-Maurice`, attachments: [{ filename: numero + '.pdf', content: pdfBuffer, contentType: 'application/pdf' }] });
     res.json({ ok: true, numero });
   } catch (e) {
     res.json({ ok: false, error: e.message });
