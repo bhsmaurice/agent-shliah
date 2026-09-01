@@ -2768,7 +2768,6 @@ app.post('/admin/tsedaka/cerfa-whatsapp', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 app.get('/tsedaka', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.send('Incorrect password');
@@ -2780,85 +2779,100 @@ app.get('/tsedaka', async (req, res) => {
     const totalDons = dons.reduce((s,x) => s+parseFloat(x.montant||0), 0);
     const totalCerfas = cerfas.reduce((s,x) => s+parseFloat(x.montant||0), 0);
     
-    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Tsedaka Admin</title><style>';
-    html += 'body{font-family:Arial;background:#f0f0f0;margin:0;padding:20px}';
-    html += '.container{max-width:1200px;margin:0 auto}';
-    html += '.header{background:linear-gradient(135deg,#7c3aed,#5B3FD1);color:white;padding:20px;border-radius:8px;margin-bottom:20px;text-align:center}';
-    html += '.tabs{display:flex;gap:0;border-bottom:2px solid #7c3aed;margin-bottom:20px}';
-    html += '.tab-btn{padding:10px 20px;cursor:pointer;background:white;border:none;font-weight:600;flex:1;border-bottom:3px solid transparent}';
-    html += '.tab-btn.active{background:#7c3aed;color:white}';
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tsedaka Admin</title><style>';
+    html += '*{margin:0;padding:0;box-sizing:border-box}';
+    html += 'body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#f8f9fa;color:#1a1a1a}';
+    html += '.wrapper{display:flex;min-height:100vh}';
+    html += '.sidebar{width:280px;background:linear-gradient(135deg,#1a2540 0%,#2c3e50 100%);color:white;padding:30px 20px;position:fixed;height:100vh;overflow-y:auto}';
+    html += '.sidebar h1{font-size:24px;margin-bottom:30px;font-weight:700}';
+    html += '.nav-item{padding:12px 15px;margin:8px 0;border-radius:8px;cursor:pointer;transition:all 0.3s;font-weight:500}';
+    html += '.nav-item:hover{background:rgba(255,255,255,0.1);transform:translateX(5px)}';
+    html += '.nav-item.active{background:#7c3aed;color:white;font-weight:600}';
+    html += '.main{margin-left:280px;flex:1;padding:30px}';
+    html += '.header{background:linear-gradient(135deg,#7c3aed 0%,#5B3FD1 100%);color:white;padding:30px;border-radius:12px;margin-bottom:30px;box-shadow:0 4px 20px rgba(124,58,237,0.3)}';
+    html += '.header h1{font-size:32px;margin:0}';
+    html += '.header p{font-size:14px;opacity:0.9;margin-top:5px}';
+    html += '.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}';
+    html += '.stat-card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-left:4px solid;transition:all 0.3s}';
+    html += '.stat-card:hover{transform:translateY(-5px);box-shadow:0 8px 20px rgba(0,0,0,0.15)}';
+    html += '.stat-card.purple{border-left-color:#7c3aed}';
+    html += '.stat-card.blue{border-left-color:#3b82f6}';
+    html += '.stat-card.green{border-left-color:#10b981}';
+    html += '.stat-card.orange{border-left-color:#f59e0b}';
+    html += '.stat-value{font-size:28px;font-weight:700;color:#1a1a1a;margin-bottom:5px}';
+    html += '.stat-label{font-size:13px;color:#666;text-transform:uppercase;letter-spacing:0.5px}';
+    html += '.tabs{display:flex;gap:0;background:white;border-bottom:2px solid #e5e7eb;margin-bottom:30px;border-radius:8px 8px 0 0;box-shadow:0 2px 4px rgba(0,0,0,0.05)}';
+    html += '.tab-btn{padding:15px 25px;cursor:pointer;background:white;border:none;font-weight:600;font-size:14px;color:#666;border-bottom:3px solid transparent;transition:all 0.3s;flex:1}';
+    html += '.tab-btn:hover{color:#7c3aed}';
+    html += '.tab-btn.active{color:#7c3aed;border-bottom-color:#7c3aed}';
     html += '.tab-content{display:none}';
     html += '.tab-content.active{display:block}';
-    html += '.stat{background:white;padding:15px;border-radius:8px;display:inline-block;margin:10px;min-width:200px}';
-    html += '.stat-value{font-size:28px;font-weight:700;color:#7c3aed}';
-    html += 'table{width:100%;border-collapse:collapse;background:white;border-radius:8px}';
-    html += 'th{background:#1a2540;color:white;padding:12px;text-align:left;font-weight:600}';
-    html += 'td{padding:10px;border-bottom:1px solid #ddd}';
-    html += 'tr:nth-child(even){background:#fafafa}';
-    html += '.btn{padding:6px 12px;border:none;border-radius:50%;cursor:pointer;font-size:16px;margin:0 2px}';
+    html += 'table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}';
+    html += 'thead{background:#1a2540;color:white}';
+    html += 'th{padding:16px;text-align:left;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}';
+    html += 'td{padding:14px 16px;border-bottom:1px solid #e5e7eb;font-size:14px}';
+    html += 'tbody tr{transition:all 0.2s}';
+    html += 'tbody tr:hover{background:#f8f9fa}';
+    html += 'tbody tr:nth-child(even){background:#fafbfc}';
+    html += '.montant{color:#7c3aed;font-weight:600;font-size:15px}';
+    html += '.cerfa-badge{display:inline-block;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600}';
+    html += '.cerfa-yes{background:#dcfce7;color:#166534}';
+    html += '.cerfa-no{background:#fee2e2;color:#991b1b}';
+    html += '.actions{display:flex;gap:8px;justify-content:center}';
+    html += '.btn{width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;font-size:16px;transition:all 0.2s;display:inline-flex;align-items:center;justify-content:center;font-weight:600}';
     html += '.btn-dl{background:#7c3aed;color:white}';
+    html += '.btn-dl:hover{background:#6d28d9;transform:scale(1.08);box-shadow:0 4px 12px rgba(124,58,237,0.4)}';
     html += '.btn-em{background:#3b82f6;color:white}';
+    html += '.btn-em:hover{background:#2563eb;transform:scale(1.08);box-shadow:0 4px 12px rgba(59,130,246,0.4)}';
     html += '.btn-wa{background:#10b981;color:white}';
-    html += '.btn:hover{opacity:0.8}';
-    html += '.alert{position:fixed;top:20px;right:20px;padding:10px 20px;border-radius:4px;color:white;z-index:999}';
+    html += '.btn-wa:hover{background:#059669;transform:scale(1.08);box-shadow:0 4px 12px rgba(16,185,129,0.4)}';
+    html += '.alert{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:8px;color:white;z-index:999;font-weight:600;animation:slideIn 0.3s ease;box-shadow:0 4px 12px rgba(0,0,0,0.2)}';
     html += '.alert.ok{background:#10b981}';
     html += '.alert.err{background:#ef4444}';
-    html += '</style></head><body>';
-    html += '<div class="container">';
-    html += '<div class="header"><h1>🤖 Admin Tsedaka</h1></div>';
-    html += '<div class="tabs">';
-    html += '<button class="tab-btn active" onclick="showTab(0)">📊 Dashboard</button>';
-    html += '<button class="tab-btn" onclick="showTab(1)">💰 Dons</button>';
-    html += '<button class="tab-btn" onclick="showTab(2)">📄 Cerfa</button>';
-    html += '<button class="tab-btn" onclick="showTab(3)">📈 Stats</button>';
-    html += '</div>';
+    html += '@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}';
+    html += '@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;padding:20px}.main{margin-left:0;padding:20px}.header{padding:20px}.stats-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{border-bottom:none;border-left:4px solid transparent}.tab-btn.active{border-left-color:#7c3aed}}';
+    html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div></div><div class="main"><div class="header"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div>';
     
-    // Dashboard
-    html += '<div class="tab-content active">';
-    html += '<div class="stat"><div class="stat-value">' + totalDons.toFixed(2) + ' €</div><div>Total collecté</div></div>';
-    html += '<div class="stat"><div class="stat-value">' + dons.length + '</div><div>Donations</div></div>';
-    html += '<div class="stat"><div class="stat-value">' + cerfas.length + '</div><div>Cerfa générés</div></div>';
-    html += '<div class="stat"><div class="stat-value">' + (stats.n||0) + '</div><div>Abonnés</div></div>';
-    html += '</div>';
+    // DASHBOARD
+    html += '<div class="tab-content active"><div class="stats-grid">';
+    html += '<div class="stat-card purple"><div class="stat-value">' + totalDons.toFixed(2) + ' €</div><div class="stat-label">Total collecté</div></div>';
+    html += '<div class="stat-card blue"><div class="stat-value">' + dons.length + '</div><div class="stat-label">Donations</div></div>';
+    html += '<div class="stat-card green"><div class="stat-value">' + cerfas.length + '</div><div class="stat-label">Cerfa générés</div></div>';
+    html += '<div class="stat-card orange"><div class="stat-value">' + (stats.n||0) + '</div><div class="stat-label">Abonnés</div></div>';
+    html += '</div></div>';
     
-    // Dons
+    // ONGLETS
+    html += '<div class="tabs"><button class="tab-btn active" onclick="showTab(0)">📊 Dashboard</button><button class="tab-btn" onclick="showTab(1)">💰 Dons</button><button class="tab-btn" onclick="showTab(2)">📄 Cerfa</button><button class="tab-btn" onclick="showTab(3)">📈 Statistiques</button></div>';
+    
+    // DONS
     html += '<div class="tab-content"><table><thead><tr><th>Date</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
     dons.forEach(d => {
       const nom = (d.prenom||'?') + ' ' + (d.nom||'?');
       const date = new Date(d.created_at).toLocaleDateString('fr-FR');
-      html += '<tr><td>' + date + '</td><td>' + nom + '</td><td>' + d.montant + ' €</td><td>' + (d.cerfa_numero||'—') + '</td><td>';
-      html += '<button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button>';
-      html += '<button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button>';
-      html += '<button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button>';
-      html += '</td></tr>';
+      const cerfaBadge = d.cerfa_numero ? '<span class="cerfa-badge cerfa-yes">✓ ' + d.cerfa_numero + '</span>' : '<span class="cerfa-badge cerfa-no">✗</span>';
+      html += '<tr><td>' + date + '</td><td>' + nom + '</td><td class="montant">' + d.montant + ' €</td><td>' + cerfaBadge + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button><button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
     
-    // Cerfa
+    // CERFA
     html += '<div class="tab-content"><table><thead><tr><th>N° Cerfa</th><th>Donateur</th><th>Montant</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
     cerfas.forEach(c => {
       const nom = (c.prenom||'?') + ' ' + (c.nom||'?');
       const date = new Date(c.date_don).toLocaleDateString('fr-FR');
-      html += '<tr><td>' + c.numero + '</td><td>' + nom + '</td><td>' + c.montant + ' €</td><td>' + date + '</td><td>';
-      html += '<button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button>';
-      html += '<button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button>';
-      html += '<button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button>';
-      html += '</td></tr>';
+      html += '<tr><td><strong>' + c.numero + '</strong></td><td>' + nom + '</td><td class="montant">' + c.montant + ' €</td><td>' + date + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button><button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
     
-    // Stats
-    html += '<div class="tab-content">';
-    html += '<div class="stat"><div class="stat-value">' + (dons.length ? (totalDons/dons.length).toFixed(2) : '0') + ' €</div><div>Moyenne</div></div>';
-    html += '</div>';
+    // STATS
+    html += '<div class="tab-content"><div class="stats-grid"><div class="stat-card purple"><div class="stat-value">' + (dons.length ? (totalDons/dons.length).toFixed(2) : '0') + ' €</div><div class="stat-label">Moyenne par don</div></div><div class="stat-card green"><div class="stat-value">' + (dons.length ? Math.round((cerfas.length/dons.length)*100) : '0') + ' %</div><div class="stat-label">Taux de facturation</div></div></div></div>';
     
-    html += '</div></body><script>';
+    html += '</div></div></body><script>';
     html += 'const pwd="levi770";';
-    html += 'function showTab(n){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-content")[n].classList.add("active");document.querySelectorAll(".tab-btn")[n].classList.add("active")}';
-    html += 'function alert(msg,ok){const a=document.createElement("div");a.className="alert "+(ok?"ok":"err");a.textContent=msg;document.body.appendChild(a);setTimeout(()=>a.remove(),3000)}';
-    html += 'function dl(n){if(!n){alert("No cerfa",false);return}window.location="/admin/tsedaka/cerfa-download/"+n+"?password="+pwd}';
-    html += 'function em(e,n){if(!e||!n){alert("Missing data",false);return}fetch("/admin/tsedaka/cerfa-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,email:e})}).then(r=>r.json()).then(d=>alert(d.ok?"Email sent":"Error",d.ok)).catch(e=>alert("Error",false))}';
-    html += 'function wa(p,n){if(!n){alert("No cerfa",false);return}if(!p){alert("No phone",false);return}fetch("/admin/tsedaka/cerfa-whatsapp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,phone:p})}).then(r=>r.json()).then(d=>alert(d.ok?"WhatsApp sent":"Error",d.ok)).catch(e=>alert("Error",false))}';
+    html += 'function showTab(n){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".nav-item").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-content")[n].classList.add("active");document.querySelectorAll(".tab-btn")[n].classList.add("active");document.querySelectorAll(".nav-item")[n].classList.add("active")}';
+    html += 'function showAlert(msg,ok){const a=document.createElement("div");a.className="alert "+(ok?"ok":"err");a.textContent=msg;document.body.appendChild(a);setTimeout(()=>a.remove(),3000)}';
+    html += 'function dl(n){if(!n){showAlert("❌ Pas de Cerfa",false);return}window.location="/admin/tsedaka/cerfa-download/"+n+"?password="+pwd}';
+    html += 'function em(e,n){if(!e||!n){showAlert("❌ Données manquantes",false);return}fetch("/admin/tsedaka/cerfa-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,email:e})}).then(r=>r.json()).then(d=>showAlert(d.ok?"✅ Email envoyé":"❌ Erreur",d.ok)).catch(e=>showAlert("❌ Erreur",false))}';
+    html += 'function wa(p,n){if(!n){showAlert("❌ Pas de Cerfa",false);return}if(!p){showAlert("❌ Téléphone manquant",false);return}fetch("/admin/tsedaka/cerfa-whatsapp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,phone:p})}).then(r=>r.json()).then(d=>showAlert(d.ok?"✅ WhatsApp envoyé":"❌ Erreur",d.ok)).catch(e=>showAlert("❌ Erreur",false))}';
     html += '</script></html>';
     
     res.send(html);
