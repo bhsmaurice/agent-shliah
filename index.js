@@ -2768,6 +2768,24 @@ app.post('/admin/tsedaka/cerfa-whatsapp', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
+  const { password, email, montant, prenom, nom, phone } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.json({ ok: false, error: 'Password incorrect' });
+  try {
+    const numero = 'BH' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000) + 1000;
+    const dateVersement = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+    const pdfBuffer = await generateCerfaPDF({ numero, nom, prenom, adresse: '', montant, mode: 'Stripe', dateVersement });
+    await pool.query('INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())', [numero, nom, prenom, '', montant, 'Stripe', dateVersement, email]);
+    await pool.query('UPDATE tsedaka_dons SET cerfa_numero = $1 WHERE phone = $2 AND montant = $3', [numero, phone, montant]);
+    await pool.query('INSERT INTO tsedaka_abonnes (phone, prenom, nom, email) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [phone, prenom, nom, email]);
+    await sendWhatsAppDocument(phone, pdfBuffer, numero + '.pdf');
+    await envoyerEmail({ to: email, subject: 'Votre reçu fiscal Tsedaka - ' + numero, html: `Chère ${prenom},<br/><br/>Merci pour votre donation de ${montant}€ à Beit Habad.<br/>Votre reçu fiscal (numéro ${numero}) est ci-joint.<br/><br/>Kol Touv,<br/>Beit Habad Saint-Maurice` });
+    res.json({ ok: true, numero });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/tsedaka', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.send('Incorrect password');
@@ -2834,6 +2852,23 @@ app.get('/tsedaka', async (req, res) => {
     html += '.alert.ok{background:#10b981}';
     html += '.alert.err{background:#ef4444}';
     html += '@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}';
+    html += '.cerfa-btn-create{background:#10b981;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;transition:all 0.2s}';
+    html += '.cerfa-btn-create:hover{background:#059669;transform:scale(1.05);box-shadow:0 4px 12px rgba(16,185,129,0.4)}';
+    html += '.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center}';
+    html += '.modal.active{display:flex}';
+    html += '.modal-content{background:white;border-radius:12px;padding:30px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:slideUp 0.3s ease}';
+    html += '.modal h2{margin-bottom:20px;color:#1a2540;font-size:24px}';
+    html += '.modal-form{display:flex;flex-direction:column;gap:15px}';
+    html += '.modal-form label{font-weight:600;color:#1a1a1a;font-size:14px}';
+    html += '.modal-form input{padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit}';
+    html += '.modal-form input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.1)}';
+    html += '.modal-actions{display:flex;gap:10px;margin-top:20px}';
+    html += '.modal-btn{flex:1;padding:12px;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all 0.2s}';
+    html += '.modal-btn-create{background:#10b981;color:white}';
+    html += '.modal-btn-create:hover{background:#059669;transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,0.4)}';
+    html += '.modal-btn-cancel{background:#e5e7eb;color:#1a1a1a}';
+    html += '.modal-btn-cancel:hover{background:#d1d5db}';
+    html += '@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}';
     html += '@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;padding:20px}.main{margin-left:0;padding:20px}.header{padding:20px;flex-direction:column}.header-left{margin-bottom:15px}.stats-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{border-bottom:none;border-left:4px solid transparent}.tab-btn.active{border-left-color:#7c3aed}}';
     html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="sidebar-time">📅 ' + now + '</div><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div></div><div class="main"><div class="header"><div class="header-left"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div><div class="header-right"><div>Dernière mise à jour</div><div class="time" id="current-time">' + now + '</div></div></div>';
     
@@ -2850,10 +2885,15 @@ app.get('/tsedaka', async (req, res) => {
     
     // DONS
     html += '<div class="tab-content"><table><thead><tr><th>Date & Heure</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
-    dons.forEach(d => {
+    dons.forEach((d, idx) => {
       const nom = (d.prenom||'?') + ' ' + (d.nom||'?');
       const dateTime = new Date(d.created_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
-      const cerfaBadge = d.cerfa_numero ? '<span class="cerfa-badge cerfa-yes">✓ ' + d.cerfa_numero + '</span>' : '<span class="cerfa-badge cerfa-no">✗</span>';
+      let cerfaBadge;
+      if (d.cerfa_numero) {
+        cerfaBadge = '<span class="cerfa-badge cerfa-yes">✓ ' + d.cerfa_numero + '</span>';
+      } else {
+        cerfaBadge = '<button class="cerfa-btn-create" onclick="showCerfaForm(' + idx + ', \'' + (d.email||'') + '\', ' + d.montant + ', \'' + dateTime.replace(/'/g, "\\'") + '\', \'' + (d.prenom||'').replace(/'/g, "\\'") + '\', \'' + (d.nom||'').replace(/'/g, "\\'") + '\', \'' + d.phone + '\')">+ Créer</button>';
+      }
       html += '<tr><td><strong>' + dateTime + '</strong></td><td>' + nom + '</td><td class="montant">' + d.montant + ' €</td><td>' + cerfaBadge + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button><button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
@@ -2870,7 +2910,7 @@ app.get('/tsedaka', async (req, res) => {
     // STATS
     html += '<div class="tab-content"><div class="stats-grid"><div class="stat-card purple"><div class="stat-value">' + (dons.length ? (totalDons/dons.length).toFixed(2) : '0') + ' €</div><div class="stat-label">Moyenne par don</div></div><div class="stat-card green"><div class="stat-value">' + (dons.length ? Math.round((cerfas.length/dons.length)*100) : '0') + ' %</div><div class="stat-label">Taux de facturation</div></div></div></div>';
     
-    html += '</div></div></body><script>';
+    html += '</div></div><div class="modal" id="cerfa-form-modal"><div class="modal-content"><h2>📄 Créer Cerfa</h2><form class="modal-form"><label>Prénom</label><input type="text" id="cerfa-prenom" required><label>Nom</label><input type="text" id="cerfa-nom" required><label>Email</label><input type="email" id="cerfa-email" required><label>Téléphone</label><input type="text" id="cerfa-phone" readonly style="background:#f0f0f0;"><label>Montant (€)</label><input type="number" id="cerfa-montant" step="0.01" required><label>Date</label><input type="text" id="cerfa-date" readonly style="background:#f0f0f0;"></form><div class="modal-actions"><button type="button" class="modal-btn modal-btn-cancel" onclick="closeCerfaForm()">Annuler</button><button type="button" class="modal-btn modal-btn-create" onclick="submitCerfaForm()">✅ Créer Cerfa</button></div></div></div></body><script>';
     html += 'const pwd="levi770";';
     html += 'setInterval(() => { document.getElementById("current-time").textContent = new Date().toLocaleString("fr-FR"); }, 1000);';
     html += 'function showTab(n){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".nav-item").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-content")[n].classList.add("active");document.querySelectorAll(".tab-btn")[n].classList.add("active");document.querySelectorAll(".nav-item")[n].classList.add("active")}';
@@ -2878,6 +2918,9 @@ app.get('/tsedaka', async (req, res) => {
     html += 'function dl(n){if(!n){showAlert("❌ Pas de Cerfa",false);return}window.location="/admin/tsedaka/cerfa-download/"+n+"?password="+pwd}';
     html += 'function em(e,n){if(!e||!n){showAlert("❌ Données manquantes",false);return}fetch("/admin/tsedaka/cerfa-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,email:e})}).then(r=>r.json()).then(d=>showAlert(d.ok?"✅ Email envoyé":"❌ Erreur",d.ok)).catch(e=>showAlert("❌ Erreur",false))}';
     html += 'function wa(p,n){if(!n){showAlert("❌ Pas de Cerfa",false);return}if(!p){showAlert("❌ Téléphone manquant",false);return}fetch("/admin/tsedaka/cerfa-whatsapp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,phone:p})}).then(r=>r.json()).then(d=>showAlert(d.ok?"✅ WhatsApp envoyé":"❌ Erreur",d.ok)).catch(e=>showAlert("❌ Erreur",false))}';
+    html += 'function showCerfaForm(idx,email,montant,dateTime,prenom,nom,phone){const f=document.getElementById("cerfa-form-modal");f.classList.add("active");document.getElementById("cerfa-email").value=email;document.getElementById("cerfa-montant").value=montant;document.getElementById("cerfa-date").value=dateTime;document.getElementById("cerfa-prenom").value=prenom;document.getElementById("cerfa-nom").value=nom;document.getElementById("cerfa-phone").value=phone;window.currentCerfaIdx=idx}';
+    html += 'function closeCerfaForm(){document.getElementById("cerfa-form-modal").classList.remove("active")}';
+    html += 'function submitCerfaForm(){const e=document.getElementById("cerfa-email").value;const m=parseFloat(document.getElementById("cerfa-montant").value);const p=document.getElementById("cerfa-prenom").value;const n=document.getElementById("cerfa-nom").value;const ph=document.getElementById("cerfa-phone").value;if(!e||!m||!p||!n){showAlert("❌ Remplir tous les champs",false);return}fetch("/admin/tsedaka/quick-cerfa",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,email:e,montant:m,prenom:p,nom:n,phone:ph})}).then(r=>r.json()).then(d=>{if(d.ok){showAlert("✅ Cerfa "+d.numero+" créé!",true);closeCerfaForm();setTimeout(()=>location.reload(),1500)}else{showAlert("❌ Erreur: "+d.error,false)}}).catch(e=>showAlert("❌ Erreur",false))}';
     html += '</script></html>';
     
     res.send(html);
