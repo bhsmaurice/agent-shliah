@@ -1497,9 +1497,41 @@ body {
   #cerfa-container.list-view .cerfa-doc-icon { margin-bottom: 0; }
   #cerfa-container.list-view .demande-phone { white-space: normal; overflow: visible; }
   #cerfa-container.list-view .demande-texte { width: 100%; white-space: normal; }
+  /* ═══ DARK MODE CERFA ═══ */
+  #cerfa-container { background: #0f172a; padding: 20px; border-radius: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+  .demande-card { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05)); border: 2px solid #7c3aed; border-radius: 16px; padding: 0; margin: 0; overflow: visible; box-shadow: 0 8px 32px rgba(124,58,237,0.2); transition: all 0.3s ease; position: relative; }
+  .demande-card:hover { transform: translateY(-4px); box-shadow: 0 12px 48px rgba(124,58,237,0.3); }
+  .demande-card:nth-child(4n+1) { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05)); border-color: #7c3aed; }
+  .demande-card:nth-child(4n+2) { background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); border-color: #10b981; }
+  .demande-card:nth-child(4n+3) { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05)); border-color: #f59e0b; }
+  .demande-card:nth-child(4n+0) { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05)); border-color: #3b82f6; }
+  .cerfa-doc-icon { width: 80px; height: 80px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; flex-shrink: 0; margin-right: 0; }
+  .demande-card:nth-child(4n+1) .cerfa-doc-icon { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+  .demande-card:nth-child(4n+2) .cerfa-doc-icon { background: linear-gradient(135deg, #10b981, #047857); }
+  .demande-card:nth-child(4n+3) .cerfa-doc-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .demande-card:nth-child(4n+0) .cerfa-doc-icon { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+  .demande-card > div { padding: 20px; }
+  .demande-card .demande-header { margin: 0 0 8px 0; color: white; }
+  .demande-card .demande-phone { color: #cbd5e1; margin: 0 0 12px 0; font-size: 13px; }
+  .demande-card .demande-texte { color: #e2e8f0; margin: 0; font-size: 13px; }
+  .demande-type { font-size: 18px; font-weight: 700; color: white; }
+  .demande-date { display: none; }
+  .cerfa-actions-right { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .btn-trash { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; cursor: pointer; font-size: 16px; padding: 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+  .btn-trash:hover { background: rgba(255,255,255,0.25); transform: scale(1.15); }
   #cerfa-container.list-view .demande-header { flex: 1; }
   #cerfa-container.list-view .demande-phone { flex: 1; }
   #cerfa-container.list-view .demande-texte { flex: 1; }
+  /* Dark Mode global */
+  [data-tab="cerfa"] .card-title, [data-tab="cerfa"] .field label { color: white; }
+  #cerfa-advanced-panel { background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  #cerfa-advanced-panel .field label { color: #cbd5e1; }
+  #cerfa-advanced-panel input, #cerfa-advanced-panel select { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; color: white; }
+  #cerfa-advanced-panel input::placeholder { color: #64748b; }
+  .cat-btn { background: rgba(30, 41, 59, 0.8); color: #cbd5e1; border: 1px solid #334155; }
+  .cat-btn.active { background: #7c3aed; color: white; border-color: #7c3aed; }
+  .btn-secondary { background: #334155; color: white; border: none; }
+  .btn-secondary:hover { background: #475569; }
   #cerfa-container.list-view .demande-texte { flex: 1.5; margin: 0; white-space: normal; }
 </style>
 </head>
@@ -2975,7 +3007,7 @@ function afficherCerfa(){
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
     const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
-    el.innerHTML=`<div style="display:flex;align-items:flex-start;gap:12px;width:100%;"><div class="cerfa-doc-icon">📄</div><div style="flex:1;"><div class="demande-header" style="margin-bottom:8px;"><div style="flex:1;"><span class="demande-type type-cerfa">🧾 ${c.numero}${getBadgeCerfaRecent(c.created_at)}</span></div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone" style="margin-bottom:8px;">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div></div></div>`;
+    el.innerHTML=`<div class="cerfa-actions-right"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button></div><div><div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;"><div class="cerfa-doc-icon">📄</div><div style="flex:1;"><div class="demande-header" style="margin:0;display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span class="demande-type type-cerfa">${c.numero}</span><span class="cerfa-badge">${getBadgeCerfaRecent(c.created_at)}</span></div><div class="demande-phone" style="margin:0;margin-bottom:8px;">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}<br>${c.email?'✉️ '+c.email:''}</div></div></div><div class="demande-texte" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;margin-bottom:12px;"><div style="display:flex;gap:16px;"><div style="display:flex;align-items:center;gap:6px;"><span>💰</span><div><div style="font-size:12px;color:#94a3b8;">Montant</div><div style="font-weight:600;color:white;">${montant} €</div></div></div><div style="display:flex;align-items:center;gap:6px;"><span>📅</span><div><div style="font-size:12px;color:#94a3b8;">Échéance</div><div style="font-weight:600;color:white;">${dateDon||'N/A'}</div></div></div></div><div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><span>💳</span><div><div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${c.mode_paiement||'Mode'}</div></div></div></div><div class="cerfa-status" style="padding:0;"><span>${c.adresse?'📍 '+c.adresse:''}</span></div></div>`;
     container.appendChild(el);
   });
 }
