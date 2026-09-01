@@ -3040,10 +3040,9 @@ cron.schedule('0 8 * * 0', () => {
   updateShabbatHoraires();
 });
 
-// Mise à jour au démarrage aussi
-console.log('📅 Première mise à jour des horaires au démarrage...');
-updateShabbatHoraires();
-
 initDB().then(() => {
+  // Première mise à jour au démarrage (APRÈS initDB)
+  console.log('📅 Première mise à jour des horaires au démarrage...');
+  updateShabbatHoraires();
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
 });
