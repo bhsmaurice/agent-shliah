@@ -3036,6 +3036,38 @@ app.get('/tsedaka', async (req, res) => {
         gap: 0.8rem;
       }
     }
+    
+    .section-complet {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(79, 70, 229, 0.05) 100%);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid #6366f1;
+    }
+    
+    .section-avec-carte {
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(234, 88, 12, 0.05) 100%);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid #f97316;
+    }
+    
+    .section-sans-carte {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid #3b82f6;
+    }
+    
+    .section-attente {
+      background: linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(249, 115, 22, 0.05) 100%);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid #fb923c;
+    }
   </style>
 </head>
 <body>
@@ -3209,6 +3241,7 @@ app.get('/tsedaka', async (req, res) => {
     }
   </script>
   <div class="section">
+  <div class="section-complet">
     <h2>✅ Dons COMPLETS (Formulaire rempli)</h2>
     <p><strong>Total: ${totalComplets.toFixed(2)}€</strong> (${complets.rows.length} dons)</p>
     
@@ -3260,7 +3293,7 @@ app.get('/tsedaka', async (req, res) => {
   </div>
   
   <div class="section">
-    <h2>⏳ Dons EN ATTENTE (Paiement OK, formulaire pas encore rempli)</h2>
+    <div class="section-attente"><h2>⏳ Dons EN ATTENTE (Paiement OK, formulaire pas encore rempli)</h2>
     <p><strong>Total: ${totalEnAttente.toFixed(2)}€</strong> (${enAttente.rows.length} dons)</p>
     <table>
       <tr><th>Nom</th><th>Email</th><th>Montant</th><th>Date du paiement</th><th>Action</th></tr>
