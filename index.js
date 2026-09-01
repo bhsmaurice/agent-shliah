@@ -2775,8 +2775,22 @@ app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
     const numero = 'BH' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000) + 1000;
     const dateVersement = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
     const pdfBuffer = await generateCerfaPDF({ numero, nom, prenom, adresse: '', montant, mode: 'Stripe', dateVersement });
+    
+    // Vérifier si la donation existe déjà
+    const existing = await pool.query('SELECT id FROM tsedaka_dons WHERE phone = $1 AND montant = $2 LIMIT 1', [phone, montant]);
+    
+    if (existing.rows.length === 0) {
+      // Créer une nouvelle donation
+      await pool.query(
+        'INSERT INTO tsedaka_dons (phone, montant, cerfa_numero, created_at, date_don) VALUES ($1, $2, $3, NOW(), NOW())',
+        [phone, montant, numero]
+      );
+    } else {
+      // Mettre à jour la donation existante
+      await pool.query('UPDATE tsedaka_dons SET cerfa_numero = $1 WHERE phone = $2 AND montant = $3', [numero, phone, montant]);
+    }
+    
     await pool.query('INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())', [numero, nom, prenom, '', montant, 'Stripe', dateVersement, email]);
-    await pool.query('UPDATE tsedaka_dons SET cerfa_numero = $1 WHERE phone = $2 AND montant = $3', [numero, phone, montant]);
     await pool.query('INSERT INTO tsedaka_abonnes (phone, prenom, nom, email) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [phone, prenom, nom, email]);
     await sendWhatsAppDocument(phone, pdfBuffer, numero + '.pdf');
     const societeText = societe ? `<br/><strong>Organisme :</strong> ${societe}` : '';
