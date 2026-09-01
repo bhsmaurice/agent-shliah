@@ -2823,6 +2823,8 @@ app.get('/tsedaka', async (req, res) => {
     html += '.nav-item{padding:12px 15px;margin:8px 0;border-radius:8px;cursor:pointer;transition:all 0.3s;font-weight:500}';
     html += '.nav-item:hover{background:rgba(255,255,255,0.1);transform:translateX(5px)}';
     html += '.nav-item.active{background:#7c3aed;color:white;font-weight:600}';
+    html += '.nav-link{display:block;padding:12px 15px;margin:8px 0;border-radius:8px;cursor:pointer;transition:all 0.3s;font-weight:500;color:white;text-decoration:none}';
+    html += '.nav-link:hover{background:rgba(255,255,255,0.1);transform:translateX(5px)}';
     html += '.main{margin-left:280px;flex:1;padding:30px}';
     html += '.header{background:linear-gradient(135deg,#7c3aed 0%,#5B3FD1 100%);color:white;padding:30px;border-radius:12px;margin-bottom:30px;box-shadow:0 4px 20px rgba(124,58,237,0.3);display:flex;justify-content:space-between;align-items:center}';
     html += '.header-left h1{font-size:32px;margin:0}';
@@ -2885,7 +2887,7 @@ app.get('/tsedaka', async (req, res) => {
     html += '.modal-btn-cancel:hover{background:#d1d5db}';
     html += '@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}';
     html += '@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;padding:20px}.main{margin-left:0;padding:20px}.header{padding:20px;flex-direction:column}.header-left{margin-bottom:15px}.stats-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{border-bottom:none;border-left:4px solid transparent}.tab-btn.active{border-left-color:#7c3aed}}';
-    html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="sidebar-time">📅 ' + now + '</div><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div></div><div class="main"><div class="header"><div class="header-left"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div><div class="header-right"><div>Dernière mise à jour</div><div class="time" id="current-time">' + now + '</div></div></div>';
+    html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="sidebar-time">📅 ' + now + '</div><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div><hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:20px 0;"><a href="https://bhsmaurice.github.io/agent-shliah/admin.html" class="nav-link">← Admin Panel</a></div><div class="main"><div class="header"><div class="header-left"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div><div class="header-right"><div>Dernière mise à jour</div><div class="time" id="current-time">' + now + '</div></div></div>';
     
     // DASHBOARD
     html += '<div class="tab-content active"><div class="stats-grid">';
