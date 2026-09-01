@@ -2753,28 +2753,149 @@ app.get('/tsedaka', async (req, res) => {
     body { 
       font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
       color: var(--text-primary);
-      background: var(--surface-0);
+      background: #f8f9fa;
       font-size: 16px;
-      line-height: 1.6;
     }
     
-    h1 { font-size: 28px; font-weight: 500; margin: 0 0 1.5rem 0; color: var(--text-primary); }
-    h2 { font-size: 18px; font-weight: 500; margin: 1.5rem 0 0.75rem 0; color: var(--text-primary); }
-    h3 { font-size: 16px; font-weight: 500; margin: 1rem 0 0.5rem 0; color: var(--text-secondary); }
+    .page-wrapper {
+      display: flex;
+      min-height: 100vh;
+    }
     
-    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .sidebar {
+      width: 140px;
+      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      color: white;
+      padding: 1.5rem 0;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
     
-    .card { 
-      background: var(--surface-2);
+    .sidebar-logo {
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .sidebar-nav-item {
+      padding: 1rem;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .sidebar-nav-item:hover {
+      background: rgba(255,255,255,0.1);
+      border-left-color: #40916c;
+    }
+    
+    .main {
+      flex: 1;
+      margin-left: 140px;
+      padding: 1.5rem;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: 500;
+    }
+    
+    .header-date {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+      background: white;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 8px;
+      padding: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    
+    .stat-icon.green { background: #e8f5e9; }
+    .stat-icon.orange { background: #fff3e0; }
+    .stat-icon.blue { background: #e3f2fd; }
+    
+    .stat-content h3 {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1b4332;
+    }
+    
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       padding: 1.5rem;
       margin-bottom: 1.5rem;
     }
     
+    h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
     }
@@ -2785,137 +2906,203 @@ app.get('/tsedaka', async (req, res) => {
     }
     
     .form-group label {
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 600;
       color: var(--text-secondary);
       margin-bottom: 0.4rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     
-    .form-group input, .form-group select {
+    .form-group input {
       padding: 0.6rem 0.8rem;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 4px;
       background: var(--surface-2);
       color: var(--text-primary);
       font-size: 14px;
       font-family: inherit;
-      transition: border-color 0.2s;
     }
     
-    .form-group input:focus, .form-group select:focus {
+    .form-group input:focus {
       outline: none;
-      border-color: var(--border-strong);
+      border-color: #1b4332;
+      box-shadow: 0 0 0 2px rgba(27, 67, 50, 0.1);
     }
     
     .btn {
       padding: 0.7rem 1.5rem;
-      background: var(--bg-accent);
+      background: #1b4332;
       color: white;
       border: none;
-      border-radius: var(--radius);
+      border-radius: 4px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background 0.2s;
     }
     
-    .btn:hover { background: var(--bg-accent, #6B4423); }
+    .btn:hover { background: #0f2818; }
     
     .status-message {
       padding: 0.8rem 1rem;
-      border-radius: var(--radius);
+      border-radius: 4px;
       font-size: 14px;
       margin-top: 1rem;
     }
     
     .status-success {
-      background: var(--bg-success);
-      color: var(--text-success);
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
     }
     
     .status-error {
-      background: var(--bg-danger);
-      color: var(--text-danger);
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
     }
     
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 0.8rem;
+      font-size: 14px;
     }
     
     th {
-      background: var(--surface-1);
+      background: #f5f5f5;
       color: var(--text-primary);
       padding: 0.8rem;
       text-align: left;
-      font-weight: 500;
-      font-size: 13px;
+      font-weight: 600;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.4px;
-      border-bottom: 2px solid var(--border-strong);
+      border-bottom: 2px solid var(--border);
     }
     
     td {
       padding: 0.8rem;
       border-bottom: 1px solid var(--border);
-      font-size: 14px;
     }
     
-    tr:hover {
-      background: var(--surface-1);
-    }
-    
-    .table-empty {
-      text-align: center;
-      color: var(--text-secondary);
-      font-style: italic;
-      padding: 1.5rem;
-    }
-    
-    .stats {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .stat-label {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-    
-    .stat-value {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
+    tr:hover { background: #fafafa; }
     
     .section-title {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin: 1.5rem 0 1rem 0;
+      margin-top: 1.5rem;
+      margin-bottom: 0.8rem;
+      color: #1b4332;
+      font-weight: 600;
     }
     
-    .section-title i {
-      font-size: 18px;
+    .section-total {
+      text-align: right;
+      font-size: 13px;
       color: var(--text-secondary);
+      margin-bottom: 0.8rem;
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 0;
+        display: none;
+      }
+      .main {
+        margin-left: 0;
+        padding: 1rem;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.8rem;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Tsedaka Beth Habad S. Maurice</h1>
+  <div class="page-wrapper">
+    <div class="sidebar">
+      <div class="sidebar-logo">BH 770</div>
+      <div class="sidebar-nav">
+        <div class="sidebar-nav-item">Dashboard</div>
+        <div class="sidebar-nav-item">Dons</div>
+        <div class="sidebar-nav-item">Cerfa</div>
+        <div class="sidebar-nav-item">Statistiques</div>
+      </div>
+      <div style="padding: 1rem; text-align: center; font-size: 11px; margin-top: auto; opacity: 0.7; border-top: 1px solid rgba(255,255,255,0.1);">
+        Merci pour votre générosité
+      </div>
+    </div>
     
-    <div class="card">
-      <h2>Créer une Cerfa rapidement</h2>
-      <input type="hidden" id="cerfa-don-id">
-      <div class="form-grid">
+    <div class="main">
+      <div class="header">
+        <div>
+          <h1>Tsedaka<br>Beth Habad S. Maurice</h1>
+        </div>
+        <div class="header-date">📅 ${new Date().toLocaleDateString('fr-FR', {year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon green">🎁</div>
+          <div class="stat-content">
+            <h3>Total des dons</h3>
+            <div class="stat-value">${totalComplets.toFixed(2)}€</div>
+            <div class="stat-label">${complets.rows.length} dons au total</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon green">👥</div>
+          <div class="stat-content">
+            <h3>Dons avec carte enregistrée</h3>
+            <div class="stat-value">${totalCompletsAvecCarte.toFixed(2)}€</div>
+            <div class="stat-label">${completsAvecCarte.length} don${completsAvecCarte.length > 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon orange">💳</div>
+          <div class="stat-content">
+            <h3>Dons sans carte</h3>
+            <div class="stat-value">${totalCompletsSansCarte.toFixed(2)}€</div>
+            <div class="stat-label">${completsSansCarte.length} don${completsSansCarte.length > 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon blue">📊</div>
+          <div class="stat-content">
+            <h3>Don moyen</h3>
+            <div class="stat-value">${(totalComplets / Math.max(complets.rows.length, 1)).toFixed(2)}€</div>
+            <div class="stat-label">Par don</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>Créer une Cerfa rapidement</h2>
+        <input type="hidden" id="cerfa-don-id">
+        <div class="form-grid">
       <div class="form-group">
         <label>Nom *</label>
         <input type="text" id="cerfa-nom" placeholder="Boudara">
