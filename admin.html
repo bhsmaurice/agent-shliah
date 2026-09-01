@@ -1586,7 +1586,7 @@ body {
   </div>
   <div class="header-right">
     <div class="header-bell" onclick="showTab('demandes')" title="Demandes">🔔<span class="header-bell-badge" id="header-bell-badge">0</span></div>
-    <a href="https://agent-shliah-production.up.railway.app/tsedaka?password=levi770" class="header-bell" title="Tsedaka Admin">💰</a>
+    <a href="https://agent-shliah-production.up.railway.app/tsedaka?password=levi770" class="header-bell" title="Tsedaka Admin">💜</a>
     <span class="user-badge" id="header-user-badge">Admin</span>
     <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
@@ -1598,7 +1598,7 @@ body {
   <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
   <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
-  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💰<span class="tab-label">Paiements</span></div>
+  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💜<span class="tab-label">Paiements</span></div>
   <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
   <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
@@ -1615,7 +1615,7 @@ body {
     <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
     <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
     <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
-    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💰</span>Paiements</div>
+    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💜</span>Paiements</div>
     <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
     <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
     <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
@@ -2056,7 +2056,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
 <!-- PAIEMENTS -->
 <div class="page" id="tab-paiements"><div class="inner">
   <div class="card">
-    <div class="card-title">💰 Ajouter un paiement en attente</div>
+    <div class="card-title">💜 Ajouter un paiement en attente</div>
     <div class="field"><label>Numéro WhatsApp</label><input type="tel" id="p-phone" placeholder="ex: 0612345678 ou +33612345678"></div>
     <div class="field-row">
       <div class="field"><label>Montant (€)</label><input type="number" id="p-montant" placeholder="Ex: 20"></div>
@@ -2148,7 +2148,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
   <div class="filter-chips" id="cerfa-search-field-chips" style="display:none">
     <div class="chip active" data-field="tout" onclick="selectCerfaSearchField(this)">Tout</div>
     <div class="chip" data-field="nom" onclick="selectCerfaSearchField(this)">👤 Nom / Société</div>
-    <div class="chip" data-field="montant" onclick="selectCerfaSearchField(this)">💰 Montant</div>
+    <div class="chip" data-field="montant" onclick="selectCerfaSearchField(this)">💜 Montant</div>
     <div class="chip" data-field="email" onclick="selectCerfaSearchField(this)">✉️ Email</div>
     <div class="chip" data-field="numero" onclick="selectCerfaSearchField(this)">🧾 N° reçu</div>
   </div>
@@ -2201,7 +2201,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
     </div>
     <div class="insight-mini-row">
       <div class="insight-mini"><div class="insight-mini-icon">👤</div><div><div class="insight-mini-num" id="cerfa-mini-count">0</div><div class="insight-mini-label">Reçu généré</div></div></div>
-      <div class="insight-mini"><div class="insight-mini-icon">💰</div><div><div class="insight-mini-num" id="cerfa-mini-montant">0 €</div><div class="insight-mini-label">Montant total</div></div></div>
+      <div class="insight-mini"><div class="insight-mini-icon">💜</div><div><div class="insight-mini-num" id="cerfa-mini-montant">0 €</div><div class="insight-mini-label">Montant total</div></div></div>
     </div>
   </div>
   <div class="insight-card">
@@ -3007,7 +3007,7 @@ function afficherCerfa(){
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
     const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
-    el.innerHTML=`<div class="cerfa-actions-right"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button></div><div><div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;"><div class="cerfa-doc-icon">📄</div><div style="flex:1;"><div class="demande-header" style="margin:0;display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><span class="demande-type type-cerfa" style="font-size:22px;">${prenomAffiche}${c.nom||''}</span><div style="display:flex;gap:6px;margin-left:auto;"><span class="cerfa-badge" style="background:#334155;font-size:11px;">🧾 ${c.numero}</span><span class="cerfa-badge">${getBadgeCerfaRecent(c.created_at)}</span></div></div><div class="demande-phone" style="margin:0;margin-bottom:8px;font-size:13px;color:#cbd5e1;">${c.email?'✉️ '+c.email:''}</div></div></div><div class="demande-texte" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;margin-bottom:12px;"><div style="display:flex;gap:16px;"><div style="display:flex;align-items:center;gap:6px;"><span>💰</span><div><div style="font-size:12px;color:#94a3b8;">Montant</div><div style="font-weight:600;color:white;">${montant} €</div></div></div><div style="display:flex;align-items:center;gap:6px;"><span>📅</span><div><div style="font-size:12px;color:#94a3b8;">Échéance</div><div style="font-weight:600;color:white;">${dateDon||'N/A'}</div></div></div></div><div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><span>💳</span><div><div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${c.mode_paiement||'Mode'}</div></div></div></div><div class="cerfa-status" style="padding:0;"><span>${c.adresse?'📍 '+c.adresse:''}</span></div></div>`;
+    el.innerHTML=`<div class="cerfa-actions-right"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button></div><div><div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;"><div class="cerfa-doc-icon">📄</div><div style="flex:1;"><div class="demande-header" style="margin:0;display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><span class="demande-type type-cerfa" style="font-size:22px;">${prenomAffiche}${c.nom||''}</span><div style="display:flex;gap:6px;margin-left:auto;"><span class="cerfa-badge" style="background:#334155;font-size:11px;">🧾 ${c.numero}</span><span class="cerfa-badge">${getBadgeCerfaRecent(c.created_at)}</span></div></div><div class="demande-phone" style="margin:0;margin-bottom:8px;font-size:13px;color:#cbd5e1;">${c.email?'✉️ '+c.email:''}</div></div></div><div class="demande-texte" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;margin-bottom:12px;"><div style="display:flex;gap:16px;"><div style="display:flex;align-items:center;gap:6px;"><span>💜</span><div><div style="font-size:12px;color:#94a3b8;">Montant</div><div style="font-weight:600;color:white;">${montant} €</div></div></div><div style="display:flex;align-items:center;gap:6px;"><span>📅</span><div><div style="font-size:12px;color:#94a3b8;">Échéance</div><div style="font-weight:600;color:white;">${dateDon||'N/A'}</div></div></div></div><div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><span>💳</span><div><div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${c.mode_paiement||'Mode'}</div></div></div></div><div class="cerfa-status" style="padding:0;"><span>${c.adresse?'📍 '+c.adresse:''}</span></div></div>`;
     container.appendChild(el);
   });
 }
@@ -3861,7 +3861,7 @@ function afficherPaiements(){
   const container=document.getElementById('paiements-container');
   let filtered=allPaiements;
   if(filterPaiement!=='tous')filtered=allPaiements.filter(p=>p.statut===filterPaiement);
-  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">💰</div><p>Aucun paiement</p></div>';return;}
+  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">💜</div><p>Aucun paiement</p></div>';return;}
   container.innerHTML='';
   filtered.forEach(p=>{
     const date=new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -3881,7 +3881,7 @@ function afficherPaiements(){
       </div>
       ${nomP?`<div class="contact-nom">${icon?icon+' ':''}${nomP}</div>`:''}
       <div class="demande-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${p.phone}')">+${p.phone}</span></div>
-      <div class="demande-texte">💰 <strong>${montant} €</strong>${p.description?' — '+p.description:''}${p.lien_paiement?'<br>🔗 '+p.lien_paiement:''}<br><span style="font-size:11px;color:var(--muted);">${p.nb_relances||0} relance(s) envoyée(s)${derniereRelance?' · dernière le '+derniereRelance:''}</span></div>
+      <div class="demande-texte">💜 <strong>${montant} €</strong>${p.description?' — '+p.description:''}${p.lien_paiement?'<br>🔗 '+p.lien_paiement:''}<br><span style="font-size:11px;color:var(--muted);">${p.nb_relances||0} relance(s) envoyée(s)${derniereRelance?' · dernière le '+derniereRelance:''}</span></div>
       <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
         ${p.statut!=='paye'?`<button class="btn-restore" onclick="relancerPaiement(${p.id})" style="border-color:var(--gold);background:var(--gold-light);color:var(--gold-dark);">🔔 Relancer</button><button class="btn-restore" onclick="changerStatutPaiement(${p.id},'paye')">✅ Marquer payé</button>`:`<button class="btn-restore" onclick="changerStatutPaiement(${p.id},'en_attente')">↺ Remettre en attente</button>`}
       </div>`;
