@@ -2778,7 +2778,7 @@ app.get('/tsedaka', async (req, res) => {
     
     const totalDons = dons.reduce((s,x) => s+parseFloat(x.montant||0), 0);
     const totalCerfas = cerfas.reduce((s,x) => s+parseFloat(x.montant||0), 0);
-    const now = new Date().toLocaleString('fr-FR');
+    const now = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
     
     let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tsedaka Admin</title><style>';
     html += '*{margin:0;padding:0;box-sizing:border-box}';
@@ -2852,7 +2852,7 @@ app.get('/tsedaka', async (req, res) => {
     html += '<div class="tab-content"><table><thead><tr><th>Date & Heure</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
     dons.forEach(d => {
       const nom = (d.prenom||'?') + ' ' + (d.nom||'?');
-      const dateTime = new Date(d.created_at).toLocaleString('fr-FR');
+      const dateTime = new Date(d.created_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
       const cerfaBadge = d.cerfa_numero ? '<span class="cerfa-badge cerfa-yes">✓ ' + d.cerfa_numero + '</span>' : '<span class="cerfa-badge cerfa-no">✗</span>';
       html += '<tr><td><strong>' + dateTime + '</strong></td><td>' + nom + '</td><td class="montant">' + d.montant + ' €</td><td>' + cerfaBadge + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button><button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button></td></tr>';
     });
@@ -2862,7 +2862,7 @@ app.get('/tsedaka', async (req, res) => {
     html += '<div class="tab-content"><table><thead><tr><th>N° Cerfa</th><th>Donateur</th><th>Montant</th><th>Date & Heure</th><th>Actions</th></tr></thead><tbody>';
     cerfas.forEach(c => {
       const nom = (c.prenom||'?') + ' ' + (c.nom||'?');
-      const dateTime = new Date(c.created_at).toLocaleString('fr-FR');
+      const dateTime = new Date(c.created_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
       html += '<tr><td><strong>' + c.numero + '</strong></td><td>' + nom + '</td><td class="montant">' + c.montant + ' €</td><td>' + dateTime + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button><button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
