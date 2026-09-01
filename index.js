@@ -4467,17 +4467,9 @@ app.get("/tsedaka", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-initDB().then(() => {
-  app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
-  demarrerCronChabbat();
-  demarrerCronBackup();
-  demarrerCronRelancesPaiements();
-});
-// Force redeploy
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TSEDAKA ADMIN PAGE — Routes actions
-// ═══════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ROUTES TSEDAKA ADMIN — Download, Email, WhatsApp
+// ════════════════════════════════════════════════════════════════════════════
 
 app.get('/admin/tsedaka/cerfa-download/:numero', async (req, res) => {
   const { numero } = req.params;
@@ -4636,4 +4628,8 @@ app.get('/tsedaka', async (req, res) => {
   } catch (e) {
     res.send('Error: ' + e.message);
   }
+});
+
+initDB().then(() => {
+  app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
 });
