@@ -3333,7 +3333,7 @@ app.get('/tsedaka', async (req, res) => {
         <input type="date" id="cerfa-date">
       </div>
       <div class="form-group" style="padding-top: 22px;">
-        <button onclick="creerCerfaRapide()">✅ Créer Cerfa</button>
+        <button class="btn" onclick="creerCerfaRapide()">Créer Cerfa</button>
       </div>
     </div>
     <div id="cerfa-status"></div>
