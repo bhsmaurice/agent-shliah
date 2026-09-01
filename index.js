@@ -2967,36 +2967,36 @@ app.get('/tsedaka', async (req, res) => {
     
     /* BUTTONS */
     .btn {
-      padding: 1.3rem 3rem;
+      padding: 0.9rem 1.8rem;
       background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
       color: white;
       border: none;
-      border-radius: 12px;
-      font-size: 17px;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 800;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+      box-shadow: 0 8px 20px rgba(255, 107, 107, 0.35);
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1px;
       position: relative;
       overflow: hidden;
       display: inline-flex;
       align-items: center;
       gap: 0.8rem;
-      min-width: 200px;
+      min-width: auto;
       justify-content: center;
     }
     
     .btn:hover {
       background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
-      box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
-      transform: translateY(-4px);
+      box-shadow: 0 10px 24px rgba(255, 107, 107, 0.4);
+      transform: translateY(-2px);
     }
     
     .btn:active {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+      transform: translateY(0);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
     }
     
     .btn-sm {
@@ -3332,7 +3332,8 @@ app.get('/tsedaka', async (req, res) => {
         <label>Date paiement</label>
         <input type="date" id="cerfa-date">
       </div>
-      <div class="form-group" style="padding-top: 22px;">
+      <div class="form-group" style="align-self: flex-end;">
+        <label style="visibility: hidden;">Action</label>
         <button class="btn" onclick="creerCerfaRapide()">Créer Cerfa</button>
       </div>
     </div>
