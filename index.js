@@ -2707,6 +2707,67 @@ app.get('/admin/tsedaka/abonnes', async (req, res) => {
     res.status(500).json({ ok: false, message: e.message });
   }
 });
+app.get('/admin/tsedaka/cerfa-download/:numero', async (req, res) => {
+  const { numero } = req.params;
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).send('Not found');
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Cerfa_' + numero + '.pdf"');
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).send('Error: ' + e.message);
+  }
+});
+
+app.post('/admin/tsedaka/cerfa-email', async (req, res) => {
+  const { password, numero, email } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false });
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    await envoyerEmail({
+      to: email, subject: 'Cerfa ' + numero,
+      html: 'Bonjour,<br>Ci-joint votre reçu fiscal.',
+      attachments: [{ filename: 'Cerfa_' + numero + '.pdf', content: pdfBuffer }]
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/admin/tsedaka/cerfa-whatsapp', async (req, res) => {
+  const { password, numero, phone } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false });
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    await sendWhatsApp(phone, 'Cerfa ' + numero + ' pour ' + c.montant + ' euros');
+    await sendWhatsAppDocument(phone, pdfBuffer, 'Cerfa_' + numero + '.pdf');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/tsedaka', async (req, res) => {
   const { password } = req.query;
   if (password !== ADMIN_PASSWORD) return res.send('Incorrect password');
