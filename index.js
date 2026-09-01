@@ -4474,3 +4474,166 @@ initDB().then(() => {
   demarrerCronRelancesPaiements();
 });
 // Force redeploy
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TSEDAKA ADMIN PAGE — Routes actions
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/admin/tsedaka/cerfa-download/:numero', async (req, res) => {
+  const { numero } = req.params;
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.status(401).send('Unauthorized');
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).send('Not found');
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Cerfa_' + numero + '.pdf"');
+    res.send(pdfBuffer);
+  } catch (e) {
+    res.status(500).send('Error: ' + e.message);
+  }
+});
+
+app.post('/admin/tsedaka/cerfa-email', async (req, res) => {
+  const { password, numero, email } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false });
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    await envoyerEmail({
+      to: email, subject: 'Cerfa ' + numero,
+      html: 'Bonjour,<br>Ci-joint votre reçu fiscal.',
+      attachments: [{ filename: 'Cerfa_' + numero + '.pdf', content: pdfBuffer }]
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/admin/tsedaka/cerfa-whatsapp', async (req, res) => {
+  const { password, numero, phone } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false });
+  try {
+    const result = await pool.query('SELECT * FROM cerfa_receipts WHERE numero = $1', [numero]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false });
+    const c = result.rows[0];
+    const pdfBuffer = await generateCerfaPDF({
+      numero: c.numero, nom: c.nom, prenom: c.prenom, adresse: c.adresse,
+      montant: c.montant, mode: c.mode_paiement, dateVersement: new Date(c.date_don).toLocaleDateString('fr-FR')
+    });
+    await sendWhatsApp(phone, 'Cerfa ' + numero + ' pour ' + c.montant + ' euros');
+    await sendWhatsAppDocument(phone, pdfBuffer, 'Cerfa_' + numero + '.pdf');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/tsedaka', async (req, res) => {
+  const { password } = req.query;
+  if (password !== ADMIN_PASSWORD) return res.send('Incorrect password');
+  try {
+    const dons = (await pool.query('SELECT d.*, a.prenom, a.nom, a.email FROM tsedaka_dons d LEFT JOIN tsedaka_abonnes a ON d.phone=a.phone ORDER BY d.created_at DESC LIMIT 100')).rows;
+    const cerfas = (await pool.query('SELECT * FROM cerfa_receipts ORDER BY created_at DESC LIMIT 100')).rows;
+    const stats = (await pool.query('SELECT COUNT(*) as n, COUNT(CASE WHEN carte_gardee THEN 1 END) as cartes FROM tsedaka_abonnes')).rows[0];
+    
+    const totalDons = dons.reduce((s,x) => s+parseFloat(x.montant||0), 0);
+    const totalCerfas = cerfas.reduce((s,x) => s+parseFloat(x.montant||0), 0);
+    
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Tsedaka Admin</title><style>';
+    html += 'body{font-family:Arial;background:#f0f0f0;margin:0;padding:20px}';
+    html += '.container{max-width:1200px;margin:0 auto}';
+    html += '.header{background:linear-gradient(135deg,#7c3aed,#5B3FD1);color:white;padding:20px;border-radius:8px;margin-bottom:20px;text-align:center}';
+    html += '.tabs{display:flex;gap:0;border-bottom:2px solid #7c3aed;margin-bottom:20px}';
+    html += '.tab-btn{padding:10px 20px;cursor:pointer;background:white;border:none;font-weight:600;flex:1;border-bottom:3px solid transparent}';
+    html += '.tab-btn.active{background:#7c3aed;color:white}';
+    html += '.tab-content{display:none}';
+    html += '.tab-content.active{display:block}';
+    html += '.stat{background:white;padding:15px;border-radius:8px;display:inline-block;margin:10px;min-width:200px}';
+    html += '.stat-value{font-size:28px;font-weight:700;color:#7c3aed}';
+    html += 'table{width:100%;border-collapse:collapse;background:white;border-radius:8px}';
+    html += 'th{background:#1a2540;color:white;padding:12px;text-align:left;font-weight:600}';
+    html += 'td{padding:10px;border-bottom:1px solid #ddd}';
+    html += 'tr:nth-child(even){background:#fafafa}';
+    html += '.btn{padding:6px 12px;border:none;border-radius:50%;cursor:pointer;font-size:16px;margin:0 2px}';
+    html += '.btn-dl{background:#7c3aed;color:white}';
+    html += '.btn-em{background:#3b82f6;color:white}';
+    html += '.btn-wa{background:#10b981;color:white}';
+    html += '.btn:hover{opacity:0.8}';
+    html += '.alert{position:fixed;top:20px;right:20px;padding:10px 20px;border-radius:4px;color:white;z-index:999}';
+    html += '.alert.ok{background:#10b981}';
+    html += '.alert.err{background:#ef4444}';
+    html += '</style></head><body>';
+    html += '<div class="container">';
+    html += '<div class="header"><h1>🤖 Admin Tsedaka</h1></div>';
+    html += '<div class="tabs">';
+    html += '<button class="tab-btn active" onclick="showTab(0)">📊 Dashboard</button>';
+    html += '<button class="tab-btn" onclick="showTab(1)">💰 Dons</button>';
+    html += '<button class="tab-btn" onclick="showTab(2)">📄 Cerfa</button>';
+    html += '<button class="tab-btn" onclick="showTab(3)">📈 Stats</button>';
+    html += '</div>';
+    
+    // Dashboard
+    html += '<div class="tab-content active">';
+    html += '<div class="stat"><div class="stat-value">' + totalDons.toFixed(2) + ' €</div><div>Total collecté</div></div>';
+    html += '<div class="stat"><div class="stat-value">' + dons.length + '</div><div>Donations</div></div>';
+    html += '<div class="stat"><div class="stat-value">' + cerfas.length + '</div><div>Cerfa générés</div></div>';
+    html += '<div class="stat"><div class="stat-value">' + (stats.n||0) + '</div><div>Abonnés</div></div>';
+    html += '</div>';
+    
+    // Dons
+    html += '<div class="tab-content"><table><thead><tr><th>Date</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
+    dons.forEach(d => {
+      const nom = (d.prenom||'?') + ' ' + (d.nom||'?');
+      const date = new Date(d.created_at).toLocaleDateString('fr-FR');
+      html += '<tr><td>' + date + '</td><td>' + nom + '</td><td>' + d.montant + ' €</td><td>' + (d.cerfa_numero||'—') + '</td><td>';
+      html += '<button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button>';
+      html += '<button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button>';
+      html += '<button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    
+    // Cerfa
+    html += '<div class="tab-content"><table><thead><tr><th>N° Cerfa</th><th>Donateur</th><th>Montant</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+    cerfas.forEach(c => {
+      const nom = (c.prenom||'?') + ' ' + (c.nom||'?');
+      const date = new Date(c.date_don).toLocaleDateString('fr-FR');
+      html += '<tr><td>' + c.numero + '</td><td>' + nom + '</td><td>' + c.montant + ' €</td><td>' + date + '</td><td>';
+      html += '<button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button>';
+      html += '<button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button>';
+      html += '<button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    
+    // Stats
+    html += '<div class="tab-content">';
+    html += '<div class="stat"><div class="stat-value">' + (dons.length ? (totalDons/dons.length).toFixed(2) : '0') + ' €</div><div>Moyenne</div></div>';
+    html += '</div>';
+    
+    html += '</div></body><script>';
+    html += 'const pwd="levi770";';
+    html += 'function showTab(n){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-content")[n].classList.add("active");document.querySelectorAll(".tab-btn")[n].classList.add("active")}';
+    html += 'function alert(msg,ok){const a=document.createElement("div");a.className="alert "+(ok?"ok":"err");a.textContent=msg;document.body.appendChild(a);setTimeout(()=>a.remove(),3000)}';
+    html += 'function dl(n){if(!n){alert("No cerfa",false);return}window.location="/admin/tsedaka/cerfa-download/"+n+"?password="+pwd}';
+    html += 'function em(e,n){if(!e||!n){alert("Missing data",false);return}fetch("/admin/tsedaka/cerfa-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,email:e})}).then(r=>r.json()).then(d=>alert(d.ok?"Email sent":"Error",d.ok)).catch(e=>alert("Error",false))}';
+    html += 'function wa(p,n){if(!n){alert("No cerfa",false);return}if(!p){alert("No phone",false);return}fetch("/admin/tsedaka/cerfa-whatsapp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd,numero:n,phone:p})}).then(r=>r.json()).then(d=>alert(d.ok?"WhatsApp sent":"Error",d.ok)).catch(e=>alert("Error",false))}';
+    html += '</script></html>';
+    
+    res.send(html);
+  } catch (e) {
+    res.send('Error: ' + e.message);
+  }
+});
