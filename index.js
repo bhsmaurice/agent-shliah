@@ -2749,35 +2749,173 @@ app.get('/tsedaka', async (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tsedaka - Beth Habad</title>
   <style>
-    body { font-family: Arial; margin: 20px; background: #f5f5f5; }
-    h1 { color: #8B4513; }
-    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #8B4513; color: white; padding: 10px; text-align: left; }
-    td { padding: 8px; border-bottom: 1px solid #eee; }
-    tr:hover { background: #f9f9f9; }
-    .complet { background: #e8f5e9; }
-    .attente { background: #fff3e0; }
-    .total { font-weight: bold; background: #f0f0f0; }
-    .empty { color: #999; font-style: italic; }
-    .form-group { margin: 10px 0; display: inline-block; margin-right: 15px; }
-    .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 3px; }
-    .form-group input { padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
-    .form-group input:focus { outline: none; border-color: #8B4513; }
-    button { padding: 8px 15px; background: #8B4513; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #6B2F0B; }
-    #cerfa-status { margin-top: 10px; padding: 10px; border-radius: 3px; display: none; }
-    .success { background: #e8f5e9; color: #2e7d32; }
-    .error { background: #ffebee; color: #c62828; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+      color: var(--text-primary);
+      background: var(--surface-0);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    
+    h1 { font-size: 28px; font-weight: 500; margin: 0 0 1.5rem 0; color: var(--text-primary); }
+    h2 { font-size: 18px; font-weight: 500; margin: 1.5rem 0 0.75rem 0; color: var(--text-primary); }
+    h3 { font-size: 16px; font-weight: 500; margin: 1rem 0 0.5rem 0; color: var(--text-secondary); }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    
+    .card { 
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-group label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .form-group input, .form-group select {
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--border-strong);
+    }
+    
+    .btn {
+      padding: 0.7rem 1.5rem;
+      background: var(--bg-accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .btn:hover { background: var(--bg-accent, #6B4423); }
+    
+    .status-message {
+      padding: 0.8rem 1rem;
+      border-radius: var(--radius);
+      font-size: 14px;
+      margin-top: 1rem;
+    }
+    
+    .status-success {
+      background: var(--bg-success);
+      color: var(--text-success);
+    }
+    
+    .status-error {
+      background: var(--bg-danger);
+      color: var(--text-danger);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.8rem;
+    }
+    
+    th {
+      background: var(--surface-1);
+      color: var(--text-primary);
+      padding: 0.8rem;
+      text-align: left;
+      font-weight: 500;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      border-bottom: 2px solid var(--border-strong);
+    }
+    
+    td {
+      padding: 0.8rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    
+    tr:hover {
+      background: var(--surface-1);
+    }
+    
+    .table-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      font-style: italic;
+      padding: 1.5rem;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1.5rem 0 1rem 0;
+    }
+    
+    .section-title i {
+      font-size: 18px;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
-  <h1>💰 Tsedaka Beth Habad S. Maurice</h1>
-  
-  <div class="section">
-    <h2>⚡ Créer une Cerfa Rapide</h2>
-    <input type="hidden" id="cerfa-don-id">
-    <div style="display: flex; flex-wrap: wrap;">
+  <div class="container">
+    <h1>Tsedaka Beth Habad S. Maurice</h1>
+    
+    <div class="card">
+      <h2>Créer une Cerfa rapidement</h2>
+      <input type="hidden" id="cerfa-don-id">
+      <div class="form-grid">
       <div class="form-group">
         <label>Nom *</label>
         <input type="text" id="cerfa-nom" placeholder="Boudara">
