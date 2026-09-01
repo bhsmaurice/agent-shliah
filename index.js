@@ -2967,27 +2967,34 @@ app.get('/tsedaka', async (req, res) => {
     
     /* BUTTONS */
     .btn {
-      padding: 0.85rem 1.8rem;
-      background: #6366f1;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
       color: white;
       border: none;
       border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     .btn:hover {
-      background: #4f46e5;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      transform: translateY(-1px);
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
     }
     
     .btn-sm {
-      padding: 0.5rem 1rem;
-      font-size: 12px;
+      padding: 0.6rem 1.2rem;
+      font-size: 13px;
     }
     
     /* STATUS MESSAGE */
@@ -3271,27 +3278,27 @@ app.get('/tsedaka', async (req, res) => {
         <div class="form-grid">
       <div class="form-group">
         <label>Nom *</label>
-        <input type="text" id="cerfa-nom" placeholder="Boudara">
+        <input type="text" id="cerfa-nom" >
       </div>
       <div class="form-group">
         <label>Prénom</label>
-        <input type="text" id="cerfa-prenom" placeholder="Gabriel">
+        <input type="text" id="cerfa-prenom" >
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="cerfa-email" placeholder="gabriel@example.com">
+        <input type="email" id="cerfa-email" >
       </div>
       <div class="form-group">
         <label>Téléphone</label>
-        <input type="text" id="cerfa-phone" placeholder="+33...">
+        <input type="text" id="cerfa-phone" >
       </div>
       <div class="form-group">
         <label>Adresse *</label>
-        <input type="text" id="cerfa-adresse" placeholder="8 rue..." style="width: 200px;">
+        <input type="text" id="cerfa-adresse"  style="width: 200px;">
       </div>
       <div class="form-group">
         <label>Montant *</label>
-        <input type="number" id="cerfa-montant" placeholder="22.00" step="0.01">
+        <input type="number" id="cerfa-montant"  step="0.01">
       </div>
       <div class="form-group">
         <label>Date paiement</label>
