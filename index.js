@@ -3006,6 +3006,25 @@ app.get('/tsedaka', async (req, res) => {
       min-width: auto;
     }
     
+    .btn-cerfa {
+      padding: 0.7rem 1.4rem;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+    
+    .btn-cerfa:hover {
+      background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
+      box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+      transform: translateY(-2px);
+    }
+    
     /* STATUS MESSAGE */
     .status-message {
       padding: 1rem;
@@ -3461,7 +3480,7 @@ app.get('/tsedaka', async (req, res) => {
           <td>${d.email || '-'}</td>
           <td>${d.montant}€</td>
           <td>${formatDate(d.created_at)}</td>
-          <td><button onclick="remplirFormulaireCerfa('${d.email || ''}', '${d.montant}', '${dateIso}', '${d.id}')" style="padding: 4px 8px; font-size: 11px;">➕ Cerfa</button></td>
+          <td><button onclick="remplirFormulaireCerfa('${d.email || ''}', '${d.montant}', '${dateIso}', '${d.id}')" class="btn-cerfa">➕ Cerfa</button></td>
         </tr>`;
       });
     }
