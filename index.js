@@ -2778,6 +2778,7 @@ app.get('/tsedaka', async (req, res) => {
     
     const totalDons = dons.reduce((s,x) => s+parseFloat(x.montant||0), 0);
     const totalCerfas = cerfas.reduce((s,x) => s+parseFloat(x.montant||0), 0);
+    const now = new Date().toLocaleString('fr-FR');
     
     let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tsedaka Admin</title><style>';
     html += '*{margin:0;padding:0;box-sizing:border-box}';
@@ -2785,13 +2786,16 @@ app.get('/tsedaka', async (req, res) => {
     html += '.wrapper{display:flex;min-height:100vh}';
     html += '.sidebar{width:280px;background:linear-gradient(135deg,#1a2540 0%,#2c3e50 100%);color:white;padding:30px 20px;position:fixed;height:100vh;overflow-y:auto}';
     html += '.sidebar h1{font-size:24px;margin-bottom:30px;font-weight:700}';
+    html += '.sidebar-time{font-size:12px;opacity:0.7;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.2)}';
     html += '.nav-item{padding:12px 15px;margin:8px 0;border-radius:8px;cursor:pointer;transition:all 0.3s;font-weight:500}';
     html += '.nav-item:hover{background:rgba(255,255,255,0.1);transform:translateX(5px)}';
     html += '.nav-item.active{background:#7c3aed;color:white;font-weight:600}';
     html += '.main{margin-left:280px;flex:1;padding:30px}';
-    html += '.header{background:linear-gradient(135deg,#7c3aed 0%,#5B3FD1 100%);color:white;padding:30px;border-radius:12px;margin-bottom:30px;box-shadow:0 4px 20px rgba(124,58,237,0.3)}';
-    html += '.header h1{font-size:32px;margin:0}';
-    html += '.header p{font-size:14px;opacity:0.9;margin-top:5px}';
+    html += '.header{background:linear-gradient(135deg,#7c3aed 0%,#5B3FD1 100%);color:white;padding:30px;border-radius:12px;margin-bottom:30px;box-shadow:0 4px 20px rgba(124,58,237,0.3);display:flex;justify-content:space-between;align-items:center}';
+    html += '.header-left h1{font-size:32px;margin:0}';
+    html += '.header-left p{font-size:14px;opacity:0.9;margin-top:5px}';
+    html += '.header-right{text-align:right;font-size:12px;opacity:0.9}';
+    html += '.header-right .time{font-size:14px;font-weight:600}';
     html += '.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}';
     html += '.stat-card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-left:4px solid;transition:all 0.3s}';
     html += '.stat-card:hover{transform:translateY(-5px);box-shadow:0 8px 20px rgba(0,0,0,0.15)}';
@@ -2830,8 +2834,8 @@ app.get('/tsedaka', async (req, res) => {
     html += '.alert.ok{background:#10b981}';
     html += '.alert.err{background:#ef4444}';
     html += '@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}';
-    html += '@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;padding:20px}.main{margin-left:0;padding:20px}.header{padding:20px}.stats-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{border-bottom:none;border-left:4px solid transparent}.tab-btn.active{border-left-color:#7c3aed}}';
-    html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div></div><div class="main"><div class="header"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div>';
+    html += '@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;padding:20px}.main{margin-left:0;padding:20px}.header{padding:20px;flex-direction:column}.header-left{margin-bottom:15px}.stats-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{border-bottom:none;border-left:4px solid transparent}.tab-btn.active{border-left-color:#7c3aed}}';
+    html += '</style></head><body><div class="wrapper"><div class="sidebar"><h1>🤖 Tsedaka</h1><div class="sidebar-time">📅 ' + now + '</div><div class="nav-item active" onclick="showTab(0)">📊 Dashboard</div><div class="nav-item" onclick="showTab(1)">💰 Dons</div><div class="nav-item" onclick="showTab(2)">📄 Cerfa</div><div class="nav-item" onclick="showTab(3)">📈 Statistiques</div></div><div class="main"><div class="header"><div class="header-left"><h1>Admin Tsedaka</h1><p>Beit Habad Saint-Maurice Plateau</p></div><div class="header-right"><div>Dernière mise à jour</div><div class="time" id="current-time">' + now + '</div></div></div>';
     
     // DASHBOARD
     html += '<div class="tab-content active"><div class="stats-grid">';
@@ -2845,21 +2849,21 @@ app.get('/tsedaka', async (req, res) => {
     html += '<div class="tabs"><button class="tab-btn active" onclick="showTab(0)">📊 Dashboard</button><button class="tab-btn" onclick="showTab(1)">💰 Dons</button><button class="tab-btn" onclick="showTab(2)">📄 Cerfa</button><button class="tab-btn" onclick="showTab(3)">📈 Statistiques</button></div>';
     
     // DONS
-    html += '<div class="tab-content"><table><thead><tr><th>Date</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
+    html += '<div class="tab-content"><table><thead><tr><th>Date & Heure</th><th>Donateur</th><th>Montant</th><th>Cerfa</th><th>Actions</th></tr></thead><tbody>';
     dons.forEach(d => {
       const nom = (d.prenom||'?') + ' ' + (d.nom||'?');
-      const date = new Date(d.created_at).toLocaleDateString('fr-FR');
+      const dateTime = new Date(d.created_at).toLocaleString('fr-FR');
       const cerfaBadge = d.cerfa_numero ? '<span class="cerfa-badge cerfa-yes">✓ ' + d.cerfa_numero + '</span>' : '<span class="cerfa-badge cerfa-no">✗</span>';
-      html += '<tr><td>' + date + '</td><td>' + nom + '</td><td class="montant">' + d.montant + ' €</td><td>' + cerfaBadge + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button><button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button></td></tr>';
+      html += '<tr><td><strong>' + dateTime + '</strong></td><td>' + nom + '</td><td class="montant">' + d.montant + ' €</td><td>' + cerfaBadge + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + (d.cerfa_numero||'') + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (d.email||'') + '\', \'' + (d.cerfa_numero||'') + '\')">📧</button><button class="btn btn-wa" onclick="wa(\'' + d.phone + '\', \'' + (d.cerfa_numero||'') + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
     
     // CERFA
-    html += '<div class="tab-content"><table><thead><tr><th>N° Cerfa</th><th>Donateur</th><th>Montant</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+    html += '<div class="tab-content"><table><thead><tr><th>N° Cerfa</th><th>Donateur</th><th>Montant</th><th>Date & Heure</th><th>Actions</th></tr></thead><tbody>';
     cerfas.forEach(c => {
       const nom = (c.prenom||'?') + ' ' + (c.nom||'?');
-      const date = new Date(c.date_don).toLocaleDateString('fr-FR');
-      html += '<tr><td><strong>' + c.numero + '</strong></td><td>' + nom + '</td><td class="montant">' + c.montant + ' €</td><td>' + date + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button><button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button></td></tr>';
+      const dateTime = new Date(c.created_at).toLocaleString('fr-FR');
+      html += '<tr><td><strong>' + c.numero + '</strong></td><td>' + nom + '</td><td class="montant">' + c.montant + ' €</td><td>' + dateTime + '</td><td class="actions"><button class="btn btn-dl" onclick="dl(\'' + c.numero + '\')">📥</button><button class="btn btn-em" onclick="em(\'' + (c.email||'') + '\', \'' + c.numero + '\')">📧</button><button class="btn btn-wa" onclick="wa(null, \'' + c.numero + '\')">📱</button></td></tr>';
     });
     html += '</tbody></table></div>';
     
@@ -2868,6 +2872,7 @@ app.get('/tsedaka', async (req, res) => {
     
     html += '</div></div></body><script>';
     html += 'const pwd="levi770";';
+    html += 'setInterval(() => { document.getElementById("current-time").textContent = new Date().toLocaleString("fr-FR"); }, 1000);';
     html += 'function showTab(n){document.querySelectorAll(".tab-content").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".nav-item").forEach(e=>e.classList.remove("active"));document.querySelectorAll(".tab-content")[n].classList.add("active");document.querySelectorAll(".tab-btn")[n].classList.add("active");document.querySelectorAll(".nav-item")[n].classList.add("active")}';
     html += 'function showAlert(msg,ok){const a=document.createElement("div");a.className="alert "+(ok?"ok":"err");a.textContent=msg;document.body.appendChild(a);setTimeout(()=>a.remove(),3000)}';
     html += 'function dl(n){if(!n){showAlert("❌ Pas de Cerfa",false);return}window.location="/admin/tsedaka/cerfa-download/"+n+"?password="+pwd}';
