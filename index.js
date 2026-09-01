@@ -2967,34 +2967,55 @@ app.get('/tsedaka', async (req, res) => {
     
     /* BUTTONS */
     .btn {
-      padding: 1rem 2rem;
+      padding: 0.95rem 2.2rem;
       background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
     }
     
     .btn:hover {
       background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
+      transform: translateY(-3px);
+    }
+    
+    .btn:hover::before {
+      left: 100%;
     }
     
     .btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
     }
     
     .btn-sm {
-      padding: 0.6rem 1.2rem;
+      padding: 0.65rem 1.2rem;
       font-size: 13px;
+      letter-spacing: 0.5px;
     }
     
     /* STATUS MESSAGE */
