@@ -2764,7 +2764,7 @@ app.get('/tsedaka', async (req, res) => {
     
     .sidebar {
       width: 140px;
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      background: linear-gradient(135deg, #3a3b5e 0%, #4a4b7a 100%);
       color: white;
       padding: 1.5rem 0;
       position: fixed;
@@ -2799,7 +2799,7 @@ app.get('/tsedaka', async (req, res) => {
     
     .sidebar-nav-item:hover {
       background: rgba(255,255,255,0.1);
-      border-left-color: #40916c;
+      border-left-color: #6366f1;
     }
     
     .main {
@@ -2809,7 +2809,7 @@ app.get('/tsedaka', async (req, res) => {
     }
     
     .header {
-      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+      background: linear-gradient(135deg, #3a3b5e 0%, #4a4b7a 100%);
       color: white;
       padding: 1.5rem;
       border-radius: 8px;
@@ -2856,7 +2856,7 @@ app.get('/tsedaka', async (req, res) => {
       font-size: 24px;
     }
     
-    .stat-icon.green { background: #e8f5e9; }
+    .stat-icon.green { background: #ede9fe; }
     .stat-icon.orange { background: #fff3e0; }
     .stat-icon.blue { background: #e3f2fd; }
     
@@ -2872,7 +2872,7 @@ app.get('/tsedaka', async (req, res) => {
     .stat-value {
       font-size: 20px;
       font-weight: 600;
-      color: #1b4332;
+      color: #3a3b5e;
     }
     
     .card {
@@ -2926,13 +2926,13 @@ app.get('/tsedaka', async (req, res) => {
     
     .form-group input:focus {
       outline: none;
-      border-color: #1b4332;
+      border-color: #3a3b5e;
       box-shadow: 0 0 0 2px rgba(27, 67, 50, 0.1);
     }
     
     .btn {
       padding: 0.7rem 1.5rem;
-      background: #1b4332;
+      background: #3a3b5e;
       color: white;
       border: none;
       border-radius: 4px;
@@ -2942,7 +2942,7 @@ app.get('/tsedaka', async (req, res) => {
       transition: background 0.2s;
     }
     
-    .btn:hover { background: #0f2818; }
+    .btn:hover { background: #4f46e5; }
     
     .status-message {
       padding: 0.8rem 1rem;
@@ -2952,8 +2952,8 @@ app.get('/tsedaka', async (req, res) => {
     }
     
     .status-success {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #ede9fe;
+      color: #4f46e5;
       border: 1px solid #c8e6c9;
     }
     
@@ -2995,7 +2995,7 @@ app.get('/tsedaka', async (req, res) => {
       gap: 0.5rem;
       margin-top: 1.5rem;
       margin-bottom: 0.8rem;
-      color: #1b4332;
+      color: #3a3b5e;
       font-weight: 600;
     }
     
