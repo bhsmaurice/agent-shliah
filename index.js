@@ -28,6 +28,8 @@ async function initDB() {
   await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS adresse TEXT`);
   await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS email TEXT`);
   await pool.query(`CREATE TABLE IF NOT EXISTS musiques (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, lien TEXT NOT NULL, ambiance TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS shabbat_horaires (id SERIAL PRIMARY KEY, date DATE UNIQUE NOT NULL, entree TEXT, sortie TEXT, paracha TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
+  console.log('✅ Toutes les tables créées');
   await pool.query(`CREATE TABLE IF NOT EXISTS playlistes (id SERIAL PRIMARY KEY, nom TEXT NOT NULL, ambiance TEXT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_counters (year INT PRIMARY KEY, last_number INT NOT NULL DEFAULT 0)`);
@@ -84,6 +86,61 @@ const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Shliah Bot <onboardi
 // Va dans Railway > Variables et ajoute PUBLIC_BASE_URL = https://TON-APP.up.railway.app
 // (Railway fournit aussi automatiquement RAILWAY_PUBLIC_DOMAIN, utilisé en secours ci-dessous)
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
+
+// ═══ HORAIRES CHABBAT — Récupération depuis Hebcal API ═══
+async function updateShabbatHoraires() {
+  console.log('📅 Mise à jour des horaires Chabbat...');
+  try {
+    const response = await fetch('https://www.hebcal.com/api/v1/events?geonameid=2988507&tz=Europe/Paris&year=' + new Date().getFullYear());
+    const data = await response.json();
+    
+    const events = data.events || [];
+    
+    for (const event of events) {
+      if (event.category === 'candlelighting' || event.category === 'havdalah' || event.title.includes('Paracha')) {
+        const date = new Date(event.date);
+        const formattedDate = date.toISOString().split('T')[0];
+        
+        // Chercher la paracha et les horaires pour ce jour
+        let parasha = '';
+        if (event.title.includes('Paracha') || event.title.includes('Torah')) {
+          parasha = event.title.replace(/^[^:]*:\s*/, '');
+        }
+        
+        const entree = event.category === 'candlelighting' ? event.hebrew || event.title : null;
+        const sortie = event.category === 'havdalah' ? event.hebrew || event.title : null;
+        
+        if (entree || sortie || parasha) {
+          await pool.query(
+            `INSERT INTO shabbat_horaires (date, entree, sortie, paracha) 
+             VALUES ($1, $2, $3, $4) 
+             ON CONFLICT (date) DO UPDATE 
+             SET entree = COALESCE($2, entree), 
+                 sortie = COALESCE($3, sortie), 
+                 paracha = COALESCE($4, paracha),
+                 updated_at = NOW()`,
+            [formattedDate, entree, sortie, parasha]
+          );
+        }
+      }
+    }
+    console.log('✅ Horaires Chabbat mis à jour');
+  } catch (err) {
+    console.error('❌ Erreur lors de la mise à jour:', err.message);
+  }
+}
+
+// Fonction pour obtenir les horaires depuis la base de données
+async function getShabbatHoraires(date) {
+  try {
+    const result = await pool.query('SELECT * FROM shabbat_horaires WHERE date = $1', [date.toISOString().split('T')[0]]);
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error('Erreur lecture horaires:', err);
+    return null;
+  }
+}
+
 async function envoyerEmail({ to, subject, html, attachments }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
@@ -2958,6 +3015,17 @@ app.get('/tsedaka', async (req, res) => {
     res.send('Error: ' + e.message);
   }
 });
+
+// ═══ CRON — Mise à jour des horaires chaque dimanche à 8h ═══
+const cron = require('node-cron');
+cron.schedule('0 8 * * 0', () => {
+  console.log('⏰ Cron: Mise à jour des horaires (dimanche 8h)');
+  updateShabbatHoraires();
+});
+
+// Mise à jour au démarrage aussi
+console.log('📅 Première mise à jour des horaires au démarrage...');
+updateShabbatHoraires();
 
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
