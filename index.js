@@ -89,44 +89,71 @@ const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBL
 
 // ═══ HORAIRES CHABBAT — Récupération depuis Hebcal API ═══
 async function updateShabbatHoraires() {
-  console.log('📅 Mise à jour des horaires Chabbat...');
+  console.log('📅 Mise à jour des horaires Chabbat depuis Hebcal...');
   try {
-    const response = await fetch('https://www.hebcal.com/api/v1/events?geonameid=2988507&tz=Europe/Paris&year=' + new Date().getFullYear());
+    const year = new Date().getFullYear();
+    // Appel à Hebcal pour Paris avec les détails
+    const response = await fetch(`https://www.hebcal.com/api/v1/events?geonameid=2988507&tz=Europe/Paris&year=${year}&cfg=json`);
     const data = await response.json();
     
     const events = data.events || [];
+    const shabbatData = {};
     
+    // Parser les événements
     for (const event of events) {
-      if (event.category === 'candlelighting' || event.category === 'havdalah' || event.title.includes('Paracha')) {
-        const date = new Date(event.date);
-        const formattedDate = date.toISOString().split('T')[0];
-        
-        // Chercher la paracha et les horaires pour ce jour
-        let parasha = '';
-        if (event.title.includes('Paracha') || event.title.includes('Torah')) {
-          parasha = event.title.replace(/^[^:]*:\s*/, '');
+      const date = event.date;
+      if (!date) continue;
+      
+      // Chercher Candle Lighting (Entrée de Chabbat)
+      if (event.title && event.title.includes('Candle lighting')) {
+        const timeMatch = event.title.match(/(\d+:\d+)/);
+        if (timeMatch) {
+          if (!shabbatData[date]) shabbatData[date] = {};
+          shabbatData[date].entree = timeMatch[1];
         }
-        
-        const entree = event.category === 'candlelighting' ? event.hebrew || event.title : null;
-        const sortie = event.category === 'havdalah' ? event.hebrew || event.title : null;
-        
-        if (entree || sortie || parasha) {
-          await pool.query(
-            `INSERT INTO shabbat_horaires (date, entree, sortie, paracha) 
-             VALUES ($1, $2, $3, $4) 
-             ON CONFLICT (date) DO UPDATE 
-             SET entree = COALESCE($2, entree), 
-                 sortie = COALESCE($3, sortie), 
-                 paracha = COALESCE($4, paracha),
-                 updated_at = NOW()`,
-            [formattedDate, entree, sortie, parasha]
-          );
+      }
+      
+      // Chercher Havdalah (Sortie de Chabbat)
+      if (event.title && event.title.includes('Havdalah')) {
+        const timeMatch = event.title.match(/(\d+:\d+)/);
+        if (timeMatch) {
+          if (!shabbatData[date]) shabbatData[date] = {};
+          shabbatData[date].sortie = timeMatch[1];
+        }
+      }
+      
+      // Chercher la Paracha
+      if (event.title && (event.title.includes('Parashat') || event.title.includes('Parasha'))) {
+        const paracha = event.title.replace(/^[^:]*:\s*/, '').trim();
+        if (paracha && !paracha.includes('Havdalah') && !paracha.includes('Candle')) {
+          if (!shabbatData[date]) shabbatData[date] = {};
+          shabbatData[date].paracha = paracha;
         }
       }
     }
-    console.log('✅ Horaires Chabbat mis à jour');
+    
+    // Sauvegarder dans la BD
+    for (const [date, horaires] of Object.entries(shabbatData)) {
+      const entree = horaires.entree || null;
+      const sortie = horaires.sortie || null;
+      const paracha = horaires.paracha || null;
+      
+      if (entree || sortie || paracha) {
+        await pool.query(
+          `INSERT INTO shabbat_horaires (date, entree, sortie, paracha) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (date) DO UPDATE 
+           SET entree = COALESCE($2, entree), 
+               sortie = COALESCE($3, sortie), 
+               paracha = COALESCE($4, paracha),
+               updated_at = NOW()`,
+          [date, entree, sortie, paracha]
+        );
+      }
+    }
+    console.log('✅ Horaires Chabbat mis à jour depuis Hebcal');
   } catch (err) {
-    console.error('❌ Erreur lors de la mise à jour:', err.message);
+    console.error('❌ Erreur Hebcal:', err.message);
   }
 }
 
@@ -679,9 +706,7 @@ async function getEvenements() {
 }
 async function getHorairesChabbat() {
   try {
-    // Fallback simple: horaires connus pour Paris (vendredi prochain)
-    console.log('📅 Calcul horaires vendredi prochain...');
-    
+    // Trouver le vendredi prochain
     const now = new Date();
     const jour = now.getDay();
     const daysUntilFriday = (5 - jour + 7) % 7;
@@ -691,48 +716,40 @@ async function getHorairesChabbat() {
     const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
     const dateLabel = `vendredi ${fridayDate.getDate()} ${moisNoms[fridayDate.getMonth()]} ${fridayDate.getFullYear()}`;
     
-    // Horaires de Paris pour les 4 prochaines semaines (calj.net) avec Paracha
-    const horairesAout = {
-      '7': { entree: '21h02', sortie: '22h13', paracha: 'Réeh' },  // 7-8 août
-      '14': { entree: '20h50', sortie: '21h59', paracha: 'Choftim' }, // 14-15 août
-      '21': { entree: '20h37', sortie: '21h46', paracha: 'Ki Tavo' }, // 21-22 août  
-      '28': { entree: '20h24', sortie: '21h32', paracha: 'Nitsavim' }  // 28-29 août
-    };
+    // Récupérer depuis la BD (mise à jour automatiquement chaque dimanche)
+    const dateStr = fridayDate.toISOString().split('T')[0];
+    const result = await pool.query('SELECT * FROM shabbat_horaires WHERE date = $1', [dateStr]);
     
-    const horairesSeptembre = {
-      '4': { entree: '20h11', sortie: '21h21', paracha: 'Vayelekh' }, // 4-5 septembre
-      '11': { entree: '19h57', sortie: '21h07', paracha: 'Rosh Hashana' }, // 11-12 septembre
-      '18': { entree: '19h43', sortie: '20h53', paracha: 'Yom Kippour' }, // 18-19 septembre
-      '25': { entree: '19h30', sortie: '20h39', paracha: 'Soukot' }  // 25-26 septembre
-    };
-    
-    const currentMonth = fridayDate.getMonth() + 1;
-    const horairesByMonth = {
-      8: horairesAout,
-      9: horairesSeptembre
-    };
-    
-    const horaires = horairesByMonth[currentMonth]?.[fridayDate.getDate().toString()];
-    if (horaires) {
-      console.log('✅ Horaires trouvés:', dateLabel, horaires.entree, horaires.sortie, 'Paracha:', horaires.paracha);
+    if (result.rows.length > 0) {
+      const horaires = result.rows[0];
+      console.log('✅ Horaires BD trouvés:', dateLabel, horaires.entree, horaires.sortie, 'Paracha:', horaires.paracha);
       return {
-        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${horaires.paracha}\n🕯️ Entrée de Chabbat : ${horaires.entree}\n✨ Sortie de Chabbat (Havdalah) : ${horaires.sortie}`,
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n📖 Paracha ${horaires.paracha || 'N/A'}\n🕯️ Entrée de Chabbat : ${horaires.entree || 'N/A'}\n✨ Sortie de Chabbat (Havdalah) : ${horaires.sortie || 'N/A'}`,
         paracha: horaires.paracha,
         date: dateLabel,
         entree: horaires.entree,
         sortie: horaires.sortie
       };
+    } else {
+      console.log('⚠️ Horaires BD non trouvés, fallback');
+      return {
+        texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Horaires non disponibles\n(Mis à jour chaque dimanche matin)`,
+        paracha: 'N/A',
+        date: dateLabel,
+        entree: '🔄',
+        sortie: '🔄'
+      };
     }
-    
-    // Sinon retourner une date approchée
-    console.log('⚠️ Horaires non trouvés pour cette date, utilisant horaires par défaut');
+  } catch (err) {
+    console.error('❌ Erreur getHorairesChabbat:', err.message);
     return {
-      texte: `HORAIRES CHABBAT - PARIS :\n📅 ${dateLabel}\n🕯️ Horaires Chabbat`,
+      texte: `Erreur lors de la récupération des horaires`,
       paracha: 'N/A',
-      date: dateLabel,
-      entree: '21h00',
-      sortie: '22h00'
+      date: 'N/A',
+      entree: 'N/A',
+      sortie: 'N/A'
     };
+  }
   } catch (e) { 
     console.error('❌ Erreur:', e.message);
     return null;
