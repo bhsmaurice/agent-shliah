@@ -89,6 +89,10 @@ const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBL
 
 // ═══ HORAIRES CHABBAT — Récupération depuis Hebcal API ═══
 async function updateShabbatHoraires() {
+  if (!pool) {
+    console.log('⚠️ Pool pas prêt, attente...');
+    return;
+  }
   console.log('📅 Mise à jour des horaires Chabbat depuis Hebcal...');
   try {
     const year = new Date().getFullYear();
@@ -3037,12 +3041,16 @@ app.get('/tsedaka', async (req, res) => {
 const cron = require('node-cron');
 cron.schedule('0 8 * * 0', () => {
   console.log('⏰ Cron: Mise à jour des horaires (dimanche 8h)');
-  updateShabbatHoraires();
+  updateShabbatHoraires().catch(err => console.error('❌ Cron error:', err));
 });
 
 initDB().then(() => {
-  // Première mise à jour au démarrage (APRÈS initDB)
-  console.log('📅 Première mise à jour des horaires au démarrage...');
-  updateShabbatHoraires();
-  app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Shliah Bot actif sur port ${PORT}`);
+    // Mise à jour après 2 secondes (s'assurer que la BD est prête)
+    setTimeout(() => {
+      console.log('📅 Mise à jour initiale des horaires...');
+      updateShabbatHoraires().catch(err => console.error('❌ Erreur update horaires:', err));
+    }, 2000);
+  });
 });
