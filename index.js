@@ -29,6 +29,43 @@ async function initDB() {
   await pool.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS email TEXT`);
   await pool.query(`CREATE TABLE IF NOT EXISTS musiques (id SERIAL PRIMARY KEY, titre TEXT NOT NULL, lien TEXT NOT NULL, ambiance TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS shabbat_horaires (id SERIAL PRIMARY KEY, date DATE UNIQUE NOT NULL, entree TEXT, sortie TEXT, paracha TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
+  
+  // Tables Havruta
+  await pool.query(`CREATE TABLE IF NOT EXISTS havrouta (
+    id SERIAL PRIMARY KEY, 
+    personne1_phone TEXT NOT NULL, 
+    personne1_nom TEXT, 
+    personne1_prenom TEXT, 
+    personne1_niveau TEXT,
+    personne2_phone TEXT,
+    personne2_nom TEXT, 
+    personne2_prenom TEXT, 
+    personne2_niveau TEXT,
+    coordinateur_phone TEXT, 
+    date_creation TIMESTAMP DEFAULT NOW()
+  )`);
+  
+  await pool.query(`CREATE TABLE IF NOT EXISTS seances_havrouta (
+    id SERIAL PRIMARY KEY, 
+    havrouta_id INTEGER REFERENCES havrouta(id) ON DELETE CASCADE,
+    date DATE NOT NULL, 
+    heure_debut TIME NOT NULL, 
+    heure_fin TIME, 
+    sujet TEXT,
+    torah_details TEXT,
+    notes TEXT,
+    statut TEXT DEFAULT 'planifiée',
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
+  
+  await pool.query(`CREATE TABLE IF NOT EXISTS coordinateurs_havruta (
+    id SERIAL PRIMARY KEY, 
+    phone TEXT UNIQUE NOT NULL, 
+    nom TEXT, 
+    prenom TEXT, 
+    email TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`);
   console.log('✅ Toutes les tables créées');
   await pool.query(`CREATE TABLE IF NOT EXISTS playlistes (id SERIAL PRIMARY KEY, nom TEXT NOT NULL, ambiance TEXT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await pool.query(`CREATE TABLE IF NOT EXISTS playliste_musiques (id SERIAL PRIMARY KEY, playliste_id INTEGER REFERENCES playlistes(id) ON DELETE CASCADE, musique_id INTEGER REFERENCES musiques(id) ON DELETE CASCADE)`);
@@ -2957,6 +2994,157 @@ app.get('/tsedaka', async (req, res) => {
   }
 });
 
+// Servir la page Admin Havruta
+app.get('/havrouta/admin', (req, res) => {
+  res.sendFile(__dirname + '/havrouta-admin.html');
+});
+
+// Servir la page Participant Havruta
+app.get('/havrouta/participant', (req, res) => {
+  res.sendFile(__dirname + '/havrouta-participant.html');
+});
+
+// ═══ HAVRUTA ROUTES ═══
+
+// Lister les havroutim (admin)
+app.get('/api/havrouta/list', async (req, res) => {
+  try {
+    const { password } = req.query;
+    if (password !== ADMIN_PASSWORD) return res.json({ ok: false, error: 'Unauthorized' });
+    
+    const result = await pool.query('SELECT * FROM havrouta ORDER BY date_creation DESC');
+    res.json({ ok: true, data: result.rows });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Voir une paire (participant)
+app.get('/api/havrouta/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM havrouta WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) return res.json({ ok: false, error: 'Not found' });
+    
+    const havrouta = result.rows[0];
+    const seances = await pool.query('SELECT * FROM seances_havrouta WHERE havrouta_id = $1 ORDER BY date DESC', [id]);
+    
+    res.json({ ok: true, havrouta, seances: seances.rows });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Créer une paire (admin)
+app.post('/api/havrouta/create', async (req, res) => {
+  try {
+    const { password, personne1_phone, personne1_nom, personne1_prenom, personne1_niveau, 
+            personne2_phone, personne2_nom, personne2_prenom, personne2_niveau, coordinateur_phone } = req.body;
+    
+    if (password !== ADMIN_PASSWORD) return res.json({ ok: false, error: 'Unauthorized' });
+    
+    const result = await pool.query(
+      `INSERT INTO havrouta (personne1_phone, personne1_nom, personne1_prenom, personne1_niveau, 
+                             personne2_phone, personne2_nom, personne2_prenom, personne2_niveau, coordinateur_phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [personne1_phone, personne1_nom, personne1_prenom, personne1_niveau,
+       personne2_phone, personne2_nom, personne2_prenom, personne2_niveau, coordinateur_phone]
+    );
+    
+    res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Créer une séance (admin + participant)
+app.post('/api/havrouta/seance', async (req, res) => {
+  try {
+    const { havrouta_id, date, heure_debut, heure_fin, sujet, torah_details, notes } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO seances_havrouta (havrouta_id, date, heure_debut, heure_fin, sujet, torah_details, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [havrouta_id, date, heure_debut, heure_fin, sujet, torah_details, notes]
+    );
+    
+    res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// ═══ RAPPELS HAVRUTA — 24h avant les séances ═══
+async function envoyerRappelsHavruta() {
+  if (!pool) return;
+  
+  try {
+    console.log('⏰ Envoi des rappels Havruta 24h avant...');
+    
+    // Chercher les séances prévues demain
+    const demain = new Date();
+    demain.setDate(demain.getDate() + 1);
+    const dateStr = demain.toISOString().split('T')[0];
+    
+    const result = await pool.query(
+      `SELECT s.*, h.personne1_phone, h.personne1_prenom, h.personne1_nom, 
+              h.personne2_phone, h.personne2_prenom, h.personne2_nom 
+       FROM seances_havrouta s 
+       JOIN havrouta h ON s.havrouta_id = h.id 
+       WHERE DATE(s.date) = $1 AND s.statut = 'planifiée'`,
+      [dateStr]
+    );
+    
+    const seances = result.rows;
+    
+    for (const seance of seances) {
+      const message = `🕯️ Rappel Havruta - Demain à ${seance.heure_debut}!\n\n` +
+        `📚 Sujet: ${seance.sujet || 'Torah'}\n` +
+        `${seance.torah_details ? `Détails: ${seance.torah_details}\n` : ''}` +
+        `Bon courage dans votre étude! 🙏`;
+      
+      // Envoyer à personne1
+      if (seance.personne1_phone) {
+        await sendWhatsApp(seance.personne1_phone, message);
+      }
+      
+      // Envoyer à personne2 si elle existe
+      if (seance.personne2_phone) {
+        await sendWhatsApp(seance.personne2_phone, message);
+      }
+    }
+    
+    console.log(`✅ ${seances.length} rappel(s) envoyé(s)`);
+  } catch (err) {
+    console.error('❌ Erreur rappels Havruta:', err.message);
+  }
+}
+
 initDB().then(() => {
+  // Rappels Havruta: Envoyer chaque jour à 8h
+  const scheduleRappelHavruta = () => {
+    const now = new Date();
+    const target = new Date();
+    target.setHours(8, 0, 0, 0);
+    
+    if (now > target) {
+      target.setDate(target.getDate() + 1);
+    }
+    
+    const timeout = target - now;
+    console.log(`⏰ Rappels Havruta programmés dans ${Math.round(timeout / 1000 / 60)} min`);
+    
+    setTimeout(() => {
+      envoyerRappelsHavruta();
+      // Réexécuter chaque 24h
+      setInterval(envoyerRappelsHavruta, 24 * 60 * 60 * 1000);
+    }, timeout);
+  };
+  
+  scheduleRappelHavruta();
+  
+  // Vérification rapide au démarrage (2 secondes)
+  setTimeout(envoyerRappelsHavruta, 2000);
   app.listen(PORT, () => console.log(`Shliah Bot actif sur port ${PORT}`));
 });
