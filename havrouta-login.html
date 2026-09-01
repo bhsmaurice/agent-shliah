@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Havruta Admin - Connexion</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .login-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #333;
+      text-align: left;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #eee;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-login {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin-bottom: 10px;
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-cancel {
+      background: #f0f0f0;
+      color: #666;
+    }
+    
+    .btn-cancel:hover {
+      background: #e0e0e0;
+    }
+    
+    .error {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .error.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">📚</div>
+    <div class="title">Havruta Admin</div>
+    <div class="subtitle">Connexion</div>
+    
+    <div id="error" class="error"></div>
+    
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="pin">🔐 PIN Admin:</label>
+        <input type="password" id="pin" placeholder="Rentre le PIN" required autofocus>
+      </div>
+      
+      <button type="submit" class="btn btn-login">✅ Connexion</button>
+      <button type="button" class="btn btn-cancel" onclick="window.location.href='/'">Retour</button>
+    </form>
+  </div>
+  
+  <script>
+    const BASE_URL = 'https://agent-shliah-production.up.railway.app';
+    
+    function handleLogin(e) {
+      e.preventDefault();
+      const pin = document.getElementById('pin').value;
+      
+      // Vérifier le PIN (habad2024 c'est l'ADMIN_PASSWORD dans index.js)
+      if (pin === 'habad2024') {
+        // Sauvegarder le PIN en session storage (pas localStorage pour la sécurité)
+        sessionStorage.setItem('havrouta_pin', pin);
+        // Rediriger vers le dashboard
+        window.location.href = '/havrouta/admin?auth=1';
+      } else {
+        const errorDiv = document.getElementById('error');
+        errorDiv.textContent = '❌ PIN incorrect';
+        errorDiv.classList.add('show');
+        document.getElementById('pin').value = '';
+        setTimeout(() => {
+          errorDiv.classList.remove('show');
+        }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>

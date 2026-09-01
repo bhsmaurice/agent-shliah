@@ -2994,9 +2994,231 @@ app.get('/tsedaka', async (req, res) => {
   }
 });
 
-// Servir la page Admin Havruta
+// Servir la page Admin Havruta Dashboard
 app.get('/havrouta/admin', (req, res) => {
-  res.sendFile(__dirname + '/havrouta-admin.html');
+  // Créer une version du dashboard qui utilise sessionStorage au lieu de prompt
+  const dashboardHTML = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Havruta Admin - Beth Habad</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 { font-size: 28px; }
+    .header p { font-size: 14px; opacity: 0.9; margin-top: 5px; }
+    
+    .header-actions { display: flex; gap: 10px; }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn-primary { background: white; color: #667eea; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+    .btn-secondary { background: rgba(255,255,255,0.2); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.3); }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    
+    .card {
+      background: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s;
+    }
+    
+    .card:hover {
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transform: translateY(-5px);
+    }
+    
+    .card h3 {
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+    
+    .card-info {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .btn-small {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .btn-seance { background: #51cf66; color: white; }
+    .btn-edit { background: #667eea; color: white; }
+    
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>📚 Havruta Admin</h1>
+        <p>Gestion des paires d'étude Torah</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="openModalNewHavruta()">+ Nouvelle paire</button>
+        <button class="btn btn-secondary" onclick="logout()">Se déconnecter</button>
+      </div>
+    </div>
+    
+    <div class="content">
+      <div id="alert-container"></div>
+      <div class="grid" id="havroutim-grid">
+        <p style="grid-column: 1/-1; text-align: center; color: #999;">Chargement...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const BASE_URL = 'https://agent-shliah-production.up.railway.app';
+    const PASSWORD = sessionStorage.getItem('havrouta_pin');
+    
+    if (!PASSWORD) {
+      window.location.href = '/havrouta/login';
+    }
+    
+    function showAlert(msg, type = 'success') {
+      const container = document.getElementById('alert-container');
+      const div = document.createElement('div');
+      div.className = \`alert \${type}\`;
+      div.textContent = msg;
+      container.appendChild(div);
+      setTimeout(() => div.remove(), 4000);
+    }
+    
+    function openModalNewHavruta() {
+      alert('Fonctionnalité "Nouvelle paire" à implémenter!');
+    }
+    
+    function logout() {
+      if (confirm('Déconnexion?')) {
+        sessionStorage.removeItem('havrouta_pin');
+        window.location.href = '/havrouta/login';
+      }
+    }
+    
+    async function loadHavroutim() {
+      try {
+        const res = await fetch(\`\${BASE_URL}/api/havrouta/list?password=\${PASSWORD}\`);
+        const result = await res.json();
+        
+        if (!result.ok) {
+          showAlert('❌ Erreur: ' + result.error, 'error');
+          return;
+        }
+        
+        const havroutim = result.data;
+        const grid = document.getElementById('havroutim-grid');
+        
+        if (havroutim.length === 0) {
+          grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">Aucune paire encore. Créez-en une!</p>';
+          return;
+        }
+        
+        grid.innerHTML = havroutim.map(h => \`
+          <div class="card">
+            <h3>👥 \${h.personne1_prenom} \${h.personne1_nom}</h3>
+            <div class="card-info">
+              <strong>Niveau:</strong> \${h.personne1_niveau}<br>
+              <strong>Tél:</strong> \${h.personne1_phone}
+            </div>
+            
+            \${h.personne2_phone ? \`
+              <hr style="margin: 10px 0;">
+              <div style="font-size: 12px; margin-top: 10px;">
+                <strong>Paire:</strong> \${h.personne2_prenom} \${h.personne2_nom} (\${h.personne2_niveau})
+              </div>
+            \` : \`
+              <div style="font-size: 12px; color: #999; margin-top: 10px;">
+                📌 Étude seule
+              </div>
+            \`}
+            
+            <div class="card-actions">
+              <button class="btn-small btn-seance" onclick="alert('À implémenter!')">➕ Séance</button>
+              <button class="btn-small btn-edit" onclick="alert('À implémenter!')">✏️ Éditer</button>
+            </div>
+          </div>
+        \`).join('');
+      } catch (err) {
+        showAlert('❌ Erreur chargement: ' + err.message, 'error');
+      }
+    }
+    
+    loadHavroutim();
+  </script>
+</body>
+</html>`;
+  res.send(dashboardHTML);
+});
+
+// Servir la page de login Havruta
+app.get('/havrouta/login', (req, res) => {
+  res.sendFile(__dirname + '/havrouta-login.html');
 });
 
 // Servir la page Participant Havruta
