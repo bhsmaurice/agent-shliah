@@ -642,7 +642,20 @@ async function getHorairesChabbat() {
       '28': { entree: '20h24', sortie: '21h32', paracha: 'Nitsavim' }  // 28-29 août
     };
     
-    const horaires = horairesAout[fridayDate.getDate().toString()];
+    const horairesSeptembre = {
+      '4': { entree: '20h11', sortie: '21h21', paracha: 'Vayelekh' }, // 4-5 septembre
+      '11': { entree: '19h57', sortie: '21h07', paracha: 'Rosh Hashana' }, // 11-12 septembre
+      '18': { entree: '19h43', sortie: '20h53', paracha: 'Yom Kippour' }, // 18-19 septembre
+      '25': { entree: '19h30', sortie: '20h39', paracha: 'Soukot' }  // 25-26 septembre
+    };
+    
+    const currentMonth = fridayDate.getMonth() + 1;
+    const horairesByMonth = {
+      8: horairesAout,
+      9: horairesSeptembre
+    };
+    
+    const horaires = horairesByMonth[currentMonth]?.[fridayDate.getDate().toString()];
     if (horaires) {
       console.log('✅ Horaires trouvés:', dateLabel, horaires.entree, horaires.sortie, 'Paracha:', horaires.paracha);
       return {
