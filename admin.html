@@ -147,13 +147,13 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .demande-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
 .demande-card.select-mode .demande-checkbox { display: block; }
 .demande-card.select-mode { padding-left: 42px; }
-.demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; overflow: hidden; }
 .demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; }
 .type-cerfa { background: #FEF3C7; color: #92400E; }
 .type-sefer_torah { background: #ECFDF5; color: #065F46; }
 .type-location_salle { background: #EEF2FF; color: #4338CA; }
 .type-autre { background: #F1F5F9; color: #334155; }
-.demande-date { font-size: 11px; color: var(--text-secondary); }
+.demande-date { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; flex-shrink: 0; }
 .demande-phone { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .demande-texte { font-size: 13px; color: var(--text-primary); background: var(--bg); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); }
@@ -1481,6 +1481,7 @@ body {
   #cerfa-container.list-view .demande-card { flex-direction: row; align-items: center; padding: 12px 14px; }
   #cerfa-container.list-view .demande-header { flex: 0 0 180px; }
   #cerfa-container.list-view .demande-phone { flex: 1; min-width: 200px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .demande-header .btn-trash { flex-shrink: 0; }
   #cerfa-container.list-view .demande-texte { flex: 1.5; margin: 0; white-space: normal; }
 </style>
 </head>
@@ -2956,7 +2957,7 @@ function afficherCerfa(){
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
     const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}${getBadgeCerfaRecent(c.created_at)}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
+    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}${getBadgeCerfaRecent(c.created_at)}</span><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;overflow:hidden;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
     container.appendChild(el);
   });
 }
