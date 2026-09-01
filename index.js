@@ -3038,8 +3038,16 @@ app.get('/tsedaka', async (req, res) => {
       border-bottom: 1px solid #f3f4f6;
     }
     
-    tbody tr:hover {
+    tbody tr:nth-child(odd) {
       background: #f9fafb;
+    }
+    
+    tbody tr:nth-child(even) {
+      background: white;
+    }
+    
+    tbody tr:hover {
+      background: #f0f4ff;
     }
     
     .table-empty {
