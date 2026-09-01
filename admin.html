@@ -154,7 +154,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .type-location_salle { background: #EEF2FF; color: #4338CA; }
 .type-autre { background: #F1F5F9; color: #334155; }
 .demande-date { font-size: 11px; color: var(--text-secondary); }
-.demande-phone { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.demande-phone { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .demande-texte { font-size: 13px; color: var(--text-primary); background: var(--bg); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); }
 .statut-select { font-size: 12px; padding: 4px 8px; border-radius: 20px; border: 1.5px solid var(--border-color); background: var(--bg); color: var(--text-primary); font-family: 'Heebo', sans-serif; cursor: pointer; outline: none; }
@@ -1471,6 +1471,17 @@ body {
 }
 
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .view-toggle-btn { padding: 8px 12px; border: 1.5px solid var(--border-color); background: white; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; color: var(--text-secondary); font-weight: 600; }
+  .view-toggle-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  #cerfa-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  #cerfa-container.list-view { grid-template-columns: 1fr; }
+  #cerfa-container.list-view .demande-card { display: flex; align-items: center; gap: 16px; }
+  #cerfa-container.list-view .demande-header { flex: 0 0 auto; min-width: 150px; }
+  #cerfa-container.list-view .demande-phone { flex: 1; white-space: normal; }
+  #cerfa-container.list-view .demande-card { flex-direction: row; align-items: center; padding: 12px 14px; }
+  #cerfa-container.list-view .demande-header { flex: 0 0 180px; }
+  #cerfa-container.list-view .demande-phone { flex: 1; min-width: 200px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #cerfa-container.list-view .demande-texte { flex: 1.5; margin: 0; white-space: normal; }
 </style>
 </head>
 <body>
@@ -2118,6 +2129,13 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
     </div>
   </div>
 
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
+    <div></div>
+    <div style="display:flex;gap:6px;">
+      <button class="view-toggle-btn active" data-view="grid" onclick="switchCerfaView('grid')" title="Vue grille">⬜⬜</button>
+      <button class="view-toggle-btn" data-view="list" onclick="switchCerfaView('list')" title="Vue liste">☰☰</button>
+    </div>
+  </div>
   <div id="cerfa-container"></div>
 </div>
 <div class="cerfa-insights" id="cerfa-insights" style="display:none">
@@ -2854,6 +2872,7 @@ function selectCerfaSearchField(el){document.querySelectorAll('#cerfa-search-fie
 function toggleCerfaAdvanced(){const panel=document.getElementById('cerfa-advanced-panel'),arrow=document.getElementById('cerfa-advanced-arrow');const open=panel.style.display==='block';panel.style.display=open?'none':'block';arrow.textContent=open?'▾':'▴';}
 function selectCerfaFilterMode(btn){document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaFilterMode=btn.dataset.mode;afficherCerfa();}
 function reinitialiserFiltresCerfa(){document.getElementById('cerfa-f-montant-min').value='';document.getElementById('cerfa-f-montant-max').value='';document.getElementById('cerfa-f-date-min').value='';document.getElementById('cerfa-f-date-max').value='';document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#cerfa-advanced-panel .cat-grid .cat-btn[data-mode="tous"]').classList.add('active');cerfaFilterMode='tous';afficherCerfa();}
+function switchCerfaView(view) { const container = document.getElementById('cerfa-container'); document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active')); document.querySelector('.view-toggle-btn[data-view="' + view + '"]').classList.add('active'); if (view === 'list') { container.classList.add('list-view'); } else { container.classList.remove('list-view'); } }
 function selectCerfaMode(btn){document.querySelectorAll('#tab-cerfa .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaModeSelected=btn.dataset.mode;}
 async function genererCerfa(){
   const url=getUrl(),pw=getAdminPw();
