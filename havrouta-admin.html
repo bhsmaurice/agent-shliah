@@ -111,6 +111,89 @@
     
     .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active { display: flex; }
+    
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #667eea;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .checkbox-group input { margin: 0; }
+    
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -134,6 +217,81 @@
     </div>
   </div>
   
+  <!-- Modal Nouvelle Paire -->
+  <div id="modal-new-havruta" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">📚 Créer une nouvelle paire</div>
+      <form id="form-new-havruta" onsubmit="handleCreateHavruta(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prénom</label>
+            <input type="text" id="p1_prenom" required>
+          </div>
+          <div class="form-group">
+            <label>Nom</label>
+            <input type="text" id="p1_nom" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="text" id="p1_phone" placeholder="06... ou +33..." required>
+        </div>
+        
+        <div class="form-group">
+          <label>Niveau d'étude</label>
+          <select id="p1_niveau" required>
+            <option value="">-- Sélectionne --</option>
+            <option value="Débutant">Débutant</option>
+            <option value="Intermédiaire">Intermédiaire</option>
+            <option value="Avancé">Avancé</option>
+          </select>
+        </div>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="seul">
+          <label for="seul" style="margin: 0;">Étudier seul (avec un coordo)</label>
+        </div>
+        
+        <div id="p2-fields" style="display: none;">
+          <hr style="margin: 20px 0;">
+          <h3 style="margin-bottom: 15px; color: #667eea;">Personne 2</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Prénom</label>
+              <input type="text" id="p2_prenom">
+            </div>
+            <div class="form-group">
+              <label>Nom</label>
+              <input type="text" id="p2_nom">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Téléphone</label>
+            <input type="text" id="p2_phone" placeholder="06... ou +33...">
+          </div>
+          
+          <div class="form-group">
+            <label>Niveau d'étude</label>
+            <select id="p2_niveau">
+              <option value="">-- Sélectionne --</option>
+              <option value="Débutant">Débutant</option>
+              <option value="Intermédiaire">Intermédiaire</option>
+              <option value="Avancé">Avancé</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" style="background: #f0f0f0; color: #666;" onclick="closeModal('modal-new-havruta')">Annuler</button>
+          <button type="submit" style="background: #667eea; color: white;">Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
   <script>
     const BASE_URL = 'https://agent-shliah-production.up.railway.app';
     const PASSWORD = sessionStorage.getItem('havrouta_pin');
@@ -151,8 +309,55 @@
       setTimeout(() => div.remove(), 4000);
     }
     
+    // Toggle personne 2 fields
+    document.getElementById('seul').addEventListener('change', function() {
+      document.getElementById('p2-fields').style.display = this.checked ? 'none' : 'block';
+    });
+    
     function openModalNewHavruta() {
-      alert('Fonctionnalité "Nouvelle paire" à implémenter!');
+      document.getElementById('modal-new-havruta').classList.add('active');
+    }
+    
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+    
+    async function handleCreateHavruta(e) {
+      e.preventDefault();
+      
+      const seul = document.getElementById('seul').checked;
+      const data = {
+        password: PASSWORD,
+        personne1_prenom: document.getElementById('p1_prenom').value,
+        personne1_nom: document.getElementById('p1_nom').value,
+        personne1_phone: document.getElementById('p1_phone').value,
+        personne1_niveau: document.getElementById('p1_niveau').value,
+        personne2_phone: seul ? null : document.getElementById('p2_phone').value,
+        personne2_nom: seul ? null : document.getElementById('p2_nom').value,
+        personne2_prenom: seul ? null : document.getElementById('p2_prenom').value,
+        personne2_niveau: seul ? null : document.getElementById('p2_niveau').value,
+        coordinateur_phone: PASSWORD
+      };
+      
+      try {
+        const res = await fetch(`${BASE_URL}/api/havrouta/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if (result.ok) {
+          showAlert('✅ Paire créée avec succès!');
+          closeModal('modal-new-havruta');
+          document.getElementById('form-new-havruta').reset();
+          loadHavroutim();
+        } else {
+          showAlert('❌ Erreur: ' + result.error, 'error');
+        }
+      } catch (err) {
+        showAlert('❌ Erreur: ' + err.message, 'error');
+      }
     }
     
     function logout() {
