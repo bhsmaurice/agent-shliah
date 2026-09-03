@@ -8,16 +8,16 @@
 <style><style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
-  --gold: #7c3aed; --gold-light: #a78bfa; --gold-dark: #5B3FD1;
+  --gold: #667eea; --gold-light: #8b9ff5; --gold-dark: #4f5fd4;
   --navy: #1A2540; --navy2: #2C3E66;
-  --bg: #F4F2ED; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
-  --border: #E0D8C8; --green: #2D7A4F; --green-bg: #E8F5EE;
-  --red: #C0392B; --red-bg: #FDECEA; --r: 14px;
-  --orange: #C05621; --orange-bg: #FFF3E0;
-  --c-pink: #E63969; --c-pink-dark: #C42753;
-  --c-purple: #7C5CFC; --c-purple-dark: #5B3FD1;
-  --c-orange2: #FF9F43; --c-orange2-dark: #E67E22;
-  --c-teal: #17C3B2; --c-teal-dark: #0EA89A;
+  --bg: #f5f6f8; --white: #fff; --text: #1A2540; --muted: #7A8AAA;
+  --border: #e5e7eb; --green: #51cf66; --green-bg: #e6ffed;
+  --red: #ff6b6b; --red-bg: #ffe0e0; --r: 8px;
+  --orange: #ffa726; --orange-bg: #fff3e0;
+  --c-pink: #ff6b9d; --c-pink-dark: #ff4081;
+  --c-purple: #667eea; --c-purple-dark: #4f5fd4;
+  --c-orange2: #ffa726; --c-orange2-dark: #ff8a50;
+  --c-teal: #26a69a; --c-teal-dark: #00897b;
 }
 html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text-primary); }
 #login-screen { position: fixed; inset: 0; background: linear-gradient(160deg, #0B0B14 0%, #1A1233 55%, #2D2166 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; padding: 30px; }
@@ -36,7 +36,7 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .login-error { color: var(--red); font-size: 13px; margin-top: 16px; min-height: 20px; text-align: center; }
 .switch-user-btn { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-family: 'Heebo', sans-serif; }
 #app { display: none; }
-.header { background: linear-gradient(120deg, var(--navy) 0%, #2A2166 55%, var(--c-purple-dark) 100%); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 14px rgba(91,63,209,0.2); }
+.header { background: var(--c-purple); padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 .header-left { order: 1; }
 .header-right { order: 3; margin-left: auto; }
 .header-search-wrap { position: relative; order: 4; flex: 1 1 100%; }
@@ -71,20 +71,20 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .user-badge { background: rgba(184,151,42,0.2); border: 1px solid rgba(184,151,42,0.4); color: var(--gold); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
 .theme-btn { padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: 12px; background: transparent; font-family: 'Heebo', sans-serif; font-size: 13px; color: var(--muted-theme); cursor: pointer; transition: all 0.2s; font-weight: 500; }
 .theme-btn:hover { border-color: var(--c-purple); color: var(--c-purple); background: rgba(124, 92, 252, 0.1); }
-.theme-btn.active { border-color: var(--c-purple); background: linear-gradient(135deg, var(--c-purple), #4F8FFF); color: #fff; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
+.theme-btn.active { border-color: var(--c-purple); background: var(--c-purple); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(102,126,234,0.3); }
 .tabs { display: flex; gap: 8px; background: var(--white); border-bottom: 1px solid var(--border-color); overflow-x: auto; scrollbar-width: none; position: sticky; top: 61px; z-index: 40; padding: 12px 14px; align-items: center; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: 0 0 auto; padding: 12px 16px; text-align: center; font-size: 20px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; transition: all 0.2s ease; border-radius: 12px; border: 1.5px solid transparent; background: transparent; display: flex; align-items: center; gap: 6px; font-weight: 500; }
 .tab-label { display: none; font-size: 13px; }
 @media (min-width: 640px) { .tab { font-size: 14px; font-weight: 500; padding: 12px 18px; border-radius: 12px; } .tab-label { display: inline; margin-left: 4px; } }
 .tab:hover:not(.active) { background: rgba(124, 92, 252, 0.1); border-color: rgba(124, 92, 252, 0.25); color: var(--c-purple); transform: translateY(-1px); }
-.tab.active { color: #fff; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); border-color: transparent; font-weight: 600; box-shadow: 0 4px 12px rgba(124,92,252,0.4); }
+.tab.active { color: #fff; background: var(--c-purple); border-color: transparent; font-weight: 600; box-shadow: 0 2px 6px rgba(102,126,234,0.3); }
 .tab.hidden { display: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { flex: 0 0 auto; padding: 10px 12px; text-align: center; font-size: 18px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; transition: all 0.15s; border-radius: 20px; border: 1.5px solid var(--border-color); background: var(--white); }
 .tab-label { display: none; }
 @media (min-width: 640px) { .tab { font-size: 13px; font-weight: 500; padding: 10px 16px; } .tab-label { display: inline; margin-left: 6px; } }
-.tab.active { color: #fff; background: linear-gradient(135deg, var(--c-purple), #4F8FFF); border-color: transparent; font-weight: 600; box-shadow: 0 3px 10px rgba(124,92,252,0.35); }
+.tab.active { color: #fff; background: var(--c-purple); border-color: transparent; font-weight: 600; box-shadow: 0 2px 6px rgba(102,126,234,0.3); }
 .tab:hover:not(.active) { background: #F1EEFF; border-color: #D9D4FA; color: var(--c-purple-dark); }
 .tab.hidden { display: none; }
 .page { display: none; min-height: calc(100vh - 120px); }
@@ -147,14 +147,14 @@ html, body { height: 100%; font-family: 'Heebo', sans-serif; background: var(--b
 .demande-checkbox { position: absolute; top: 14px; left: 14px; width: 20px; height: 20px; cursor: pointer; display: none; }
 .demande-card.select-mode .demande-checkbox { display: block; }
 .demande-card.select-mode { padding-left: 42px; }
-.demande-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.demande-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; overflow: visible; }
 .demande-type { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 12px; border-radius: 20px; }
 .type-cerfa { background: #FEF3C7; color: #92400E; }
 .type-sefer_torah { background: #ECFDF5; color: #065F46; }
 .type-location_salle { background: #EEF2FF; color: #4338CA; }
 .type-autre { background: #F1F5F9; color: #334155; }
-.demande-date { font-size: 11px; color: var(--text-secondary); }
-.demande-phone { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.demande-date { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; flex-shrink: 0; }
+.demande-phone { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .demande-texte { font-size: 13px; color: var(--text-primary); background: var(--bg); border-radius: 8px; padding: 10px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .demande-statut-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); }
 .statut-select { font-size: 12px; padding: 4px 8px; border-radius: 20px; border: 1.5px solid var(--border-color); background: var(--bg); color: var(--text-primary); font-family: 'Heebo', sans-serif; cursor: pointer; outline: none; }
@@ -1470,6 +1470,69 @@ body {
   text-shadow: 0 0 10px rgba(124, 92, 252, 0.4);
 }
 
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .view-toggle-btn { padding: 8px 12px; border: 1.5px solid var(--border-color); background: white; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; color: var(--text-secondary); font-weight: 600; }
+  .view-toggle-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  #cerfa-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  #cerfa-container.list-view { grid-template-columns: 1fr; }
+  #cerfa-container.list-view .demande-card { display: flex; align-items: center; gap: 16px; }
+  #cerfa-container.list-view .demande-header { flex: 0 0 auto; min-width: 150px; }
+  #cerfa-container.list-view .demande-phone { flex: 1; white-space: normal; }
+  #cerfa-container.list-view .demande-card { flex-direction: row; align-items: center; padding: 12px 14px; }
+  #cerfa-container.list-view .demande-header { flex: 0 0 180px; }
+  #cerfa-container.list-view .demande-phone { flex: 1; min-width: 200px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .demande-header .btn-trash { flex-shrink: 0; }
+  .demande-card { background: white; border-radius: 14px; border-left: 6px solid var(--navy); padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: all 0.3s ease; }
+  .demande-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+  .demande-card:nth-child(4n+1) { border-left-color: #7c3aed; }
+  .demande-card:nth-child(4n+2) { border-left-color: #10b981; }
+  .demande-card:nth-child(4n+3) { border-left-color: #f59e0b; }
+  .demande-card:nth-child(4n+0) { border-left-color: #3b82f6; }
+  .cerfa-doc-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; margin-right: 12px; }
+  .demande-card:nth-child(4n+1) .cerfa-doc-icon { background: rgba(124,58,237,0.15); color: #7c3aed; }
+  .demande-card:nth-child(4n+2) .cerfa-doc-icon { background: rgba(16,185,129,0.15); color: #10b981; }
+  .demande-card:nth-child(4n+3) .cerfa-doc-icon { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .demande-card:nth-child(4n+0) .cerfa-doc-icon { background: rgba(59,130,246,0.15); color: #3b82f6; }
+  #cerfa-container.list-view .demande-card { display: flex; align-items: flex-start; gap: 12px; }
+  #cerfa-container.list-view .cerfa-doc-icon { margin-bottom: 0; }
+  #cerfa-container.list-view .demande-phone { white-space: normal; overflow: visible; }
+  #cerfa-container.list-view .demande-texte { width: 100%; white-space: normal; }
+  /* ═══ DARK MODE CERFA ═══ */
+  #cerfa-container { background: #0f172a; padding: 20px; border-radius: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+  .demande-card { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05)); border: 2px solid #7c3aed; border-radius: 16px; padding: 0; margin: 0; overflow: visible; box-shadow: 0 8px 32px rgba(124,58,237,0.2); transition: all 0.3s ease; position: relative; }
+  .demande-card:hover { transform: translateY(-4px); box-shadow: 0 12px 48px rgba(124,58,237,0.3); }
+  .demande-card:nth-child(4n+1) { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05)); border-color: #7c3aed; }
+  .demande-card:nth-child(4n+2) { background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); border-color: #10b981; }
+  .demande-card:nth-child(4n+3) { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05)); border-color: #f59e0b; }
+  .demande-card:nth-child(4n+0) { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05)); border-color: #3b82f6; }
+  .cerfa-doc-icon { width: 80px; height: 80px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; flex-shrink: 0; margin-right: 0; }
+  .demande-card:nth-child(4n+1) .cerfa-doc-icon { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+  .demande-card:nth-child(4n+2) .cerfa-doc-icon { background: linear-gradient(135deg, #10b981, #047857); }
+  .demande-card:nth-child(4n+3) .cerfa-doc-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .demande-card:nth-child(4n+0) .cerfa-doc-icon { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+  .demande-card > div { padding: 20px; }
+  .demande-card .demande-header { margin: 0 0 8px 0; color: white; }
+  .demande-card .demande-phone { color: #cbd5e1; margin: 0 0 12px 0; font-size: 13px; }
+  .demande-card .demande-texte { color: #e2e8f0; margin: 0; font-size: 13px; }
+  .demande-type { font-size: 18px; font-weight: 700; color: white; }
+  .demande-date { display: none; }
+  .cerfa-actions-right { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .btn-trash { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; cursor: pointer; font-size: 16px; padding: 0; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+  .btn-trash:hover { background: rgba(255,255,255,0.25); transform: scale(1.15); }
+  #cerfa-container.list-view .demande-header { flex: 1; }
+  #cerfa-container.list-view .demande-phone { flex: 1; }
+  #cerfa-container.list-view .demande-texte { flex: 1; }
+  /* Dark Mode global */
+  [data-tab="cerfa"] .card-title, [data-tab="cerfa"] .field label { color: white; }
+  #cerfa-advanced-panel { background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  #cerfa-advanced-panel .field label { color: #cbd5e1; }
+  #cerfa-advanced-panel input, #cerfa-advanced-panel select { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; color: white; }
+  #cerfa-advanced-panel input::placeholder { color: #64748b; }
+  .cat-btn { background: rgba(30, 41, 59, 0.8); color: #cbd5e1; border: 1px solid #334155; }
+  .cat-btn.active { background: #7c3aed; color: white; border-color: #7c3aed; }
+  .btn-secondary { background: #334155; color: white; border: none; }
+  .btn-secondary:hover { background: #475569; }
+  #cerfa-container.list-view .demande-texte { flex: 1.5; margin: 0; white-space: normal; }
 </style>
 </head>
 <body>
@@ -1523,6 +1586,7 @@ body {
   </div>
   <div class="header-right">
     <div class="header-bell" onclick="showTab('demandes')" title="Demandes">🔔<span class="header-bell-badge" id="header-bell-badge">0</span></div>
+    <a href="https://agent-shliah-production.up.railway.app/tsedaka?password=levi770" class="header-bell" title="Tsedaka Admin">💜</a>
     <span class="user-badge" id="header-user-badge">Admin</span>
     <button class="btn-logout" onclick="logout()">🔒</button>
   </div>
@@ -1534,10 +1598,9 @@ body {
   <div class="tab" data-tab="histoires" onclick="showTab('histoires')">📖<span class="tab-label">Histoires</span></div>
   <div class="tab" data-tab="musiques" onclick="showTab('musiques')">🎵<span class="tab-label">Musiques</span></div>
   <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
-  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💰<span class="tab-label">Paiements</span></div>
+  <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💜<span class="tab-label">Paiements</span></div>
   <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
-  <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>
-<div class="tab" data-tab="tsedaka" onclick="showTab('tsedaka');chargerTsedaka()"><span class="tab-label"><img src="https://habadsmauriceplateau.com/boite-tsedaka.png" style="height:14px;vertical-align:-2px;margin-right:4px;"> Tsedaka</span></div>  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
+  <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
   <div class="tab tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="tab-label">Broadcast</span></div>
   <div class="tab tab-admin-only" data-tab="prive" onclick="showTab('prive')">🔒<span class="tab-label">Privé</span></div>
@@ -1552,10 +1615,10 @@ body {
     <div class="sidenav-item" data-tab="histoires" onclick="showTab('histoires')"><span class="sidenav-icon">📖</span>Histoires</div>
     <div class="sidenav-item" data-tab="musiques" onclick="showTab('musiques')"><span class="sidenav-icon">🎵</span>Musiques</div>
     <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
-    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💰</span>Paiements</div>
+    <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💜</span>Paiements</div>
     <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
     <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
-<div class="tab" data-tab="tsedaka" onclick="showTab('tsedaka');chargerTsedaka()"><span class="tab-label"><img src="https://habadsmauriceplateau.com/boite-tsedaka.png" style="height:14px;vertical-align:-2px;margin-right:4px;"> Tsedaka</span></div>    <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
+    <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
     <div class="sidenav-item" data-tab="questions" onclick="showTab('questions')"><span class="sidenav-icon">💬</span>Questions</div>
     <hr class="sidebar-divider">
     <div class="sidenav-item tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')"><span class="sidenav-icon">📢</span>Broadcast</div>
@@ -1993,7 +2056,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
 <!-- PAIEMENTS -->
 <div class="page" id="tab-paiements"><div class="inner">
   <div class="card">
-    <div class="card-title">💰 Ajouter un paiement en attente</div>
+    <div class="card-title">💜 Ajouter un paiement en attente</div>
     <div class="field"><label>Numéro WhatsApp</label><input type="tel" id="p-phone" placeholder="ex: 0612345678 ou +33612345678"></div>
     <div class="field-row">
       <div class="field"><label>Montant (€)</label><input type="number" id="p-montant" placeholder="Ex: 20"></div>
@@ -2085,7 +2148,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
   <div class="filter-chips" id="cerfa-search-field-chips" style="display:none">
     <div class="chip active" data-field="tout" onclick="selectCerfaSearchField(this)">Tout</div>
     <div class="chip" data-field="nom" onclick="selectCerfaSearchField(this)">👤 Nom / Société</div>
-    <div class="chip" data-field="montant" onclick="selectCerfaSearchField(this)">💰 Montant</div>
+    <div class="chip" data-field="montant" onclick="selectCerfaSearchField(this)">💜 Montant</div>
     <div class="chip" data-field="email" onclick="selectCerfaSearchField(this)">✉️ Email</div>
     <div class="chip" data-field="numero" onclick="selectCerfaSearchField(this)">🧾 N° reçu</div>
   </div>
@@ -2117,6 +2180,13 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
     </div>
   </div>
 
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;">
+    <div></div>
+    <div style="display:flex;gap:6px;">
+      <button class="view-toggle-btn active" data-view="grid" onclick="switchCerfaView('grid')" title="Vue grille">⬜⬜</button>
+      <button class="view-toggle-btn" data-view="list" onclick="switchCerfaView('list')" title="Vue liste">☰☰</button>
+    </div>
+  </div>
   <div id="cerfa-container"></div>
 </div>
 <div class="cerfa-insights" id="cerfa-insights" style="display:none">
@@ -2131,7 +2201,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
     </div>
     <div class="insight-mini-row">
       <div class="insight-mini"><div class="insight-mini-icon">👤</div><div><div class="insight-mini-num" id="cerfa-mini-count">0</div><div class="insight-mini-label">Reçu généré</div></div></div>
-      <div class="insight-mini"><div class="insight-mini-icon">💰</div><div><div class="insight-mini-num" id="cerfa-mini-montant">0 €</div><div class="insight-mini-label">Montant total</div></div></div>
+      <div class="insight-mini"><div class="insight-mini-icon">💜</div><div><div class="insight-mini-num" id="cerfa-mini-montant">0 €</div><div class="insight-mini-label">Montant total</div></div></div>
     </div>
   </div>
   <div class="insight-card">
@@ -2853,6 +2923,7 @@ function selectCerfaSearchField(el){document.querySelectorAll('#cerfa-search-fie
 function toggleCerfaAdvanced(){const panel=document.getElementById('cerfa-advanced-panel'),arrow=document.getElementById('cerfa-advanced-arrow');const open=panel.style.display==='block';panel.style.display=open?'none':'block';arrow.textContent=open?'▾':'▴';}
 function selectCerfaFilterMode(btn){document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaFilterMode=btn.dataset.mode;afficherCerfa();}
 function reinitialiserFiltresCerfa(){document.getElementById('cerfa-f-montant-min').value='';document.getElementById('cerfa-f-montant-max').value='';document.getElementById('cerfa-f-date-min').value='';document.getElementById('cerfa-f-date-max').value='';document.querySelectorAll('#cerfa-advanced-panel .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#cerfa-advanced-panel .cat-grid .cat-btn[data-mode="tous"]').classList.add('active');cerfaFilterMode='tous';afficherCerfa();}
+function switchCerfaView(view) { const container = document.getElementById('cerfa-container'); document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active')); document.querySelector('.view-toggle-btn[data-view="' + view + '"]').classList.add('active'); if (view === 'list') { container.classList.add('list-view'); } else { container.classList.remove('list-view'); } }
 function selectCerfaMode(btn){document.querySelectorAll('#tab-cerfa .cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');cerfaModeSelected=btn.dataset.mode;}
 async function genererCerfa(){
   const url=getUrl(),pw=getAdminPw();
@@ -2917,6 +2988,16 @@ function afficherCerfa(){
   });
   if(!filtered.length){container.innerHTML=allCerfa.length?'<div class="empty"><div class="icon">🔍</div><p>Aucun résultat pour cette recherche</p></div>':'<div class="empty"><div class="icon">🧾</div><p>Aucun reçu</p></div>';return;}
   container.innerHTML='';
+  const getBadgeCerfaRecent = (createdAt) => {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffMs = now - created;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffHours < 2) return '<span style="display:inline-block;background:#10b981;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px;animation:pulse 1.5s infinite;">🆕 NOUVEAU</span>';
+    if (diffDays < 1 && created.toDateString() === now.toDateString()) return '<span style="display:inline-block;background:#f59e0b;color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px;">⚡ AUJD</span>';
+    return '';
+  };
   filtered.forEach(c=>{
     const date=new Date(c.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
     const montant=parseFloat(c.montant||0).toLocaleString('fr-FR');
@@ -2926,7 +3007,7 @@ function afficherCerfa(){
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
     const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
-    el.innerHTML=`<div class="demande-header"><span class="demande-type type-cerfa">🧾 ${c.numero}</span><div style="display:flex;align-items:center;gap:6px;"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button><span class="demande-date">${date}</span></div></div><div class="demande-phone">${estSociete?'🏢':'👤'} ${prenomAffiche}${c.nom||''}${c.email?' · ✉️ '+c.email:''}</div><div class="demande-texte">💰 ${montant} € — ${c.mode_paiement||''}${dateDon?' — 📅 '+dateDon:''}<br>📍 ${c.adresse||''}</div>`;
+    el.innerHTML=`<div class="cerfa-actions-right"><button class="btn-trash" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button></div><div><div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;"><div class="cerfa-doc-icon">📄</div><div style="flex:1;"><div class="demande-header" style="margin:0;display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><span class="demande-type type-cerfa" style="font-size:22px;">${prenomAffiche}${c.nom||''}</span><div style="display:flex;gap:6px;margin-left:auto;"><span class="cerfa-badge" style="background:#334155;font-size:11px;">🧾 ${c.numero}</span><span class="cerfa-badge">${getBadgeCerfaRecent(c.created_at)}</span></div></div><div class="demande-phone" style="margin:0;margin-bottom:8px;font-size:13px;color:#cbd5e1;">${c.email?'✉️ '+c.email:''}</div></div></div><div class="demande-texte" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;margin-bottom:12px;"><div style="display:flex;gap:16px;"><div style="display:flex;align-items:center;gap:6px;"><span>💜</span><div><div style="font-size:12px;color:#94a3b8;">Montant</div><div style="font-weight:600;color:white;">${montant} €</div></div></div><div style="display:flex;align-items:center;gap:6px;"><span>📅</span><div><div style="font-size:12px;color:#94a3b8;">Échéance</div><div style="font-weight:600;color:white;">${dateDon||'N/A'}</div></div></div></div><div style="display:flex;align-items:center;gap:6px;margin-top:8px;"><span>💳</span><div><div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">${c.mode_paiement||'Mode'}</div></div></div></div><div class="cerfa-status" style="padding:0;"><span>${c.adresse?'📍 '+c.adresse:''}</span></div></div>`;
     container.appendChild(el);
   });
 }
@@ -3780,7 +3861,7 @@ function afficherPaiements(){
   const container=document.getElementById('paiements-container');
   let filtered=allPaiements;
   if(filterPaiement!=='tous')filtered=allPaiements.filter(p=>p.statut===filterPaiement);
-  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">💰</div><p>Aucun paiement</p></div>';return;}
+  if(!filtered.length){container.innerHTML='<div class="empty"><div class="icon">💜</div><p>Aucun paiement</p></div>';return;}
   container.innerHTML='';
   filtered.forEach(p=>{
     const date=new Date(p.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -3800,7 +3881,7 @@ function afficherPaiements(){
       </div>
       ${nomP?`<div class="contact-nom">${icon?icon+' ':''}${nomP}</div>`:''}
       <div class="demande-phone">📱 <span class="phone-link" onclick="ouvrirEnvoiRapide('${p.phone}')">+${p.phone}</span></div>
-      <div class="demande-texte">💰 <strong>${montant} €</strong>${p.description?' — '+p.description:''}${p.lien_paiement?'<br>🔗 '+p.lien_paiement:''}<br><span style="font-size:11px;color:var(--muted);">${p.nb_relances||0} relance(s) envoyée(s)${derniereRelance?' · dernière le '+derniereRelance:''}</span></div>
+      <div class="demande-texte">💜 <strong>${montant} €</strong>${p.description?' — '+p.description:''}${p.lien_paiement?'<br>🔗 '+p.lien_paiement:''}<br><span style="font-size:11px;color:var(--muted);">${p.nb_relances||0} relance(s) envoyée(s)${derniereRelance?' · dernière le '+derniereRelance:''}</span></div>
       <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
         ${p.statut!=='paye'?`<button class="btn-restore" onclick="relancerPaiement(${p.id})" style="border-color:var(--gold);background:var(--gold-light);color:var(--gold-dark);">🔔 Relancer</button><button class="btn-restore" onclick="changerStatutPaiement(${p.id},'paye')">✅ Marquer payé</button>`:`<button class="btn-restore" onclick="changerStatutPaiement(${p.id},'en_attente')">↺ Remettre en attente</button>`}
       </div>`;
