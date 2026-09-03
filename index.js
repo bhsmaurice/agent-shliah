@@ -1419,8 +1419,6 @@ app.post('/webhook', async (req, res) => {
 
       if (await handleAdminCerfaCommand(from, text)) return;
       if (await handlePriveCommand(from, text)) return;
-            if (await handleCerfaTsedakaCommand(from, text)) return;
-            if (await handleInscriptionTsedaka(from, text)) return;
       if (isAuthorizedAdminCerfa(from)) {
         // ÉDITION — l'admin modifie le message Chabbat
         if (global.chabbatEnEdition) {
