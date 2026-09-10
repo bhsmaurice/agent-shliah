@@ -92,7 +92,7 @@ async function initDB() {
     "text": "#1A2540",
     "muted": "#7A8AAA",
     "border": "#E0D8C8"
-;
+  };
   await pool.query(
     `INSERT INTO themes (name, colors_json, is_active) VALUES ($1, $2, $3) 
      ON CONFLICT DO NOTHING`,
@@ -138,37 +138,37 @@ async function envoyerEmail({ to, subject, html, attachments }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
     return { ok: false, error: "La variable RESEND_API_KEY n'est pas configurée sur Railway." };
-
+  }
   try {
     const body = {
       from: RESEND_FROM_EMAIL,
       to: [to || RESEND_TO_EMAIL],
       subject,
       html,
-  ;
+    };
     if (attachments && attachments.length) {
       body.attachments = attachments.map((a) => ({
         filename: a.filename,
         content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(String(a.content)).toString('base64'),
-    ));
-  
+      }));
+    }
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(12000),
-  );
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error('Resend error:', data);
       return { ok: false, error: data.message || `HTTP ${res.status}` };
-  
+    }
     return { ok: true, id: data.id };
- catch (e) {
+  } catch (e) {
     const causeMsg = e.cause && e.cause.message ? ` (${e.cause.message})` : '';
     console.error('Resend fetch error:', e.name, e.message, causeMsg);
     return { ok: false, error: `[resend-v2] ${e.name}: ${e.message}${causeMsg}` };
-
+  }
 }
 
 const ADMIN_WHATSAPP_NUMBERS = (process.env.ADMIN_WHATSAPP_NUMBERS || '33770241746')
@@ -193,10 +193,10 @@ async function getBethHabadLogoBytes() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     bethHabadLogoBytesCache = Buffer.from(await res.arrayBuffer());
     return bethHabadLogoBytesCache;
- catch (e) {
+  } catch (e) {
     console.error('Logo Beth Habad : échec du téléchargement -', e.message);
     return null;
-
+  }
 }
 
 function isAdminCerfaTrigger(text) {
@@ -214,21 +214,21 @@ async function handlePriveCommand(from, text) {
       const result = await pool.query('SELECT titre FROM infos_privees ORDER BY titre ASC');
       if (result.rows.length === 0) {
         await sendWhatsApp(from, "🔒 Aucune info privée enregistrée pour le moment.\n\nAjoute-en depuis le panneau admin, onglet 🔒 Privé.");
-     else {
+      } else {
         const liste = result.rows.map(r => `• ${r.titre}`).join('\n');
         await sendWhatsApp(from, `🔒 Infos privées disponibles :\n\n${liste}\n\nEnvoie "Prive770 [mot-clé]" pour recevoir le contenu.`);
-    
-   else {
+      }
+    } else {
       const result = await pool.query('SELECT * FROM infos_privees WHERE titre ILIKE $1 ORDER BY created_at DESC LIMIT 1', [`%${query}%`]);
       if (result.rows.length === 0) {
         await sendWhatsApp(from, `🔒 Aucune info privée trouvée pour "${query}".`);
-     else {
+      } else {
         await sendWhatsApp(from, `🔒 ${result.rows[0].titre}\n\n${result.rows[0].contenu}`);
-    
-  
- catch (e) {
+      }
+    }
+  } catch (e) {
     await sendWhatsApp(from, `Erreur : ${e.message}`);
-
+  }
   return true;
 }
 
@@ -248,7 +248,7 @@ function numberToFrenchWords(n) {
     if (u === 0) return t === 8 ? word + 's' : word;
     if (u === 1 && t !== 8) return word + ' et un';
     return word + '-' + units[u];
-
+  }
   function below1000(num) {
     const h = Math.floor(num / 100), rest = num % 100;
     let word = '';
@@ -256,10 +256,10 @@ function numberToFrenchWords(n) {
       word += h === 1 ? 'cent' : units[h] + ' cent';
       if (h > 1 && rest === 0) word += 's';
       if (rest > 0) word += ' ';
-  
+    }
     if (rest > 0) word += below100(rest);
     return word;
-
+  }
   function convert(num) {
     if (num === 0) return 'zéro';
     let word = '';
@@ -268,7 +268,7 @@ function numberToFrenchWords(n) {
     if (thousands > 0) word += (thousands === 1 ? 'mille' : below1000(thousands) + ' mille') + ' ';
     if (rest > 0) word += below1000(rest);
     return word.trim();
-
+  }
   const intPart = Math.floor(n);
   return convert(intPart) + (intPart > 1 ? ' euros' : ' euro');
 }
@@ -278,7 +278,7 @@ function parseAdminCerfaMessage(rawText) {
   const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 4) {
     throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque (+ email et/ou date JJ/MM/AAAA facultatifs, dans n'importe quel ordre)");
-
+  }
   const [montantLine, nomPrenomLine, adresseLine, modeLine, ...extraLines] = lines;
   const montantMatch = montantLine.replace(',', '.').match(/(\d+(\.\d+)?)/);
   if (!montantMatch) throw new Error(`Montant introuvable dans : "${montantLine}"`);
@@ -302,15 +302,15 @@ function parseAdminCerfaMessage(rawText) {
     if (!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
       email = line;
       continue;
-  
+    }
     const dateMatch = line.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
     if (!dateDon && dateMatch) {
       const [, jour, moisNum, annee] = dateMatch;
       const j = jour.padStart(2, '0'), m = moisNum.padStart(2, '0');
       dateDon = `${annee}-${m}-${j}`;
       continue;
-  
-
+    }
+  }
 
   return { montant, nom, prenom, adresse, mode, email, dateDon };
 }
@@ -343,7 +343,7 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   const drawCentered = (text, topPt, size, f = font, color = black) => {
     const w = f.widthOfTextAtSize(text, size);
     page.drawText(text, { x: (PW - w) / 2, y: Y(topPt), size, font: f, color });
-;
+  };
   const drawRight = (text, topPt, size, f = font, color = black, rightX = PW - marginX) => {
     const w = f.widthOfTextAtSize(text, size);
     page.drawText(text, { x: rightX - w, y: Y(topPt), size, font: f, color });
@@ -1221,17 +1221,6 @@ const TYPES_DEMANDES = {
     detecter: (msg) => { const lower = msg.toLowerCase(); return ['louer la salle', 'location salle', 'réserver la salle', 'reserver la salle', 'louer salle', 'réservation salle', 'reservation salle', 'salle disponible', 'disponibilité salle'].some(m => lower.includes(m)); },
     questions: [{ cle: 'infos', question: '' }],
     messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone\n\n0. ← Retour`
-    },
-  pane: {
-    label: 'Pane — Demande au Rabbi',
-    detecter: (msg) => { const lower = msg.toLowerCase(); return ['pane', 'demande au rabbi', 'demande rabbi'].some(m => lower.includes(m)); },
-    questions: [
-      { cle: 'nom', question: 'Quel est votre **nom** ?' },
-      { cle: 'prenom', question: 'Et votre **prénom** ?' },
-      { cle: 'mere', question: 'Quel est le **nom et prénom de votre mère** ?' },
-      { cle: 'demande', question: 'Quelle est votre **demande de prière** ?' }
-    ],
-    messageDebut: () => `Chalom 👋\n\nJe vais noter votre pane (demande de prière).\n\nQuel est votre **nom** ?`
   }
 };
 function detecterTypeDemande(msg) {
