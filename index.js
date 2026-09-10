@@ -1222,8 +1222,6 @@ const TYPES_DEMANDES = {
     questions: [{ cle: 'infos', question: '' }],
     messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone\n\n0. ← Retour`
   }
-    },
-  
 };
 function detecterTypeDemande(msg) {
   for (const [type, config] of Object.entries(TYPES_DEMANDES)) { if (config.detecter(msg)) return type; }
