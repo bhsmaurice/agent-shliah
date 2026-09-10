@@ -1235,7 +1235,6 @@ const TYPES_DEMANDES = {
     messageDebut: () => `Chalom\n\nJe vais noter votre pane (demande de priere).\n\nQuel est votre nom ?`
   }
 };
-};
 function detecterTypeDemande(msg) {
   for (const [type, config] of Object.entries(TYPES_DEMANDES)) { if (config.detecter(msg)) return type; }
   return null;
