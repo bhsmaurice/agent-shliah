@@ -1222,6 +1222,19 @@ const TYPES_DEMANDES = {
     questions: [{ cle: 'infos', question: '' }],
     messageDebut: () => `Pour réserver la salle du Beth Habad S. Maurice, envoyez-moi en un seul message :\n\n1. Nom et prénom\n2. Date souhaitée\n3. Heure\n4. Type d'événement\n5. Téléphone\n\n0. ← Retour`
   }
+    },
+  pane: {
+    label: 'Pane — Demande au Rabbi',
+    detecter: (msg) => { const lower = msg.toLowerCase(); return ['pane', 'demande au rabbi', 'demande rabbi'].some(m => lower.includes(m)); },
+    questions: [
+      { cle: 'nom', question: 'Quel est votre nom ?' },
+      { cle: 'prenom', question: 'Et votre prenom ?' },
+      { cle: 'mere', question: 'Quel est le nom et prenom de votre mere ?' },
+      { cle: 'demande', question: 'Quelle est votre demande de priere ?' }
+    ],
+    messageDebut: () => `Chalom\n\nJe vais noter votre pane (demande de priere).\n\nQuel est votre nom ?`
+  }
+};
 };
 function detecterTypeDemande(msg) {
   for (const [type, config] of Object.entries(TYPES_DEMANDES)) { if (config.detecter(msg)) return type; }
