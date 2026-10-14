@@ -1359,7 +1359,8 @@ app.post('/webhook', async (req, res) => {
         if (already.rows.length > 0) return;
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
-      const buttonId = message.interactive?.button_reply?.id;
+      const buttonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id;
+      if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('sefer') === 0) { 
