@@ -580,6 +580,7 @@ async function handleAdminCerfaCommand(from, text) {
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [numero, data.nom, data.prenom, data.adresse, data.montant, data.mode, dateDon, data.email]
     );
+    marquerOrigineCerfa(numero, 'bot');
     envoyerBackupCerfa({ numero, ...data, dateVersement }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
     envoyerCerfaDonateur({ numero, ...data }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     await sendWhatsAppDocument(from, pdfBuffer, filename);
@@ -1902,6 +1903,16 @@ app.delete('/admin/cerfa/:id', async (req, res) => {
   await pool.query('DELETE FROM cerfa_receipts WHERE id = $1', [req.params.id]);
   res.json({ ok: true, message: "Supprimé" });
 });
+app.put('/admin/cerfa/:id/origine', async (req, res) => {
+  const { password, origine } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
+  if (!['bot', 'tsedaka'].includes(origine)) return res.status(400).json({ ok: false, message: "Origine invalide" });
+  try {
+    const r = await pool.query('UPDATE cerfa_receipts SET origine = $1 WHERE id = $2', [origine, req.params.id]);
+    if (!r.rowCount) return res.status(404).json({ ok: false, message: "Reçu introuvable" });
+    res.json({ ok: true, message: "Origine mise à jour" });
+  } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
+});
 app.put('/admin/cerfa/:id', async (req, res) => {
   const { password, nom, prenom, adresse, montant, mode, date, email } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
@@ -1969,6 +1980,7 @@ app.post('/admin/cerfa/generer', async (req, res) => {
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, modeFinal, dateDon, emailFinal]
     );
+    marquerOrigineCerfa(numero, 'bot');
     envoyerBackupCerfa({ numero, nom: nom.trim(), prenom: prenomFinal, adresse: adresse.trim(), montant: montantNum, mode: modeFinal, dateVersement, email: emailFinal }, pdfBuffer).catch(e => console.error('Backup Cerfa error:', e));
     envoyerCerfaDonateur({ numero, nom: nom.trim(), prenom: prenomFinal, montant: montantNum, mode: modeFinal, email: emailFinal }, pdfBuffer).catch(e => console.error('Email donateur error:', e));
     res.set('Content-Type', 'application/pdf');
@@ -2053,6 +2065,7 @@ app.post('/admin/creer-cerfa-tsedaka', async (req, res) => {
       `INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email, phone) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [numero, nom.trim(), prenomFinal, adresse.trim(), montantNum, 'Carte bancaire', dateDon, emailFinal, phoneFinal]
     );
+    marquerOrigineCerfa(numero, 'tsedaka');
     
     // UPDATE tsedaka_dons — utiliser don_id si disponible, sinon chercher par email/phone
     if (don_id) {
@@ -2513,6 +2526,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [numero, nom, prenom, adresse, parseFloat(montant), 'Paiement en ligne', dateDon, tel]
     );
+    marquerOrigineCerfa(numero, 'tsedaka');
     await pool.query('UPDATE cerfa_receipts SET phone=$1 WHERE numero=$2', [phoneFormatted, numero]).catch(() => {});
     
     // Enregistrer le don dans tsedaka_dons (pour suivi dans /tsedaka) AVEC son numéro de Cerfa
@@ -2849,6 +2863,7 @@ app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
     }
     
     await pool.query('INSERT INTO cerfa_receipts (numero, nom, prenom, adresse, montant, mode_paiement, date_don, email, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())', [numero, nom, prenom, '', montant, 'Stripe', dateVersement, email]);
+    marquerOrigineCerfa(numero, 'tsedaka');
     await pool.query('INSERT INTO tsedaka_abonnes (phone, prenom, nom, email) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [phone, prenom, nom, email]);
     await sendWhatsAppDocument(phone, pdfBuffer, numero + '.pdf');
     const societeText = societe ? `<br/><strong>Organisme :</strong> ${societe}` : '';
@@ -2859,9 +2874,16 @@ app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
   }
 });
 
+// Origine d'un Cerfa : 'tsedaka' (dons Tsedaka) ou 'bot' (bot WhatsApp / admin)
+function marquerOrigineCerfa(numero, origine) {
+  return pool.query('UPDATE cerfa_receipts SET origine = $1 WHERE numero = $2', [origine, numero])
+    .catch(e => console.error('Origine Cerfa:', e.message));
+}
+
 // Réparation : relier les dons Tsedaka à leur Cerfa déjà généré (même téléphone, même montant, à 10 min près)
 (async () => {
   try {
+    await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS origine TEXT');
     const r = await pool.query(`
       UPDATE tsedaka_dons d SET cerfa_numero = m.numero
       FROM (
@@ -2875,6 +2897,15 @@ app.post('/admin/tsedaka/quick-cerfa', async (req, res) => {
       ) m
       WHERE d.id = m.id AND d.cerfa_numero IS NULL`);
     if (r.rowCount) console.log('Tsedaka : ' + r.rowCount + ' don(s) relié(s) à leur Cerfa');
+    // Classer les Cerfa qui n'ont pas encore d'origine
+    const t = await pool.query(`
+      UPDATE cerfa_receipts SET origine = 'tsedaka'
+      WHERE origine IS NULL AND (
+        mode_paiement IN ('Paiement en ligne', 'Stripe')
+        OR numero IN (SELECT cerfa_numero FROM tsedaka_dons WHERE cerfa_numero IS NOT NULL)
+      )`);
+    const b = await pool.query(`UPDATE cerfa_receipts SET origine = 'bot' WHERE origine IS NULL`);
+    if (t.rowCount || b.rowCount) console.log('Origine Cerfa : ' + t.rowCount + ' Tsedaka, ' + b.rowCount + ' Bot');
   } catch (e) { console.error('Réparation dons/Cerfa:', e.message); }
 })();
 
