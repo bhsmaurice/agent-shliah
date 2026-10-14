@@ -283,47 +283,167 @@ async function executer(from, demande) {
       await sendWhatsApp(from, fiche(res[0]) + '\n\n' + signature());
       return;
     }
-    if (res.length > MAX_CHOIX) {
-      await log(from, 'nom: ' + demande.valeur, 'trop: ' + res.length);
-      await sendWhatsApp(from, `J'ai ${res.length} personnes pour « ${demande.valeur} ».\n\nPrécise le nom de famille ou la ville, par exemple :\nnuméro de ${demande.valeur} Cohen`);
-      return;
-    }
+    if (res.length > MAX_LISTE) { await proposerVilles(from, res, demande.valeur); return; }
     await proposerChoix(from, res, demande.valeur);
   }
 }
 
-async function proposerChoix(from, res, recherche) {
-  sessions[from] = { etape: 'choix', resultats: res, recherche, expire: Date.now() + DUREE_SESSION_MS };
-  const liste = res.map((p, i) => `${i + 1}. ${nomComplet(p)}${p.surnoms ? ' (' + surnomsDe(p).join(', ') + ')' : ''}${p.ville ? ' — ' + p.ville : ''}`).join('\n');
-  await sendWhatsApp(from, `J'en ai ${res.length} :\n\n${liste}\n\nRéponds avec le chiffre (ou la ville).`);
+// ─── Choix avec boutons WhatsApp ──────────────────────────────
+const MAX_LISTE = 10; // limite d'une liste WhatsApp
+function couper(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+
+async function envoyerInteractif(to, interactive) {
+  const r = await fetch(`https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + process.env.WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'interactive', interactive }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!d.messages) throw new Error('message interactif refusé : ' + JSON.stringify(d.error || d).slice(0, 200));
 }
 
-// Renvoie true si le message a été traité comme un choix
+function ligneTexte(p, i) {
+  return `${i + 1}. ${nomComplet(p)}${p.surnoms ? ' (' + surnomsDe(p).join(', ') + ')' : ''}${p.ville ? ' — ' + p.ville : ''}`;
+}
+
+// 2 à 10 personnes : boutons (jusqu'à 3) ou liste déroulante
+async function proposerChoix(from, res, recherche, page = 0) {
+  sessions[from] = { etape: 'choix', resultats: res, recherche, page, expire: Date.now() + DUREE_SESSION_MS };
+  const PAR_PAGE = MAX_LISTE - 1; // 9 personnes + « Voir les suivants »
+  const pagine = res.length > MAX_LISTE;
+  const debut = pagine ? page * PAR_PAGE : 0;
+  const morceau = pagine ? res.slice(debut, debut + PAR_PAGE) : res;
+  const resteApres = pagine && debut + PAR_PAGE < res.length;
+  const titres = res.map(p => couper(nomComplet(p), 20));
+  const titresUniques = new Set(titres).size === titres.length;
+  try {
+    if (res.length <= 3 && titresUniques) {
+      await envoyerInteractif(from, {
+        type: 'button',
+        body: { text: `J'en ai ${res.length} pour « ${recherche} ». Lequel ?\n\n` + res.map(p => `• ${nomComplet(p)}${p.ville ? ' — ' + p.ville : ''}`).join('\n') },
+        action: { buttons: res.map((p, i) => ({ type: 'reply', reply: { id: 'rep_p_' + p.id, title: titres[i] } })) },
+      });
+    } else {
+      await envoyerInteractif(from, {
+        type: 'list',
+        body: { text: `J'en ai ${res.length} pour « ${recherche} »` + (pagine ? ` (${debut + 1} à ${debut + morceau.length})` : '') + `.\n\nAppuie sur « Choisir » puis sur la bonne personne.` },
+        action: {
+          button: 'Choisir',
+          sections: [{ title: 'Résultats', rows: morceau.map(p => ({
+            id: 'rep_p_' + p.id,
+            title: couper(nomComplet(p), 24),
+            description: couper([p.ville, surnomsDe(p).join(', ')].filter(Boolean).join(' · ') || ' ', 72),
+          })).concat(resteApres ? [{ id: 'rep_suite', title: '➡️ Voir les suivants', description: `Encore ${res.length - debut - morceau.length} personne(s)` }]
+            : (pagine && page > 0 ? [{ id: 'rep_debut', title: '⬅️ Revenir au début', description: 'Recommencer la liste' }] : [])) }],
+        },
+      });
+    }
+  } catch (e) {
+    console.error('Répertoire boutons :', e.message);
+    await sendWhatsApp(from, `J'en ai ${res.length} :\n\n${res.map(ligneTexte).join('\n')}\n\nRéponds avec le chiffre (ou la ville).`);
+  }
+}
+
+// Plus de 10 personnes : on demande d'abord la ville
+async function proposerVilles(from, res, recherche) {
+  const groupes = new Map();
+  res.forEach(p => { const v = p.ville || 'Ville inconnue'; groupes.set(v, (groupes.get(v) || []).concat([p])); });
+  let villes = [...groupes.entries()].sort((a, b) => b[1].length - a[1].length);
+  let options = villes.map(([ville, personnes]) => ({ ville, personnes }));
+  if (options.length > MAX_LISTE) {
+    const reste = options.slice(MAX_LISTE - 1);
+    options = options.slice(0, MAX_LISTE - 1).concat([{ ville: 'Autre ville', personnes: reste.flatMap(o => o.personnes) }]);
+  }
+  sessions[from] = { etape: 'ville', options, recherche, expire: Date.now() + DUREE_SESSION_MS };
+  await log(from, 'nom: ' + recherche, 'villes: ' + res.length);
+  try {
+    await envoyerInteractif(from, {
+      type: 'list',
+      body: { text: `J'ai ${res.length} personnes pour « ${recherche} ».\n\nDans quelle ville habite la personne ?` },
+      action: {
+        button: 'Choisir la ville',
+        sections: [{ title: 'Villes', rows: options.map((o, i) => ({
+          id: 'rep_v_' + i,
+          title: couper(o.ville, 24),
+          description: o.personnes.length + ' personne' + (o.personnes.length > 1 ? 's' : ''),
+        })) }],
+      },
+    });
+  } catch (e) {
+    console.error('Répertoire villes :', e.message);
+    await sendWhatsApp(from, `J'ai ${res.length} personnes pour « ${recherche} ». Dans quelle ville habite la personne ?\n\n` +
+      options.map((o, i) => `${i + 1}. ${o.ville} (${o.personnes.length})`).join('\n') + '\n\nRéponds avec le chiffre ou écris la ville.');
+  }
+}
+
+async function envoyerFiche(from, p, recherche) {
+  delete sessions[from];
+  await log(from, 'nom: ' + recherche, String(p.id));
+  await sendWhatsApp(from, fiche(p) + '\n\n' + signature());
+}
+
+// Réduit une liste selon ce que la personne écrit (prénom, ville, surnom…)
+async function affiner(from, liste, recherche, texte) {
+  if (liste.length === 1) return envoyerFiche(from, liste[0], recherche);
+  return proposerChoix(from, liste, texte ? recherche + ' — ' + texte : recherche);
+}
+
+async function choisirVille(from, i, s) {
+  const o = s.options[i];
+  if (!o) { await sendWhatsApp(from, `Réponds avec un chiffre entre 1 et ${s.options.length}.`); return; }
+  await affiner(from, o.personnes, s.recherche, o.ville);
+}
+
+function filtrerParTexte(liste, texte) {
+  const mots = normaliser(texte).split(' ').filter(m => m.length >= 2 && !MOTS_VIDES.has(m)).map(simplifier);
+  if (!mots.length) return [];
+  return liste.filter(p => {
+    const champs = normaliser(`${p.prenom || ''} ${p.nom || ''} ${p.ville || ''} ${(p.surnoms || '').replace(/,/g, ' ')}`).split(' ').filter(Boolean).map(simplifier);
+    return mots.every(m => champs.some(c => c === m || (m.length >= 3 && c.startsWith(m))));
+  });
+}
+
+// Réponse écrite pendant un choix. Renvoie true si traitée.
 async function gererChoix(from, text, s) {
   const t = normaliser(text);
+  if (s.etape === 'ville') {
+    if (/^\d{1,2}$/.test(t)) { await choisirVille(from, parseInt(t, 10) - 1, s); return true; }
+    const i = s.options.findIndex(o => t.length >= 3 && normaliser(o.ville).includes(t));
+    if (i >= 0) { await choisirVille(from, i, s); return true; }
+    const tous = s.options.flatMap(o => o.personnes);
+    const trouves = filtrerParTexte(tous, text);
+    if (trouves.length) { await affiner(from, trouves, s.recherche, text); return true; }
+    return false;
+  }
   if (/^\d{1,2}$/.test(t)) {
     const n = parseInt(t, 10);
-    if (n >= 1 && n <= s.resultats.length) {
-      const p = s.resultats[n - 1];
-      delete sessions[from];
-      await log(from, 'nom: ' + s.recherche, String(p.id));
-      await sendWhatsApp(from, fiche(p) + '\n\n' + signature());
-    } else {
-      await sendWhatsApp(from, `Réponds avec un chiffre entre 1 et ${s.resultats.length}.`);
-    }
+    if (n >= 1 && n <= s.resultats.length) await envoyerFiche(from, s.resultats[n - 1], s.recherche);
+    else await sendWhatsApp(from, `Réponds avec un chiffre entre 1 et ${s.resultats.length}.`);
     return true;
   }
-  if (t.length >= 3) {
-    const parVille = s.resultats.filter(p => p.ville && normaliser(p.ville).includes(t));
-    if (parVille.length === 1) {
-      delete sessions[from];
-      await log(from, 'nom: ' + s.recherche + ' / ville: ' + t, String(parVille[0].id));
-      await sendWhatsApp(from, fiche(parVille[0]) + '\n\n' + signature());
-      return true;
-    }
-    if (parVille.length > 1) { await proposerChoix(from, parVille, s.recherche); return true; }
-  }
+  const trouves = filtrerParTexte(s.resultats, text);
+  if (trouves.length) { await affiner(from, trouves, s.recherche, text); return true; }
   return false; // la personne parle d'autre chose
+}
+
+// Clic sur un bouton ou une ligne de liste (id commençant par rep_)
+async function handleBouton(from, id) {
+  try {
+    const s = sessions[from];
+    if (!s || Date.now() > s.expire) {
+      delete sessions[from];
+      await sendWhatsApp(from, "Ce choix a expiré. Refais ta recherche, par exemple : numéro de Igal");
+      return;
+    }
+    if (id.startsWith('rep_v_') && s.etape === 'ville') return await choisirVille(from, parseInt(id.slice(6), 10), s);
+    if (id === 'rep_suite' && s.etape === 'choix') return await proposerChoix(from, s.resultats, s.recherche, (s.page || 0) + 1);
+    if (id === 'rep_debut' && s.etape === 'choix') return await proposerChoix(from, s.resultats, s.recherche, 0);
+    if (id.startsWith('rep_p_') && s.etape === 'choix') {
+      const p = s.resultats.find(x => String(x.id) === id.slice(6));
+      if (p) return await envoyerFiche(from, p, s.recherche);
+    }
+    await sendWhatsApp(from, "Ce choix n'est plus valable. Refais ta recherche, par exemple : numéro de Igal");
+  } catch (e) { console.error('Répertoire bouton :', e.message); }
 }
 
 // ─── Point d'entrée appelé par index.js ───────────────────────
@@ -340,7 +460,7 @@ async function handle(from, text) {
       return true;
     }
     if (s && s.etape === 'question') return await gererReponseQuestion(from, text, s);
-    if (s && s.etape === 'choix') {
+    if (s && (s.etape === 'choix' || s.etape === 'ville')) {
       if (await gererChoix(from, text, s)) return true;
       delete sessions[from];
     }
@@ -388,4 +508,4 @@ function init(deps) {
   });
 }
 
-module.exports = { init, handle, _test: { normaliser, extraireNomRecherche, bonneReponse, afficherTel, normaliserTel, trouverMetier, chercherPersonnes } };
+module.exports = { init, handle, handleBouton, _test: { normaliser, extraireNomRecherche, bonneReponse, afficherTel, normaliserTel, trouverMetier, chercherPersonnes } };
