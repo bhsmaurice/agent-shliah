@@ -17,14 +17,14 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
   });
 
   app.post('/admin/repertoire/ajouter', async (req, res) => {
-    const { password, prenom, nom, ville, telephone, metier, note } = req.body;
+    const { password, prenom, nom, ville, telephone, metier, note, surnoms } = req.body;
     if (!ok(password)) return refus(res);
     const tel = normaliserTel(telephone);
     if (!propre(prenom) || tel.length < 9) return res.status(400).json({ ok: false, message: 'Prénom et téléphone requis' });
     try {
       await pool.query(
-        'INSERT INTO repertoire (prenom, nom, ville, telephone, metier, note) VALUES ($1,$2,$3,$4,$5,$6)',
-        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note)]);
+        'INSERT INTO repertoire (prenom, nom, ville, telephone, metier, note, surnoms) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note), propre(surnoms)]);
     } catch (e) {
       if (e.code === '23505') return res.status(400).json({ ok: false, message: 'Ce numéro est déjà dans le répertoire' });
       throw e;
@@ -34,14 +34,16 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
   });
 
   app.put('/admin/repertoire/:id', async (req, res) => {
-    const { password, prenom, nom, ville, telephone, metier, note, actif } = req.body;
+    const { password, prenom, nom, ville, telephone, metier, note, actif, surnoms } = req.body;
     if (!ok(password)) return refus(res);
     const tel = normaliserTel(telephone);
     if (!propre(prenom) || tel.length < 9) return res.status(400).json({ ok: false, message: 'Prénom et téléphone requis' });
     try {
       await pool.query(
-        'UPDATE repertoire SET prenom=$1, nom=$2, ville=$3, telephone=$4, metier=$5, note=$6, actif=$7 WHERE id=$8',
-        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note), actif !== false, req.params.id]);
+        `UPDATE repertoire SET prenom=$1, nom=$2, ville=$3, telephone=$4, metier=$5, note=$6, actif=$7,
+           surnoms = CASE WHEN $9::text IS NULL THEN surnoms ELSE NULLIF($9::text, '') END WHERE id=$8`,
+        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note), actif !== false, req.params.id,
+         surnoms === undefined ? null : (propre(surnoms) || '')]);
     } catch (e) {
       if (e.code === '23505') return res.status(400).json({ ok: false, message: 'Ce numéro est déjà utilisé par une autre fiche' });
       throw e;
@@ -64,12 +66,12 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
     let ajoutes = 0, deja = 0, erreurs = [];
     const lignes = String(texte || '').split('\n').map(l => l.trim()).filter(Boolean);
     for (const [i, ligne] of lignes.entries()) {
-      const [prenom, nom, ville, telephone, metier] = ligne.split(/[;\t]/).map(x => (x || '').trim());
+      const [prenom, nom, ville, telephone, metier, surnoms] = ligne.split(/[;\t]/).map(x => (x || '').trim());
       const tel = normaliserTel(telephone);
       if (!prenom || tel.length < 9) { erreurs.push('ligne ' + (i + 1)); continue; }
       try {
-        const r = await pool.query('INSERT INTO repertoire (prenom, nom, ville, telephone, metier) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (telephone) DO NOTHING',
-          [prenom, nom || null, ville || null, tel, metier || null]);
+        const r = await pool.query('INSERT INTO repertoire (prenom, nom, ville, telephone, metier, surnoms) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (telephone) DO NOTHING',
+          [prenom, nom || null, ville || null, tel, metier || null, surnoms || null]);
         if (r.rowCount) ajoutes++; else deja++;
       } catch (e) { erreurs.push('ligne ' + (i + 1)); }
     }
@@ -165,12 +167,12 @@ button.gris{background:#e5e7eb;color:var(--navy)}button.rouge{background:var(--r
       <div class="grid">
         <input id="f-prenom" placeholder="Prénom *"><input id="f-nom" placeholder="Nom">
         <input id="f-ville" placeholder="Ville"><input id="f-tel" placeholder="Téléphone *">
-        <input id="f-metier" placeholder="Métier(s) : plombier, chauffagiste"><input id="f-note" placeholder="Note (facultatif)">
+        <input id="f-metier" placeholder="Métier(s) : plombier, chauffagiste"><input id="f-surnoms" placeholder="Surnoms : Momo, Moshé Haïm"><input id="f-note" placeholder="Note (facultatif)">
       </div>
       <div class="row"><button id="b-save" onclick="enregistrer()">Ajouter</button><button class="gris hide" id="b-cancel" onclick="resetForm()">Annuler</button>
       <span class="grow"></span><button class="gris" onclick="toggle('import')">Import en masse</button></div>
       <div id="import" class="hide" style="margin-top:8px">
-        <div class="muted">Une ligne par personne : prénom ; nom ; ville ; téléphone ; métier (on peut coller depuis Excel)</div>
+        <div class="muted">Une ligne par personne : prénom ; nom ; ville ; téléphone ; métier ; surnoms (on peut coller depuis Excel)</div>
         <textarea id="import-txt" placeholder="Igal;Cohen;Saint-Maurice;0612345678;plombier"></textarea>
         <button onclick="importer()">Importer</button>
       </div>
@@ -217,24 +219,24 @@ function onglet(t){
 async function chargerPersonnes(){const j=await api('GET','/admin/repertoire/liste');if(j.ok){personnes=j.personnes;afficherPersonnes()}}
 function afficherPersonnes(){
   const f=document.getElementById('filtre').value.toLowerCase();
-  const l=personnes.filter(p=>!f||[p.prenom,p.nom,p.ville,p.metier,p.telephone].join(' ').toLowerCase().includes(f));
+  const l=personnes.filter(p=>!f||[p.prenom,p.nom,p.ville,p.metier,p.surnoms,p.telephone].join(' ').toLowerCase().includes(f));
   document.getElementById('liste').innerHTML=l.length?l.map(p=>
     '<div class="card '+(p.actif?'':'off')+'"><div class="row"><div class="grow"><b>'+esc(p.prenom)+' '+esc(p.nom||'')+'</b> '
-    +(p.metier?'<span class="badge">🔧 '+esc(p.metier)+'</span> ':'')+(p.actif?'':'<span class="badge">masqué</span>')
+    +(p.surnoms?'<span class="badge">🗣️ '+esc(p.surnoms)+'</span> ':'')+(p.metier?'<span class="badge">🔧 '+esc(p.metier)+'</span> ':'')+(p.actif?'':'<span class="badge">masqué</span>')
     +'<div class="muted">'+esc(p.ville||'—')+' · '+tel(p.telephone)+(p.note?' · '+esc(p.note):'')+'</div></div>'
     +'<button class="gris" onclick="editer('+p.id+')">✎</button>'
     +'<button class="gris" onclick="basculer('+p.id+')">'+(p.actif?'Masquer':'Afficher')+'</button>'
     +'<button class="rouge" onclick="supprimer('+p.id+')">✕</button></div></div>').join('')
     :'<div class="muted">Aucune personne pour l\\'instant.</div>';
 }
-function lireForm(){return{prenom:v('f-prenom'),nom:v('f-nom'),ville:v('f-ville'),telephone:v('f-tel'),metier:v('f-metier'),note:v('f-note')}}
+function lireForm(){return{prenom:v('f-prenom'),nom:v('f-nom'),ville:v('f-ville'),telephone:v('f-tel'),metier:v('f-metier'),surnoms:v('f-surnoms'),note:v('f-note')}}
 function v(id){return document.getElementById(id).value.trim()}
-function resetForm(){editId=null;['prenom','nom','ville','tel','metier','note'].forEach(k=>document.getElementById('f-'+k).value='');
+function resetForm(){editId=null;['prenom','nom','ville','tel','metier','surnoms','note'].forEach(k=>document.getElementById('f-'+k).value='');
   document.getElementById('b-save').textContent='Ajouter';document.getElementById('b-cancel').classList.add('hide')}
 function editer(id){const p=personnes.find(x=>x.id===id);if(!p)return;editId=id;
   document.getElementById('f-prenom').value=p.prenom||'';document.getElementById('f-nom').value=p.nom||'';
   document.getElementById('f-ville').value=p.ville||'';document.getElementById('f-tel').value=tel(p.telephone);
-  document.getElementById('f-metier').value=p.metier||'';document.getElementById('f-note').value=p.note||'';
+  document.getElementById('f-metier').value=p.metier||'';document.getElementById('f-surnoms').value=p.surnoms||'';document.getElementById('f-note').value=p.note||'';
   document.getElementById('b-save').textContent='Enregistrer';document.getElementById('b-cancel').classList.remove('hide');window.scrollTo(0,0)}
 async function enregistrer(){
   const d=lireForm();

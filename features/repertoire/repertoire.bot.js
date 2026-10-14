@@ -50,9 +50,11 @@ function signature() {
 }
 function nomComplet(p) { return [p.prenom, p.nom].filter(Boolean).join(' '); }
 function metiersDe(p) { return String(p.metier || '').split(',').map(m => m.trim()).filter(Boolean); }
+function surnomsDe(p) { return String(p.surnoms || '').split(',').map(m => m.trim()).filter(Boolean); }
 
 function fiche(p) {
   let txt = '👤 ' + nomComplet(p);
+  if (p.surnoms) txt += '\n🗣️ Appelé : ' + surnomsDe(p).join(', ');
   if (p.ville) txt += '\n📍 ' + p.ville;
   if (p.metier) txt += '\n🔧 ' + metiersDe(p).join(', ');
   txt += '\n📞 ' + afficherTel(p.telephone);
@@ -66,6 +68,12 @@ async function initTables() {
     id SERIAL PRIMARY KEY, prenom TEXT NOT NULL, nom TEXT, ville TEXT,
     telephone TEXT NOT NULL, metier TEXT, note TEXT, actif BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW())`);
+  await pool.query('ALTER TABLE repertoire ADD COLUMN IF NOT EXISTS surnoms TEXT');
+  // Villes mal écrites dans l'import du 14/10/2026
+  const VILLES_A_CORRIGER = {"Charenton.": "Charenton-le-Pont", "Charenton-le-Pobt": "Charenton-le-Pont", "Charenton-le": "Charenton-le-Pont", "Charenton-la-Pont": "Charenton-le-Pont", "Charenton-Me-Pont": "Charenton-le-Pont", "Charenton-L'ecole": "Charenton-le-Pont", "Nogent-sur-Marbe": "Nogent-sur-Marne", "Nogent": "Nogent-sur-Marne", "Neuilly/seine": "Neuilly-sur-Seine", "Neuilly": "Neuilly-sur-Seine", "Neilly-sur-Seine": "Neuilly-sur-Seine", "Courbevois": "Courbevoie", "Alfortivlle": "Alfortville", "Bonneuilsurmarne": "Bonneuil-sur-Marne", "Limeil-Brevannes": "Limeil-Brévannes", "Perreux-sur-Marne": "Le Perreux-sur-Marne", "75014-Paris": "Paris", "2e-Arrondissement": "Paris", "95200": "Sarcelles", "92300": "Levallois-Perret", "Boulogne": "Boulogne-Billancourt", "St-Laurent-du-Var": "Saint-Laurent-du-Var", "Epinay-sur-Seine": "Épinay-sur-Seine", "Chatillon": "Châtillon", "Chennevieres-sur-Marne": "Chennevières-sur-Marne", "Jerusalem": "Jérusalem"};
+  for (const [faux, juste] of Object.entries(VILLES_A_CORRIGER)) {
+    await pool.query('UPDATE repertoire SET ville = $2 WHERE ville = $1', [faux, juste]);
+  }
   // Doublons (même numéro) : on garde la fiche la plus ancienne, puis on empêche les nouveaux doublons
   const dbl = await pool.query('DELETE FROM repertoire a USING repertoire b WHERE a.telephone = b.telephone AND a.id > b.id');
   if (dbl.rowCount) console.log('📒 Répertoire : ' + dbl.rowCount + ' doublon(s) supprimé(s)');
@@ -98,9 +106,11 @@ const MOTS_VIDES = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'a', 'qui', 'h
 async function chercherPersonnes(recherche) {
   const mots = normaliser(recherche).split(' ').filter(m => m.length >= 2 && !MOTS_VIDES.has(m)).map(simplifier);
   if (!mots.length) return [];
+  const cherche = simplifier(normaliser(recherche));
   const r = await pool.query('SELECT * FROM repertoire WHERE actif = TRUE ORDER BY prenom, nom');
   return r.rows.filter(p => {
-    const champs = normaliser(`${p.prenom || ''} ${p.nom || ''} ${p.ville || ''}`).split(' ').filter(Boolean).map(simplifier);
+    if (surnomsDe(p).some(sn => simplifier(normaliser(sn)) === cherche)) return true;
+    const champs = normaliser(`${p.prenom || ''} ${p.nom || ''} ${p.ville || ''} ${(p.surnoms || '').replace(/,/g, ' ')}`).split(' ').filter(Boolean).map(simplifier);
     return mots.every(m => champs.some(c => c === m || (m.length >= 3 && c.startsWith(m))));
   });
 }
@@ -284,7 +294,7 @@ async function executer(from, demande) {
 
 async function proposerChoix(from, res, recherche) {
   sessions[from] = { etape: 'choix', resultats: res, recherche, expire: Date.now() + DUREE_SESSION_MS };
-  const liste = res.map((p, i) => `${i + 1}. ${nomComplet(p)}${p.ville ? ' — ' + p.ville : ''}`).join('\n');
+  const liste = res.map((p, i) => `${i + 1}. ${nomComplet(p)}${p.surnoms ? ' (' + surnomsDe(p).join(', ') + ')' : ''}${p.ville ? ' — ' + p.ville : ''}`).join('\n');
   await sendWhatsApp(from, `J'en ai ${res.length} :\n\n${liste}\n\nRéponds avec le chiffre (ou la ville).`);
 }
 
