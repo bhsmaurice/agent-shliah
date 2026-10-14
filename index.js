@@ -12,6 +12,7 @@ const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const sharp = require('sharp');
+const repertoire = require('./features/repertoire/repertoire.bot');
 const PORT = process.env.PORT || 3000;
 async function initDB() {
   await pool.query(`CREATE TABLE IF NOT EXISTS infos (id SERIAL PRIMARY KEY, categorie TEXT, titre TEXT, contenu TEXT, instruction TEXT, created_at TIMESTAMP DEFAULT NOW())`);
@@ -1461,6 +1462,9 @@ app.post('/webhook', async (req, res) => {
           return;
         }
       }
+
+      // RÉPERTOIRE — numéros de la communauté et des professionnels
+      if (await repertoire.handle(from, text)) return;
 
       if (sessionsAbonnement[from]) {
         const typeAbonnement = sessionsAbonnement[from];
@@ -3185,6 +3189,8 @@ async function envoyerRappelsHavruta() {
     console.error('❌ Erreur rappels Havruta:', err.message);
   }
 }
+
+repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE });
 
 initDB().then(() => {
   // Rappels Havruta: Envoyer chaque jour à 8h
