@@ -21,9 +21,14 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
     if (!ok(password)) return refus(res);
     const tel = normaliserTel(telephone);
     if (!propre(prenom) || tel.length < 9) return res.status(400).json({ ok: false, message: 'Prénom et téléphone requis' });
-    await pool.query(
-      'INSERT INTO repertoire (prenom, nom, ville, telephone, metier, note) VALUES ($1,$2,$3,$4,$5,$6)',
-      [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note)]);
+    try {
+      await pool.query(
+        'INSERT INTO repertoire (prenom, nom, ville, telephone, metier, note) VALUES ($1,$2,$3,$4,$5,$6)',
+        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note)]);
+    } catch (e) {
+      if (e.code === '23505') return res.status(400).json({ ok: false, message: 'Ce numéro est déjà dans le répertoire' });
+      throw e;
+    }
     viderCacheMetiers();
     res.json({ ok: true, message: 'Ajouté !' });
   });
@@ -33,9 +38,14 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
     if (!ok(password)) return refus(res);
     const tel = normaliserTel(telephone);
     if (!propre(prenom) || tel.length < 9) return res.status(400).json({ ok: false, message: 'Prénom et téléphone requis' });
-    await pool.query(
-      'UPDATE repertoire SET prenom=$1, nom=$2, ville=$3, telephone=$4, metier=$5, note=$6, actif=$7 WHERE id=$8',
-      [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note), actif !== false, req.params.id]);
+    try {
+      await pool.query(
+        'UPDATE repertoire SET prenom=$1, nom=$2, ville=$3, telephone=$4, metier=$5, note=$6, actif=$7 WHERE id=$8',
+        [propre(prenom), propre(nom), propre(ville), tel, propre(metier), propre(note), actif !== false, req.params.id]);
+    } catch (e) {
+      if (e.code === '23505') return res.status(400).json({ ok: false, message: 'Ce numéro est déjà utilisé par une autre fiche' });
+      throw e;
+    }
     viderCacheMetiers();
     res.json({ ok: true, message: 'Mis à jour !' });
   });
@@ -51,20 +61,20 @@ function init({ app, pool, adminPassword, normaliserTel, viderCacheMetiers }) {
   app.post('/admin/repertoire/import', async (req, res) => {
     const { password, texte } = req.body;
     if (!ok(password)) return refus(res);
-    let ajoutes = 0, erreurs = [];
+    let ajoutes = 0, deja = 0, erreurs = [];
     const lignes = String(texte || '').split('\n').map(l => l.trim()).filter(Boolean);
     for (const [i, ligne] of lignes.entries()) {
       const [prenom, nom, ville, telephone, metier] = ligne.split(/[;\t]/).map(x => (x || '').trim());
       const tel = normaliserTel(telephone);
       if (!prenom || tel.length < 9) { erreurs.push('ligne ' + (i + 1)); continue; }
       try {
-        await pool.query('INSERT INTO repertoire (prenom, nom, ville, telephone, metier) VALUES ($1,$2,$3,$4,$5)',
+        const r = await pool.query('INSERT INTO repertoire (prenom, nom, ville, telephone, metier) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (telephone) DO NOTHING',
           [prenom, nom || null, ville || null, tel, metier || null]);
-        ajoutes++;
+        if (r.rowCount) ajoutes++; else deja++;
       } catch (e) { erreurs.push('ligne ' + (i + 1)); }
     }
     viderCacheMetiers();
-    res.json({ ok: true, message: `${ajoutes} ajouté(s)` + (erreurs.length ? ` — erreurs : ${erreurs.join(', ')}` : '') });
+    res.json({ ok: true, message: `${ajoutes} ajouté(s)` + (deja ? `, ${deja} déjà présent(s)` : '') + (erreurs.length ? ` — erreurs : ${erreurs.slice(0, 10).join(', ')}${erreurs.length > 10 ? '…' : ''}` : '') });
   });
 
   // ─── Accès ───────────────────────────────────────────────

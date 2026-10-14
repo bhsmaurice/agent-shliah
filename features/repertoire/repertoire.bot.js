@@ -66,6 +66,10 @@ async function initTables() {
     id SERIAL PRIMARY KEY, prenom TEXT NOT NULL, nom TEXT, ville TEXT,
     telephone TEXT NOT NULL, metier TEXT, note TEXT, actif BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW())`);
+  // Doublons (même numéro) : on garde la fiche la plus ancienne, puis on empêche les nouveaux doublons
+  const dbl = await pool.query('DELETE FROM repertoire a USING repertoire b WHERE a.telephone = b.telephone AND a.id > b.id');
+  if (dbl.rowCount) console.log('📒 Répertoire : ' + dbl.rowCount + ' doublon(s) supprimé(s)');
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS repertoire_telephone_unique ON repertoire (telephone)');
   await pool.query(`CREATE TABLE IF NOT EXISTS repertoire_acces (
     phone TEXT PRIMARY KEY, statut TEXT DEFAULT 'en_attente', essais INTEGER DEFAULT 0,
     valide_le TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
