@@ -17,8 +17,10 @@ function validateOrder(body) {
   });
   const phone = text(body.phone, 'Téléphone', 15);
   if (!/^\d{8,15}$/.test(phone)) throw problem('Le téléphone doit contenir de 8 à 15 chiffres.');
+  const email = body.email == null || body.email === '' ? null : text(body.email, 'E-mail', 160);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw problem('E-mail invalide.');
   if (!Number.isSafeInteger(body.donationCents) || body.donationCents < 0 || body.donationCents > MAX_DONATION) throw problem('Participation invalide.');
-  return { requestId: body.requestId.toLowerCase(), children, phone, donationCents: body.donationCents, totalCents: children.length * 100 + body.donationCents };
+  return { requestId: body.requestId.toLowerCase(), children, phone, email, donationCents: body.donationCents, totalCents: children.length * 100 + body.donationCents };
 }
 function validateDonor(raw) {
   const d = {};
@@ -42,6 +44,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       receipt_eligible_cents INTEGER NOT NULL DEFAULT 0, receipt_status TEXT NOT NULL DEFAULT 'not_requested',
       receipt_data JSONB, cerfa_numero TEXT, diploma_status TEXT NOT NULL DEFAULT 'pending',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), paid_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`)
+      .then(() => pool.query('ALTER TABLE lettres_orders ADD COLUMN IF NOT EXISTS email TEXT'))
       .then(() => pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS origine TEXT'))
       .catch(e => { ready = null; throw e; });
     return ready;
@@ -92,11 +95,11 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   app.post('/lettres-sefer-torah/api/orders', publicLimit, safe(async (req, res) => {
     if (!secret() || !pubkey()) throw problem('Le paiement n’est pas encore activé.', 503);
     const data = validateOrder(req.body), id = crypto.randomUUID();
-    await pool.query(`INSERT INTO lettres_orders(id,request_id,children,phone,total_cents,donation_cents) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(request_id) DO NOTHING`, [id, data.requestId, JSON.stringify(data.children), data.phone, data.totalCents, data.donationCents]);
+    await pool.query(`INSERT INTO lettres_orders(id,request_id,children,phone,total_cents,donation_cents,email) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(request_id) DO NOTHING`, [id, data.requestId, JSON.stringify(data.children), data.phone, data.totalCents, data.donationCents, data.email]);
     let order = (await pool.query('SELECT * FROM lettres_orders WHERE request_id=$1', [data.requestId])).rows[0];
-    if (order.total_cents !== data.totalCents || order.donation_cents !== data.donationCents || order.phone !== data.phone || !isDeepStrictEqual(order.children, data.children)) throw problem('Cette demande a changé. Revenez au formulaire et recommencez.', 409);
+    if (order.total_cents !== data.totalCents || order.donation_cents !== data.donationCents || order.phone !== data.phone || (order.email || null) !== data.email || !isDeepStrictEqual(order.children, data.children)) throw problem('Cette demande a changé. Revenez au formulaire et recommencez.', 409);
     const pi = order.stripe_payment_intent_id ? await stripe('payment_intents/' + encodeURIComponent(order.stripe_payment_intent_id)) : await stripe('payment_intents', {
-      amount: String(order.total_cents), currency: 'eur', 'automatic_payment_methods[enabled]': 'true', 'automatic_payment_methods[allow_redirects]': 'never',
+      amount: String(order.total_cents), currency: 'eur', ...(order.email ? { receipt_email: order.email } : {}), 'automatic_payment_methods[enabled]': 'true', 'automatic_payment_methods[allow_redirects]': 'never',
       'metadata[lettres_order_id]': order.id, 'metadata[source]': 'lettres_sefer_torah', description: 'Lettres Séfer Torah enfants — Beth Habad S. Maurice'
     }, 'lettres-' + order.id);
     await pool.query('UPDATE lettres_orders SET stripe_payment_intent_id=$2 WHERE id=$1', [order.id, pi.id]);
