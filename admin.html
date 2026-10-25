@@ -1589,6 +1589,7 @@ body {
   <div class="tab" data-tab="contacts" onclick="showTab('contacts')">👥<span class="tab-label">Contacts</span></div>
   <div class="tab" data-tab="paiements" onclick="showTab('paiements')">💜<span class="tab-label">Paiements</span></div>
   <div class="tab" data-tab="demandes" onclick="showTab('demandes')">📩<span class="tab-label">Demandes</span></div>
+  <div class="tab" data-tab="lettres" onclick="ouvrirLettresSeferTorah()">📜<span class="tab-label">Lettres Séfer Torah</span></div>
   <div class="tab" data-tab="cerfa" onclick="showTab('cerfa')">🧾<span class="tab-label">Cerfa</span></div>  <div class="tab" data-tab="corbeille" onclick="showTab('corbeille')">🗑️<span class="tab-label">Corbeille</span></div>
   <div class="tab" data-tab="questions" onclick="showTab('questions')">💬<span class="tab-label">Questions</span></div>
   <div class="tab tab-admin-only" data-tab="broadcast" onclick="showTab('broadcast')">📢<span class="tab-label">Broadcast</span></div>
@@ -1606,6 +1607,7 @@ body {
     <div class="sidenav-item" data-tab="contacts" onclick="showTab('contacts')"><span class="sidenav-icon">👥</span>Contacts</div>
     <div class="sidenav-item" data-tab="paiements" onclick="showTab('paiements')"><span class="sidenav-icon">💜</span>Paiements</div>
     <div class="sidenav-item" data-tab="demandes" onclick="showTab('demandes')"><span class="sidenav-icon">📩</span>Demandes</div>
+    <div class="sidenav-item" data-tab="lettres" onclick="ouvrirLettresSeferTorah()"><span class="sidenav-icon">📜</span>Lettres Séfer Torah</div>
     <div class="sidenav-item" data-tab="cerfa" onclick="showTab('cerfa')"><span class="sidenav-icon">🧾</span>Cerfa</div>
     <div class="sidenav-item" data-tab="corbeille" onclick="showTab('corbeille')"><span class="sidenav-icon">🗑️</span>Corbeille</div>
     <div class="sidenav-item" data-tab="questions" onclick="showTab('questions')"><span class="sidenav-icon">💬</span>Questions</div>
@@ -1820,6 +1822,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
   } catch (e) {
     alert('Erreur: ' + e.message);
   }
+}
 </script>
   <!-- AJOUTER -->
 <div class="page active" id="tab-ajouter"><div class="inner">
@@ -2135,6 +2138,7 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
     <div class="chip active" data-origine="tous" onclick="selectCerfaOrigine(this)">Tous</div>
     <div class="chip" data-origine="bot" onclick="selectCerfaOrigine(this)">🤖 Bot / Admin</div>
     <div class="chip" data-origine="tsedaka" onclick="selectCerfaOrigine(this)">💜 Tsedaka</div>
+    <div class="chip" data-origine="lettres" onclick="selectCerfaOrigine(this)">📜 Lettres Séfer Torah</div>
   </div>
   <div id="cerfa-stats" style="display:none"><div class="stats-row" id="cerfa-stats-row"></div></div>
 
@@ -2643,6 +2647,7 @@ async function changerPin(type){const isA=type==='admin',np=document.getElementB
 let catSelected='priere',editCatSelected='priere',allInfos=[],allDemandes=[],allHistoires=[],filterCat='tous',filterDemande='tous';
 let selectModeActive=false,selectedIds=new Set(),corbeilleSelectMode=false,corbeilleSelectedIds=new Set();
 function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,'');}
+function ouvrirLettresSeferTorah(){const base=getUrl()||'https://agent-shliah-production.up.railway.app';const pw=getAdminPw();window.open(base+'/lettres-sefer-torah'+(pw?'#access='+encodeURIComponent(pw):''),'_blank','noopener');}
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
 function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
@@ -2913,11 +2918,11 @@ function selectCerfaType(btn){
 let cerfaSearchField = 'tout';
 let cerfaFilterMode = 'tous';
 let cerfaOrigine = 'tous';
-function origineCerfa(c){return c&&c.origine==='tsedaka'?'tsedaka':'bot';}
+function origineCerfa(c){return c&&['tsedaka','lettres'].includes(c.origine)?c.origine:'bot';}
 function cerfaParOrigine(){return cerfaOrigine==='tous'?allCerfa:allCerfa.filter(c=>origineCerfa(c)===cerfaOrigine);}
 function majStatsCerfa(){const liste=cerfaParOrigine();const total=liste.length;const totalMontant=liste.reduce((s,c)=>s+parseFloat(c.montant||0),0);document.getElementById('cerfa-stats-row').innerHTML=`<div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Reçus</div></div><div class="stat-box" style="grid-column:span 2;"><div class="stat-num">${totalMontant.toLocaleString('fr-FR')} €</div><div class="stat-label">Total collecté</div></div>`;}
 function selectCerfaOrigine(el){document.querySelectorAll('#cerfa-origine-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');cerfaOrigine=el.dataset.origine;majStatsCerfa();mettreAJourApercuCerfa();afficherCerfa();}
-async function changerOrigineCerfa(id){const c=allCerfa.find(x=>x.id===id);if(!c)return;const nouvelle=origineCerfa(c)==='tsedaka'?'bot':'tsedaka';if(!confirm('Classer ce reçu dans « '+(nouvelle==='tsedaka'?'Tsedaka':'Bot / Admin')+' » ?'))return;try{const res=await fetch(getUrl()+'/admin/cerfa/'+id+'/origine',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAdminPw(),origine:nouvelle})});const data=await res.json();if(!data.ok){alert(data.message||'Erreur');return;}c.origine=nouvelle;majStatsCerfa();mettreAJourApercuCerfa();afficherCerfa();}catch(e){alert('Erreur de connexion');}}
+async function changerOrigineCerfa(id){const c=allCerfa.find(x=>x.id===id);if(!c)return;if(origineCerfa(c)==='lettres'){alert('Ce reçu est lié à une inscription Séfer Torah.');return;}const nouvelle=origineCerfa(c)==='tsedaka'?'bot':'tsedaka';if(!confirm('Classer ce reçu dans « '+(nouvelle==='tsedaka'?'Tsedaka':'Bot / Admin')+' » ?'))return;try{const res=await fetch(getUrl()+'/admin/cerfa/'+id+'/origine',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAdminPw(),origine:nouvelle})});const data=await res.json();if(!data.ok){alert(data.message||'Erreur');return;}c.origine=nouvelle;majStatsCerfa();mettreAJourApercuCerfa();afficherCerfa();}catch(e){alert('Erreur de connexion');}}
 function normModePaiement(s){const t=(s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(/espece|cash/.test(t))return 'especes';if(/cheque/.test(t))return 'cheque';if(/virement|prelevement/.test(t))return 'virement';if(/carte|\bcb\b|en ligne|stripe/.test(t))return 'cb';return 'autre';}
 function selectCerfaSearchField(el){document.querySelectorAll('#cerfa-search-field-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');cerfaSearchField=el.dataset.field;afficherCerfa();}
 function toggleCerfaAdvanced(){const panel=document.getElementById('cerfa-advanced-panel'),arrow=document.getElementById('cerfa-advanced-arrow');const open=panel.style.display==='block';panel.style.display=open?'none':'block';arrow.textContent=open?'▾':'▴';}
@@ -3008,7 +3013,7 @@ function afficherCerfa(){
     const dateDon=c.date_don?new Date(c.date_don).toLocaleDateString('fr-FR'):'';
     const prenomAffiche=(c.prenom&&c.prenom.trim()&&c.prenom.trim()!=='-')?c.prenom.trim()+' ':'';
     const estSociete=!c.prenom||!c.prenom.trim()||c.prenom.trim()==='-';
-    el.className='demande-card cf-card';el.innerHTML=`<div class="cf-top"><div class="cf-nom">${prenomAffiche}${c.nom||''}</div><div class="cf-montant">${montant} €</div></div><div class="cf-meta"><span class="cf-num">${c.numero}</span><span class="cf-orig cf-orig-${origineCerfa(c)}" onclick="changerOrigineCerfa(${c.id})" title="Cliquer pour changer">${origineCerfa(c)==='tsedaka'?'💜 Tsedaka':'🤖 Bot'}</span>${getBadgeCerfaRecent(c.created_at)}${dateDon?'<span>📅 '+dateDon+'</span>':''}${c.mode_paiement?'<span>💳 '+c.mode_paiement+'</span>':''}</div>${c.email?'<div class="cf-ligne">✉️ '+c.email+'</div>':''}${c.adresse?'<div class="cf-ligne">📍 '+c.adresse+'</div>':''}<div class="cf-actions"><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash cf-suppr" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button></div>`;
+    el.className='demande-card cf-card';el.innerHTML=`<div class="cf-top"><div class="cf-nom">${prenomAffiche}${c.nom||''}</div><div class="cf-montant">${montant} €</div></div><div class="cf-meta"><span class="cf-num">${c.numero}</span><span class="cf-orig cf-orig-${origineCerfa(c)}" onclick="changerOrigineCerfa(${c.id})" title="Cliquer pour changer">${origineCerfa(c)==='lettres'?'📜 Lettres':origineCerfa(c)==='tsedaka'?'💜 Tsedaka':'🤖 Bot'}</span>${getBadgeCerfaRecent(c.created_at)}${dateDon?'<span>📅 '+dateDon+'</span>':''}${c.mode_paiement?'<span>💳 '+c.mode_paiement+'</span>':''}</div>${c.email?'<div class="cf-ligne">✉️ '+c.email+'</div>':''}${c.adresse?'<div class="cf-ligne">📍 '+c.adresse+'</div>':''}<div class="cf-actions"><button class="btn-trash" onclick="telechargerCerfa(${c.id})" title="Télécharger le PDF">📥</button>${c.email?`<button class="btn-trash" onclick="renvoyerCerfa(${c.id})" title="Renvoyer par email">✉️</button>`:''}<button class="btn-trash" onclick="partagerCerfaWhatsapp(${c.id})" title="Partager par WhatsApp">📲</button><button class="btn-trash" onclick="ouvrirModifierCerfa(${c.id})" title="Modifier">✏️</button><button class="btn-trash cf-suppr" onclick="supprimerCerfa(${c.id})" title="Supprimer">🗑️</button></div>`;
     container.appendChild(el);
   });
 }
@@ -4126,6 +4131,7 @@ document.addEventListener('click',function(e){
 function restaurerSession(){try{const raw=localStorage.getItem(SESSION_KEY);if(!raw)return;const s=JSON.parse(raw);if(!s||!s.role||!s.until||Date.now()>s.until){localStorage.removeItem(SESSION_KEY);return;}currentUser=s.role;activeLoginUser=s.role;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';const u=localStorage.getItem('railway_url');if(u){document.getElementById('server-url').value=u;document.getElementById('current-url').textContent=u;}
 loadTheme();const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(s.role);}catch(e){}}
 restaurerSession();
+if(location.hash==='#cerfa'&&document.getElementById('app').style.display==='block')showTab('cerfa');
 
 // Versions Modal
 const VERSIONS = [
