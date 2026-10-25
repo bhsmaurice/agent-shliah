@@ -206,11 +206,12 @@ html,body{font-size:15px;letter-spacing:-.1px}button{transition:background .15s,
 @media(max-width:600px){.champ input,.champ select{font-size:16px}.icone-btn{height:44px;width:44px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
+.brand:before{display:none}.brand{padding-left:50px}.module-logo{position:absolute;left:0;top:0;width:38px;height:43px;display:grid;place-items:center;border-radius:11px;background:#263D6C;color:#fff;box-shadow:0 3px 9px #263D6C15}.module-logo svg{width:30px;height:30px}@media(max-width:600px){.brand{padding-left:46px}.module-logo{width:35px;height:40px;border-radius:10px}.module-logo svg{width:28px;height:28px}}
 </style></head>
 <body>
 <div class="app">
   <div class="top">
-    <div class="brand"><h1>Tsédaka</h1><p>Beth Habad S. Maurice Plateau</p></div>
+    <div class="brand"><span class="module-logo tsedaka-logo"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M7 14h18v13H7z" fill="#FFFFFF" fill-opacity=".13" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 14l4-5h12l4 5M12 17h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="5" r="3" fill="#E8D28E"/><path d="M16 3.5v3" stroke="#9B7B31" stroke-width="1.2" stroke-linecap="round"/><path d="M11 22h10" stroke="currentColor" stroke-opacity=".5" stroke-width="1.5" stroke-linecap="round"/></svg></span><h1>Tsédaka</h1><p>Beth Habad S. Maurice Plateau</p></div>
     <div class="avatar">LB</div>
   </div>
   <div class="titre"><h2 id="titre">Dons</h2>
