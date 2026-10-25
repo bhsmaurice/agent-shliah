@@ -1,10 +1,11 @@
 const express = require('express');
 const app = express();
+app.post('/lettres-sefer-torah/stripe-webhook', express.raw({ type: 'application/json', limit: '1mb' }), (req, res) => lettresFeature.webhook(req, res));
 app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -1911,7 +1912,7 @@ app.delete('/admin/cerfa/:id', async (req, res) => {
 app.put('/admin/cerfa/:id/origine', async (req, res) => {
   const { password, origine } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, message: "Mot de passe incorrect" });
-  if (!['bot', 'tsedaka'].includes(origine)) return res.status(400).json({ ok: false, message: "Origine invalide" });
+  if (!['bot', 'tsedaka', 'lettres'].includes(origine)) return res.status(400).json({ ok: false, message: "Origine invalide" });
   try {
     const r = await pool.query('UPDATE cerfa_receipts SET origine = $1 WHERE id = $2', [origine, req.params.id]);
     if (!r.rowCount) return res.status(404).json({ ok: false, message: "Reçu introuvable" });
@@ -2883,7 +2884,7 @@ function marquerOrigineCerfa(numero, origine) {
         FROM cerfa_receipts c
         JOIN tsedaka_dons d2 ON d2.phone = c.phone AND d2.montant = c.montant AND d2.cerfa_numero IS NULL
              AND ABS(EXTRACT(EPOCH FROM (d2.created_at - c.created_at))) < 600
-        WHERE c.phone IS NOT NULL
+        WHERE c.phone IS NOT NULL AND COALESCE(c.origine, '') <> 'lettres'
           AND NOT EXISTS (SELECT 1 FROM tsedaka_dons x WHERE x.cerfa_numero = c.numero)
         ORDER BY c.numero, ABS(EXTRACT(EPOCH FROM (d2.created_at - c.created_at)))
       ) m
@@ -3037,9 +3038,11 @@ async function envoyerRappelsHavruta() {
 
 repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE });
 require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, getNextCerfaNumero, sendWhatsAppDocument, envoyerEmail, marquerOrigineCerfa });
+const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, envoyerEmail });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 
-initDB().then(() => {
+initDB().then(async () => {
+  await lettresFeature.ensureDB();
   // Rappels Havruta: Envoyer chaque jour à 8h
   const scheduleRappelHavruta = () => {
     const now = new Date();
