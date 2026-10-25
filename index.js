@@ -3037,6 +3037,7 @@ async function envoyerRappelsHavruta() {
 
 repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE });
 require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, getNextCerfaNumero, sendWhatsAppDocument, envoyerEmail, marquerOrigineCerfa });
+require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 
 initDB().then(() => {
   // Rappels Havruta: Envoyer chaque jour à 8h
