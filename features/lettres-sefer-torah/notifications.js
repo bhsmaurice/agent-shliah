@@ -1,0 +1,39 @@
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const LOGO='https://habadsmaurice.com/wp-content/uploads/2026/09/cropped-logo-Habad-s-Maurice.png';
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n/100);
+const COPY={
+ confirmed:{subject:'Votre inscription aux lettres du Séfer Torah est confirmée',title:'Une lettre, une belle histoire.',body:'Votre paiement a bien été confirmé et les informations de vos enfants ont été enregistrées. Nous allons transmettre leur inscription au programme des lettres du Séfer Torah.',badge:'INSCRIPTION CONFIRMÉE'},
+ registered:{subject:'L’inscription de vos enfants a été transmise',title:'Leur lettre fait son chemin.',body:'L’inscription de vos enfants a bien été transmise au programme des lettres du Séfer Torah. Vous recevrez prochainement un message dès que leurs diplômes seront disponibles au Beth Habad.',badge:'INSCRIPTION TRANSMISE'},
+ available:{subject:'Votre diplôme de lettre vous attend au Beth Habad',title:'Leur diplôme vous attend !',body:'Nous avons reçu les diplômes de lettre de vos enfants au Beth Habad S. Maurice. Vous pouvez passer les récupérer au Beth Habad. Au plaisir de vous accueillir !',badge:'DIPLÔME DISPONIBLE AU BETH HABAD'}
+};
+function emailTemplate(order,kind){
+ const c=COPY[kind];if(!c)throw Error('Notification inconnue');
+ const children=order.children.map(child=>`<tr><td style="padding:13px 16px;border-bottom:1px solid #e4eaf5;color:#253d78;font-size:17px;font-weight:bold">${escape(child.name)} ${escape(child.surname)}</td><td style="padding:13px 16px;border-bottom:1px solid #e4eaf5;color:#7d8aa4;text-align:right;font-size:14px">1 lettre</td></tr>`).join('');
+ const html=`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78"><div style="display:none;max-height:0;overflow:hidden">${escape(c.subject)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#fff;border-radius:22px;overflow:hidden"><tr><td style="padding:24px 28px;background:#fff"><img src="${LOGO}" width="155" alt="Beth Habad S. Maurice" style="display:block;width:155px;max-width:100%;height:auto"></td></tr><tr><td style="padding:28px 28px 0;background:#253d78;color:#fff"><p style="margin:0 0 16px;font-size:12px;letter-spacing:1px;color:#ffda7b">${c.badge}</p><h1 style="font:700 34px/1.15 'Trebuchet MS',Arial,sans-serif;margin:0 0 14px;color:#fff">${c.title}</h1><p style="font-size:16px;line-height:1.7;color:#dce5fa;margin:0 0 18px">Moi aussi, j’ai ma lettre !</p><img src="cid:lettres-sofer" alt="Un jeune sofer écrit dans le Séfer Torah avec deux enfants" width="500" style="display:block;width:100%;max-width:500px;height:auto;margin:0 auto"></td></tr><tr><td style="padding:30px 28px"><p style="font-size:17px;line-height:1.8;margin:0 0 20px">Chère famille ${escape(order.children[0]?.surname)},</p><p style="font-size:17px;line-height:1.8;margin:0 0 24px">${c.body}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fc;border-radius:12px">${children}</table>${kind==='confirmed'?`<p style="padding:16px;background:#fff7de;border-radius:12px;font-size:15px;line-height:1.8">Paiement confirmé : <strong>${money(order.total_cents)}</strong><br>${order.children.length} lettre(s)${order.donation_cents>0?' · Don supplémentaire : '+money(order.donation_cents):''}</p><p style="font-size:14px;line-height:1.7;color:#7d8aa4">La confirmation de paiement ne constitue pas un diplôme. Nous vous tiendrons informés de la suite de l’inscription.</p>`:''}<p style="margin:26px 0 0;font-size:16px;line-height:1.8">Avec toute notre amitié,<br><strong>Rav Levi Basange</strong><br>Beth Habad S. Maurice Plateau</p></td></tr><tr><td style="padding:20px 28px;background:#f5f7fc;text-align:center;font-size:12px;line-height:1.7;color:#7d8aa4">Séfer Torah des enfants · Beth Habad S. Maurice<br><a href="https://habadsmaurice.com" style="color:#253d78">habadsmaurice.com</a></td></tr></table></td></tr></table></body></html>`;
+ return{subject:c.subject,html};
+}
+let heroPromise;
+async function heroAttachment(){
+ if(!heroPromise)heroPromise=(async()=>{const source=fs.readFileSync(path.join(__dirname,'../../site/lettre-sefer-Torah/index.html'),'utf8');const match=source.match(/<div class="sofer-stage"><img[^>]*src="data:image\/webp;base64,([^"]+)/);if(!match)throw Error('Illustration introuvable');const sharp=require('sharp');let content=await sharp(Buffer.from(match[1],'base64')).resize({width:800,withoutEnlargement:true}).png().toBuffer();const overlay=source.match(/<svg class="writing-quill"[\s\S]*?<\/svg>/);if(overlay){const meta=await sharp(content).metadata();const svg=overlay[0].replace('<svg ',`<svg width="${meta.width}" height="${meta.height}" `);content=await sharp(content).composite([{input:Buffer.from(svg),top:0,left:0}]).png().toBuffer();}return{filename:'sefer-torah-enfants.png',content,cid:'lettres-sofer'};})().catch(e=>{heroPromise=null;throw e;});
+ return heroPromise;
+}
+function notifications({pool,send,attachment=heroAttachment}){
+ async function ensure(){await pool.query(`CREATE TABLE IF NOT EXISTS lettres_notifications (order_id UUID NOT NULL REFERENCES lettres_orders(id),kind TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,last_error TEXT,sent_at TIMESTAMPTZ,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(order_id,kind))`);}
+ async function queue(order,kind,db=pool){if(!order.email||order.payment_status!=='paid')return false;if(!COPY[kind])throw Error('Notification inconnue');await db.query(`INSERT INTO lettres_notifications(order_id,kind) VALUES($1,$2) ON CONFLICT DO NOTHING`,[order.id,kind]);return true;}
+ async function flush(orderId=null){
+  const claimed=await pool.query(`WITH jobs AS (SELECT order_id,kind FROM lettres_notifications WHERE ($1::uuid IS NULL OR order_id=$1) AND attempts<5 AND (state='pending' OR (state IN ('failed','sending') AND updated_at<NOW()-INTERVAL '15 minutes')) ORDER BY updated_at LIMIT 10 FOR UPDATE SKIP LOCKED) UPDATE lettres_notifications n SET state='sending',attempts=n.attempts+1,updated_at=NOW() FROM jobs j WHERE n.order_id=j.order_id AND n.kind=j.kind RETURNING n.*`,[orderId]);
+  for(const job of claimed.rows){try{
+   const order=(await pool.query('SELECT * FROM lettres_orders WHERE id=$1',[job.order_id])).rows[0];
+   if(!order?.email||order.payment_status!=='paid'||(job.kind==='registered'&&!['registered'].includes(order.diploma_status))||(job.kind==='available'&&order.diploma_status!=='available')){await pool.query("UPDATE lettres_notifications SET state='skipped',updated_at=NOW() WHERE order_id=$1 AND kind=$2",[job.order_id,job.kind]);continue;}
+   const message=emailTemplate(order,job.kind),image=await attachment();
+   const result=await send({to:order.email,...message,attachments:[image],idempotencyKey:'lettres-'+order.id+'-'+job.kind+'-v1'});
+   if(!result?.ok)throw Error(result?.error||'Envoi non confirmé');
+   await pool.query("UPDATE lettres_notifications SET state='sent',sent_at=NOW(),last_error=NULL,updated_at=NOW() WHERE order_id=$1 AND kind=$2",[job.order_id,job.kind]);
+  }catch(e){await pool.query("UPDATE lettres_notifications SET state='failed',last_error=$3,updated_at=NOW() WHERE order_id=$1 AND kind=$2",[job.order_id,job.kind,String(e.message).slice(0,500)]);}}
+ }
+ return{ensure,queue,flush};
+}
+module.exports={notifications,emailTemplate,heroAttachment};

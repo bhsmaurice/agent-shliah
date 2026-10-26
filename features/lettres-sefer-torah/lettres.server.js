@@ -2,6 +2,7 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
+const {notifications}=require('./notifications');
 const MAX_DONATION = 10000000;
 function problem(message, status = 400) { return Object.assign(new Error(message), { status }); }
 function text(value, label, max = 100) {
@@ -35,6 +36,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   const pubkey = () => process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51Q6souBngKkhbSLJhjuyihq5xKbBHFF2G7xcXlMMJjNBJelgxO4Gm9dcFROLx0Nrfb3I1p1ouJAjKOJUCKR9ylXW00ZO4ScuyM'; // Clé publique déjà utilisée par la tsédaka.
   const tokens = id => crypto.createHmac('sha256', secret()).update('lettres:' + id).digest('hex');
   const checkToken = (id, token) => { if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return false; return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(tokens(id))); };
+  const notices=notifications({pool,send:envoyerEmail});
   let ready;
   function ensureDB() {
     if (!ready) ready = pool.query(`CREATE TABLE IF NOT EXISTS lettres_orders (
@@ -46,6 +48,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), paid_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`)
       .then(() => pool.query('ALTER TABLE lettres_orders ADD COLUMN IF NOT EXISTS email TEXT'))
       .then(() => pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS origine TEXT'))
+      .then(() => notices.ensure())
       .catch(e => { ready = null; throw e; });
     return ready;
   }
@@ -87,7 +90,10 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       const amount = eligibleCents(order, process.env.LETTRES_FULL_RECEIPT_APPROVED === 'true');
       const r = await pool.query(`UPDATE lettres_orders SET payment_status='paid',paid_at=COALESCE(paid_at,NOW()),
         receipt_eligible_cents=CASE WHEN payment_status='paid' THEN receipt_eligible_cents ELSE $2 END,updated_at=NOW() WHERE id=$1 RETURNING *`, [order.id, amount]);
-      return r.rows[0];
+      const paid=r.rows[0];
+      await notices.queue(paid,'confirmed');
+      await notices.flush(paid.id).catch(e=>console.error('Lettres notification:',e.message));
+      return paid;
     }
     return order;
   }
@@ -120,7 +126,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   // puis le navigateur l’enlève et l’envoie dans un en-tête pour les lectures.
   app.get('/lettres-sefer-torah', (req, res) => { res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer'); res.sendFile(path.join(__dirname, 'admin.html')); });
   app.get('/lettres-sefer-torah/admin/orders', admin, safe(async (req, res) => {
-    const r = await pool.query(`SELECT o.*,c.id AS receipt_id FROM lettres_orders o LEFT JOIN cerfa_receipts c ON c.numero=o.cerfa_numero ORDER BY o.created_at DESC LIMIT 3000`);
+    const r = await pool.query(`SELECT o.*,c.id AS receipt_id,COALESCE((SELECT json_agg(json_build_object('kind',n.kind,'state',n.state,'sent_at',n.sent_at,'attempts',n.attempts)) FROM lettres_notifications n WHERE n.order_id=o.id),'[]'::json) AS notifications FROM lettres_orders o LEFT JOIN cerfa_receipts c ON c.numero=o.cerfa_numero ORDER BY o.created_at DESC LIMIT 3000`);
     res.json({ ok: true, orders: r.rows });
   }));
   app.post('/lettres-sefer-torah/admin/reconcile', admin, safe(async (req, res) => {
@@ -130,10 +136,21 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
     res.json({ ok: true, confirmed, checked: r.rows.length });
   }));
   app.post('/lettres-sefer-torah/admin/diploma', admin, safe(async (req, res) => {
-    if (!/^[0-9a-f-]{36}$/i.test(req.body.orderId || '') || !['pending', 'registered', 'sent'].includes(req.body.status)) throw problem('Statut invalide.');
-    const r = await pool.query(`UPDATE lettres_orders SET diploma_status=$2,updated_at=NOW() WHERE id=$1 AND payment_status='paid' RETURNING id`, [req.body.orderId, req.body.status]);
-    if (!r.rows.length) throw problem('Inscription payée introuvable.', 404);
-    res.json({ ok: true });
+    if (!/^[0-9a-f-]{36}$/i.test(req.body.orderId || '') || !['pending','registered','available','sent'].includes(req.body.status)) throw problem('Statut invalide.');
+    const client=await pool.connect();let order;
+    try{await client.query('BEGIN');
+      const r=await client.query("UPDATE lettres_orders SET diploma_status=$2,updated_at=NOW() WHERE id=$1 AND payment_status='paid' RETURNING *",[req.body.orderId,req.body.status]);
+      order=r.rows[0];if(!order)throw problem('Inscription payée introuvable.',404);
+      if(['registered','available'].includes(req.body.status))await notices.queue(order,req.body.status,client);
+      await client.query('COMMIT');
+    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+    await notices.flush(order.id).catch(e=>console.error('Lettres notification:',e.message));
+    res.json({ok:true,emailMissing:!order.email});
+  }));
+  app.post('/lettres-sefer-torah/admin/notifications/retry',admin,safe(async(req,res)=>{
+    if(!/^[0-9a-f-]{36}$/i.test(req.body.orderId||''))throw problem('Commande invalide.');
+    await pool.query("UPDATE lettres_notifications SET state='pending',attempts=0,updated_at=NOW() WHERE order_id=$1 AND state='failed'",[req.body.orderId]);
+    await notices.flush(req.body.orderId);res.json({ok:true});
   }));
   app.post('/lettres-sefer-torah/admin/receipt/generate', admin, safe(async (req, res) => {
     if (!/^[0-9a-f-]{36}$/i.test(req.body.orderId || '')) throw problem('Commande invalide.');
@@ -197,6 +214,8 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       return res.json({ ok: true });
     } catch (e) { return res.status(e.status || 503).json({ error: e.status ? e.message : 'Webhook temporairement indisponible.' }); }
   }
+  const notificationTimer=setInterval(()=>ensureDB().then(()=>notices.flush()).catch(e=>console.error('Lettres notification:',e.message)),60000);
+  notificationTimer.unref();
   return { ensureDB, confirmOrder, webhook };
 }
 module.exports = { init, validateOrder, validateDonor, eligibleCents, paymentMatches };

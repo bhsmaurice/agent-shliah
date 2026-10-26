@@ -136,7 +136,7 @@ const HORAIRES_CHABBAT = {
   '2026-10-09': { entree: '19h05', sortie: '20h14', paracha: 'Noach' }
 };
 
-async function envoyerEmail({ to, subject, html, attachments }) {
+async function envoyerEmail({ to, subject, html, attachments, idempotencyKey }) {
   if (!RESEND_API_KEY) {
     console.error('Email non envoyé : RESEND_API_KEY manquant');
     return { ok: false, error: "La variable RESEND_API_KEY n'est pas configurée sur Railway." };
@@ -151,12 +151,13 @@ async function envoyerEmail({ to, subject, html, attachments }) {
     if (attachments && attachments.length) {
       body.attachments = attachments.map((a) => ({
         filename: a.filename,
+        ...(a.cid ? { content_id: a.cid } : {}),
         content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(String(a.content)).toString('base64'),
       }));
     }
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(12000),
     });
