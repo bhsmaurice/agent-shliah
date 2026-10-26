@@ -87,7 +87,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
     if (!order.stripe_payment_intent_id) return order;
     const pi = await stripe('payment_intents/' + encodeURIComponent(order.stripe_payment_intent_id));
     if (paymentMatches(pi, order)) {
-      const amount = eligibleCents(order, process.env.LETTRES_FULL_RECEIPT_APPROVED === 'true');
+      const amount = eligibleCents(order, process.env.LETTRES_FULL_RECEIPT_APPROVED !== 'false');
       const r = await pool.query(`UPDATE lettres_orders SET payment_status='paid',paid_at=COALESCE(paid_at,NOW()),
         receipt_eligible_cents=CASE WHEN payment_status='paid' THEN receipt_eligible_cents ELSE $2 END,updated_at=NOW() WHERE id=$1 RETURNING *`, [order.id, amount]);
       const paid=r.rows[0];
