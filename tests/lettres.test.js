@@ -26,3 +26,18 @@ test('E-mail parent : validation et compatibilité avec les anciens formulaires'
 test('E-mail parent enregistré avec la commande et protégé lors des reprises',async()=>{process.env.STRIPE_SECRET_KEY='sk_test_fake';const previous=global.fetch;try{global.fetch=async()=>({ok:true,json:async()=>({id:'pi_test',client_secret:'secret',status:'processing'})});const email='parent@example.org',h=harness({...makeOrder(),email});const r=await h.call('POST','/lettres-sefer-torah/api/orders',{...payload,email});assert.equal(r.code,200);const insert=h.calls.find(c=>c.sql.includes('INSERT INTO lettres_orders'));assert.equal(insert.args[6],email);assert(h.calls.some(c=>c.sql.includes('ADD COLUMN IF NOT EXISTS email')));assert.equal((await h.call('POST','/lettres-sefer-torah/api/orders',{...payload,email:'other@example.org'})).code,409)}finally{global.fetch=previous}});
 
 test('Statut transmis et diplôme reçu : notification liée au bon état payé',async()=>{for(const status of ['registered','available']){const h=harness({...makeOrder(),payment_status:'paid',email:'parent@example.org'});const r=await h.call('POST','/lettres-sefer-torah/admin/diploma',{orderId:id,status},{'X-Admin-Password':'test-admin'});assert.equal(r.code,200);assert(h.calls.some(c=>c.sql.includes('INSERT INTO lettres_notifications')&&c.args[1]===status));assert(h.calls.some(c=>c.sql==='COMMIT'));}const h=harness(makeOrder());assert.equal((await h.call('POST','/lettres-sefer-torah/admin/diploma',{orderId:id,status:'available'},{'X-Admin-Password':'test-admin'})).code,404);assert(!h.calls.some(c=>c.sql.includes('INSERT INTO lettres_notifications')));});
+
+test('La demande publique génère le PDF et envoie le Cerfa, et conserve le reçu si l’envoi échoue',async()=>{
+ process.env.STRIPE_SECRET_KEY='sk_test_fake';
+ for(const delivery of [{ok:true},{ok:false}]){
+  const order={...makeOrder(),payment_status:'paid',stripe_payment_intent_id:null,receipt_eligible_cents:1800};
+  const h=harness(order,{delivery});
+  const r=await h.call('POST','/lettres-sefer-torah/api/receipt',{orderId:id,orderToken:token(),donor});
+  assert.equal(h.inserts,1);
+  assert.equal(r.code,delivery.ok?200:502);
+  assert.equal(h.calls.some(c=>c.sql.includes("receipt_status='sent'")),delivery.ok);
+  if(delivery.ok)assert.equal(r.payload.sent,true);
+  const retry=await h.call('POST','/lettres-sefer-torah/api/receipt',{orderId:id,orderToken:token(),donor});
+  assert.equal(h.inserts,1);assert.equal(retry.code,delivery.ok?200:502);
+ }
+});
