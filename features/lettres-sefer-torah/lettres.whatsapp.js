@@ -62,7 +62,7 @@ function lectureSimple(texte) {
 async function lectureIA(texte, apiKey) {
   if (!apiKey) return null;
   const consigne = `Tu lis un message WhatsApp envoyé par un parent pour inscrire un ou plusieurs enfants à une lettre dans le Séfer Torah.
-Extrais chaque enfant : prénom, âge (nombre), prénom (hébraïque si donné) de la mère, genre ("Garçon", "Fille" ou "" si inconnu — déduis-le seulement si c'est évident).
+Extrais chaque enfant : prénom, âge (nombre), prénom (hébraïque si donné) de la mère, genre ("Garçon" ou "Fille" UNIQUEMENT si c'est écrit dans le message, sinon "" — ne le devine jamais d'après le prénom).
 Si un même prénom de mère vaut pour plusieurs enfants, répète-le.
 Réponds UNIQUEMENT en JSON : {"enfants":[{"name":"","age":0,"mother":"","gender":""}]}`;
   try {
@@ -108,7 +108,7 @@ function ligneEnfant(c, nom) {
   return '• ' + morceaux.join(', ');
 }
 
-function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey, lienPaiement, envoyerLienPaiement }) {
+function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anthropicKey, lienPaiement, envoyerLienPaiement }) {
   const sessions = {};
 
   async function demarrer(from, texte) {
@@ -118,20 +118,55 @@ function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey, lienPaiemen
       return;
     }
     sessions[from] = { enfants, depuis: Date.now() };
+    await etapeSuivante(from);
+  }
+
+  // Pose « garçon ou fille ? » pour chaque enfant, puis demande le nom de famille.
+  async function etapeSuivante(from) {
+    const session = sessions[from];
+    const i = session.enfants.findIndex(c => !c.gender);
+    if (i >= 0) {
+      session.etape = 'genre'; session.index = i;
+      const c = session.enfants[i];
+      const corps = `${ENTETE}\n\n${ligneEnfant(c)}\n\n*${c.name} : garçon ou fille ?*`;
+      if (sendWhatsAppButtons) {
+        await sendWhatsAppButtons(from, corps, [
+          { id: 'lstg_garcon', title: 'Garçon' }, { id: 'lstg_fille', title: 'Fille' }, { id: 'lstg_annuler', title: 'Annuler' }
+        ]);
+      } else {
+        await sendWhatsApp(from, corps + `\n\nRéponds « garçon » ou « fille ».\n_Écris « annuler » pour annuler._`);
+      }
+      return;
+    }
+    session.etape = 'nom';
     await sendWhatsApp(from,
-      `${ENTETE}\n\n${enfants.map(c => ligneEnfant(c)).join('\n')}\n\n` +
+      `${ENTETE}\n\n${session.enfants.map(c => ligneEnfant(c)).join('\n')}\n\n` +
       `*Quel est le nom de famille ?*\n\n` +
       `Réponds une info par ligne :\n1️⃣ Nom de famille\n2️⃣ Téléphone (facultatif)\n3️⃣ E-mail (facultatif)\n\n` +
       `_Écris « annuler » pour annuler._`);
   }
 
-  async function terminer(from, texte) {
+  async function repondreGenre(from, texte) {
     const session = sessions[from];
-    if (/^\s*annul/i.test(texte)) {
-      delete sessions[from];
-      await sendWhatsApp(from, `${ENTETE}\n\n❌ Inscription annulée.`);
+    const t = String(texte).trim().toLowerCase();
+    const genre = /^(g|gar[cç]on|garcon|boy|m|masculin)\b/.test(t) ? 'Garçon' : /^(f|fille|girl|féminin|feminin)\b/.test(t) ? 'Fille' : '';
+    if (!genre) {
+      const c = session.enfants[session.index];
+      await sendWhatsApp(from, `${ENTETE}\n\nJe n'ai pas compris. *${c.name} : garçon ou fille ?*\n_Écris « annuler » pour annuler._`);
       return;
     }
+    session.enfants[session.index].gender = genre;
+    session.depuis = Date.now();
+    await etapeSuivante(from);
+  }
+
+  async function annuler(from) {
+    delete sessions[from];
+    await sendWhatsApp(from, `${ENTETE}\n\n❌ Inscription annulée.`);
+  }
+
+  async function terminer(from, texte) {
+    const session = sessions[from];
     const { nom, phone, email } = lireReponse(texte);
     if (!nom) {
       await sendWhatsApp(from, `${ENTETE}\n\nIl me faut au moins le *nom de famille* sur la première ligne.\n_Écris « annuler » pour annuler._`);
@@ -176,11 +211,24 @@ function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey, lienPaiemen
     const session = sessions[from];
     if (session && Date.now() - session.depuis > SESSION_TTL) delete sessions[from];
     if (!sessions[from] && (estTransfere(message) || ressembleInscription(texte))) { await demarrer(from, texte); return true; }
-    if (sessions[from]) { await terminer(from, texte); return true; }
+    if (sessions[from]) {
+      if (/^\s*annul/i.test(texte)) await annuler(from);
+      else if (sessions[from].etape === 'genre') await repondreGenre(from, texte);
+      else await terminer(from, texte);
+      return true;
+    }
     return false;
   }
 
-  return { handle };
+  // Boutons Garçon / Fille / Annuler
+  async function handleBouton(from, buttonId) {
+    if (!isAdmin(from) || !sessions[from]) return;
+    if (buttonId === 'lstg_annuler') return annuler(from);
+    if (sessions[from].etape !== 'genre') return;
+    await repondreGenre(from, buttonId === 'lstg_fille' ? 'fille' : 'garçon');
+  }
+
+  return { handle, handleBouton };
 }
 
 module.exports = { init, ressembleInscription, lireReponse, lectureSimple, estTransfere, normaliserEnfants };

@@ -1365,6 +1365,7 @@ app.post('/webhook', async (req, res) => {
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
+      if (buttonId && buttonId.indexOf('lstg_') === 0) { await lettresWhatsapp.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('sefer') === 0) { 
         let textReponse = '';
         if (buttonId === 'sefergarcon') textReponse = 'Garçon';
@@ -3042,7 +3043,7 @@ async function envoyerRappelsHavruta() {
 repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE });
 require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, getNextCerfaNumero, sendWhatsAppDocument, envoyerEmail, marquerOrigineCerfa });
 const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, envoyerEmail });
-const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement });
+const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 
 initDB().then(async () => {
