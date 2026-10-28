@@ -201,10 +201,32 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   // ===== Lien de paiement (inscriptions faites par WhatsApp, statut « En attente ») =====
   const baseUrl = () => (process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://agent-shliah-production.up.railway.app')).replace(/\/+$/, '');
   function lienPaiement(orderId) { return secret() ? baseUrl() + '/lettres-sefer-torah/payer?o=' + orderId + '&t=' + tokens(orderId) : null; }
-  async function attacherPaiement(orderId, piId) {
+  async function attacherPaiement(orderId, piId, donCents) {
     if (!/^[0-9a-f-]{36}$/i.test(orderId || '') || !piId) return null;
-    const r = await pool.query("UPDATE lettres_orders SET stripe_payment_intent_id=$2,updated_at=NOW() WHERE id=$1 AND (stripe_payment_intent_id IS NULL OR stripe_payment_intent_id=$2) RETURNING *", [orderId, piId]);
+    const don = Number.parseInt(donCents, 10);
+    const r = Number.isSafeInteger(don) && don >= 0 && don <= MAX_DONATION
+      ? await pool.query("UPDATE lettres_orders SET stripe_payment_intent_id=$2,donation_cents=$3,total_cents=jsonb_array_length(children)*100+$3,updated_at=NOW() WHERE id=$1 AND payment_status<>'paid' AND (stripe_payment_intent_id IS NULL OR stripe_payment_intent_id=$2) RETURNING *", [orderId, piId, don])
+      : await pool.query("UPDATE lettres_orders SET stripe_payment_intent_id=$2,updated_at=NOW() WHERE id=$1 AND (stripe_payment_intent_id IS NULL OR stripe_payment_intent_id=$2) RETURNING *", [orderId, piId]);
     return r.rows[0] || null;
+  }
+  function pageDon(order, lienBase) {
+    const n = order.children.length, noms = esc(order.children.map(c => c.name + ' ' + c.surname).join(', '));
+    const choix = [0, 5, 10, 18, 36, 52].map(v => `<label style="flex:1 1 30%;min-width:90px"><input type="radio" name="don" value="${v}" ${v === 0 ? 'checked' : ''} style="display:none" onchange="maj()"><span class="c">${v === 0 ? 'Sans don' : v + ' €'}</span></label>`).join('');
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lettre dans le Séfer Torah</title>
+<style>body{margin:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78}.w{max-width:480px;margin:28px auto;padding:0 16px}.k{background:#fff;border-radius:18px;padding:24px;border-left:6px solid #253d78}
+.c{display:block;text-align:center;padding:13px 6px;border:2px solid #dbe3f3;border-radius:12px;font-weight:bold;cursor:pointer}input:checked+.c{border-color:#253d78;background:#253d78;color:#fff}
+.g{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#autre{width:100%;box-sizing:border-box;padding:12px;border:2px solid #dbe3f3;border-radius:12px;font-size:16px;margin-top:4px}
+button{width:100%;margin-top:18px;padding:16px;border:0;border-radius:30px;background:#253d78;color:#fff;font-size:18px;font-weight:bold;cursor:pointer}.p{font-size:13px;color:#7d8aa4;text-align:center;margin-top:10px}</style></head>
+<body><div class="w"><div class="k"><p style="margin:0 0 8px;font-size:13px;letter-spacing:1px;color:#7d8aa4">📜 LETTRE DANS LE SÉFER TORAH</p>
+<h1 style="margin:0 0 6px;font-size:22px">${noms}</h1><p style="margin:0 0 18px;font-size:16px">${n} lettre${n > 1 ? 's' : ''} : <strong>${money(n * 100)}</strong></p>
+<form method="get" action="${esc(lienBase)}" onsubmit="return go()"><input type="hidden" name="o" value="${order.id}"><input type="hidden" name="t" value="${tokens(order.id)}">
+<p style="margin:0;font-weight:bold">Souhaitez-vous ajouter un don ? <span style="font-weight:normal;color:#7d8aa4">(facultatif)</span></p>
+<div class="g">${choix}</div><input id="autre" type="number" min="1" max="10000" step="1" inputmode="numeric" placeholder="Autre montant (€)" oninput="maj()">
+<input type="hidden" name="don" id="donf" value="0"><button id="b">Payer ${money(n * 100)}</button></form>
+<p class="p">Apple Pay, Google Pay ou carte bancaire · paiement sécurisé<br>Un don ouvre droit à un reçu fiscal (Cerfa).</p></div></div>
+<script>var base=${n * 100};function don(){var a=parseInt(document.getElementById('autre').value,10);if(a>0)return Math.min(a,10000);var r=document.querySelector('input[name=don]:checked');return r?parseInt(r.value,10):0}
+function maj(){var a=document.getElementById('autre');if(event&&event.target&&event.target.name==='don')a.value='';var d=don();document.getElementById('donf').value=d;document.getElementById('b').textContent='Payer '+((base+d*100)/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'})}
+function go(){document.querySelectorAll('input[name=don][type=radio]').forEach(function(r){r.disabled=true});document.getElementById('donf').value=don();document.getElementById('b').disabled=true;return true}</script></body></html>`;
   }
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   function pageSimple(titre, texte, ok) {
@@ -213,6 +235,15 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
 <div style="background:#fff;border-radius:18px;padding:28px;border-left:6px solid ${ok ? '#2e9e5b' : '#e0a400'}"><p style="margin:0 0 8px;font-size:13px;letter-spacing:1px;color:#7d8aa4">📜 LETTRE DANS LE SÉFER TORAH</p>
 <h1 style="margin:0 0 14px;font-size:24px">${esc(titre)}</h1><p style="margin:0;font-size:16px;line-height:1.7">${texte}</p>
 <p style="margin:22px 0 0;font-size:14px;color:#7d8aa4">Beth Habad S. Maurice Plateau</p></div></div></body></html>`;
+  }
+  function formulaireCerfa(order) {
+    if (!(order.donation_cents > 0 && order.receipt_eligible_cents > 0) || order.cerfa_numero) return '';
+    const champ = (id, label, type = 'text', val = '') => `<input id="${id}" type="${type}" placeholder="${label}" value="${esc(val)}" required style="width:100%;box-sizing:border-box;padding:11px;margin:5px 0;border:2px solid #dbe3f3;border-radius:10px;font-size:15px">`;
+    return `<div id="cerfa" style="margin-top:22px;padding-top:18px;border-top:1px solid #e4eaf5"><strong>Votre reçu fiscal (Cerfa)</strong><br><span style="font-size:14px;color:#7d8aa4">Pour votre don de ${money(order.receipt_eligible_cents)}. Remplissez ce formulaire, le reçu vous sera envoyé par e-mail.</span>
+<form id="cf" style="margin-top:10px">${champ('firstName', 'Prénom')}${champ('lastName', 'Nom', 'text', order.children[0]?.surname || '')}${champ('address', 'Adresse')}${champ('postalCode', 'Code postal')}${champ('city', 'Ville')}${champ('country', 'Pays', 'text', 'France')}${champ('email', 'E-mail', 'email', order.email || '')}${champ('phone', 'Téléphone', 'tel', order.phone || '')}
+<button style="width:100%;margin-top:10px;padding:14px;border:0;border-radius:26px;background:#253d78;color:#fff;font-size:16px;font-weight:bold">Recevoir mon reçu</button><p id="cm" style="font-size:14px"></p></form></div>
+<script>document.getElementById('cf').onsubmit=async function(e){e.preventDefault();var b=this.querySelector('button'),m=document.getElementById('cm');b.disabled=true;m.textContent='Envoi…';var d={};['firstName','lastName','address','postalCode','city','country','email','phone'].forEach(function(k){d[k]=document.getElementById(k).value.trim()});d.phone=d.phone.replace(/[^0-9]/g,'');
+try{var r=await fetch('${baseUrl()}/lettres-sefer-torah/api/receipt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:'${order.id}',orderToken:'${tokens(order.id)}',donor:d})});var j=await r.json();if(j.ok){document.getElementById('cerfa').innerHTML='<strong>✅ Reçu '+j.numero+' envoyé par e-mail.</strong>'}else{m.textContent=j.error||'Erreur, réessayez.';b.disabled=false}}catch(x){m.textContent='Erreur, réessayez.';b.disabled=false}}</script>`;
   }
   async function commandeDuLien(req) {
     const id = String(req.query.o || ''), t = String(req.query.t || '');
@@ -227,6 +258,10 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       if (!order) return res.status(404).send(pageSimple('Lien invalide', 'Ce lien de paiement n’est pas valide. Contactez le Beth Habad au 07 70 24 17 46.'));
       if (order.payment_status !== 'paid' && order.stripe_payment_intent_id) order = await confirmOrder(order);
       if (order.payment_status === 'paid') return res.send(pageSimple('Déjà réglé ✅', 'Ce règlement a déjà été reçu. Merci !', true));
+      if (req.query.don === undefined) return res.send(pageDon(order, baseUrl() + '/lettres-sefer-torah/payer'));
+      const donEuros = Number.parseInt(req.query.don, 10);
+      if (!Number.isSafeInteger(donEuros) || donEuros < 0 || donEuros > 10000) return res.redirect(303, lienPaiement(order.id));
+      const donCents = donEuros * 100;
       const noms = order.children.map(c => c.name).join(', ');
       const params = {
         mode: 'payment', locale: 'fr',
@@ -237,14 +272,21 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
         'line_items[0][quantity]': String(order.children.length),
         'payment_intent_data[metadata][lettres_order_id]': order.id,
         'payment_intent_data[metadata][source]': 'lettres_sefer_torah',
+        'payment_intent_data[metadata][lettres_donation_cents]': String(donCents),
+        'metadata[lettres_donation_cents]': String(donCents),
         'payment_intent_data[description]': 'Lettres Séfer Torah enfants — Beth Habad S. Maurice',
         'metadata[lettres_order_id]': order.id,
         success_url: baseUrl() + '/lettres-sefer-torah/merci?o=' + order.id + '&t=' + tokens(order.id) + '&s={CHECKOUT_SESSION_ID}',
         cancel_url: lienPaiement(order.id)
       };
       if (order.email) { params.customer_email = order.email; params['payment_intent_data[receipt_email]'] = order.email; }
-      if (order.children.length * 100 !== order.total_cents) return res.status(409).send(pageSimple('Montant à vérifier', 'Merci de contacter le Beth Habad au 07 70 24 17 46.'));
-      const session = await stripe('checkout/sessions', params, 'lettres-co-' + order.id + '-' + Math.floor(Date.now() / 3600000));
+      if (donCents > 0) {
+        params['line_items[1][price_data][currency]'] = 'eur';
+        params['line_items[1][price_data][unit_amount]'] = String(donCents);
+        params['line_items[1][price_data][product_data][name]'] = 'Don au Beth Habad S. Maurice';
+        params['line_items[1][quantity]'] = '1';
+      }
+      const session = await stripe('checkout/sessions', params, 'lettres-co-' + order.id + '-' + donCents + '-' + Math.floor(Date.now() / 3600000));
       return res.redirect(303, session.url);
     } catch (e) {
       console.error('Lettres payer:', e.message);
@@ -261,11 +303,11 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       if (order.payment_status !== 'paid' && /^cs_[A-Za-z0-9_]+$/.test(sid)) {
         const session = await stripe('checkout/sessions/' + encodeURIComponent(sid));
         if (session.metadata?.lettres_order_id === order.id && session.payment_intent) {
-          const attached = await attacherPaiement(order.id, typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id);
+          const attached = await attacherPaiement(order.id, typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id, session.metadata.lettres_donation_cents);
           if (attached) order = await confirmOrder(attached);
         }
       }
-      if (order.payment_status === 'paid') return res.send(pageSimple('Merci ! ✅', 'Votre paiement est bien reçu. La lettre de ' + esc(order.children.map(c => c.name).join(', ')) + ' dans le Séfer Torah est confirmée.' + (order.email ? '<br>Un e-mail de confirmation vous a été envoyé.' : ''), true));
+      if (order.payment_status === 'paid') return res.send(pageSimple('Merci ! ✅', 'Votre paiement est bien reçu. La lettre de ' + esc(order.children.map(c => c.name).join(', ')) + ' dans le Séfer Torah est confirmée.' + (order.email ? '<br>Un e-mail de confirmation vous a été envoyé.' : '') + formulaireCerfa(order), true));
       return res.send(pageSimple('Paiement en cours de vérification', 'Merci ! Votre paiement est en cours de vérification. Vous recevrez une confirmation dès qu’il sera validé.'));
     } catch (e) {
       console.error('Lettres merci:', e.message);
@@ -283,7 +325,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
 <p style="font-size:17px;line-height:1.8;margin:0 0 22px">Nous avons bien enregistré l’inscription de vos enfants pour leur lettre dans le Séfer Torah. Pour la finaliser, il ne reste plus qu’à régler la participation de <strong>1 € par lettre</strong>.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fc;border-radius:12px">${enfants}</table>
 <p style="text-align:center;margin:28px 0 10px"><a href="${esc(lien)}" style="display:inline-block;background:#253d78;color:#fff;text-decoration:none;font-size:18px;font-weight:bold;padding:16px 34px;border-radius:30px">Régler ${money(order.total_cents)}</a></p>
-<p style="text-align:center;font-size:13px;color:#7d8aa4;margin:0">Apple Pay, Google Pay ou carte bancaire · paiement sécurisé</p>
+<p style="text-align:center;font-size:13px;color:#7d8aa4;margin:0">Apple Pay, Google Pay ou carte bancaire · paiement sécurisé<br>Vous pourrez aussi ajouter un don si vous le souhaitez.</p>
 <p style="margin:26px 0 0;font-size:16px;line-height:1.8">Avec toute notre amitié,<br><strong>Rav Levi Basanger</strong><br>Beth Habad S. Maurice Plateau</p></td></tr>
 <tr><td style="padding:20px 28px;background:#f5f7fc;text-align:center;font-size:12px;line-height:1.7;color:#7d8aa4">Séfer Torah des enfants · Beth Habad S. Maurice<br><a href="https://habadsmaurice.com" style="color:#253d78">habadsmaurice.com</a></td></tr></table></td></tr></table></body></html>`;
     return envoyerEmail({ to: order.email, subject: 'Lettre dans le Séfer Torah — finalisez l’inscription', html, idempotencyKey: 'lettres-lien-' + order.id });
@@ -305,7 +347,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
         if (pi?.metadata?.source === 'lettres_sefer_torah') {
           await ensureDB();
           let order = (await pool.query('SELECT * FROM lettres_orders WHERE stripe_payment_intent_id=$1', [pi.id])).rows[0];
-          if (!order) order = await attacherPaiement(pi.metadata?.lettres_order_id, pi.id);
+          if (!order) order = await attacherPaiement(pi.metadata?.lettres_order_id, pi.id, pi.metadata?.lettres_donation_cents);
           if (!order) throw problem('Commande pas encore disponible. Réessayer.', 503);
           await confirmOrder(order); // Revérification auprès de Stripe ; doublons sans effet.
         }
