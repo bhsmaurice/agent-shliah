@@ -13,6 +13,12 @@ function estTransfere(message) {
   return Boolean(message && message.context && (message.context.forwarded || message.context.frequently_forwarded));
 }
 
+// Message tapé directement (non transféré) : « Israël, 10 ans, mère Sarah »
+function ressembleInscription(texte) {
+  const t = String(texte || '');
+  return /\d{1,3}\s*ans?\b/i.test(t) && /(m[eè]re|maman)/i.test(t) && t.length < 1500;
+}
+
 function nettoyer(v, max = 60) {
   return String(v == null ? '' : v).replace(/[\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 }
@@ -160,7 +166,7 @@ function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey }) {
     if (!isAdmin(from)) return false;
     const session = sessions[from];
     if (session && Date.now() - session.depuis > SESSION_TTL) delete sessions[from];
-    if (estTransfere(message)) { await demarrer(from, texte); return true; }
+    if (!sessions[from] && (estTransfere(message) || ressembleInscription(texte))) { await demarrer(from, texte); return true; }
     if (sessions[from]) { await terminer(from, texte); return true; }
     return false;
   }
@@ -168,4 +174,4 @@ function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey }) {
   return { handle };
 }
 
-module.exports = { init, lireReponse, lectureSimple, estTransfere, normaliserEnfants };
+module.exports = { init, ressembleInscription, lireReponse, lectureSimple, estTransfere, normaliserEnfants };
