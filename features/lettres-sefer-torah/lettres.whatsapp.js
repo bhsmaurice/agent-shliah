@@ -212,7 +212,7 @@ function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anth
     if (session && Date.now() - session.depuis > SESSION_TTL) delete sessions[from];
     if (!sessions[from] && (estTransfere(message) || ressembleInscription(texte))) { await demarrer(from, texte); return true; }
     if (sessions[from]) {
-      if (/^\s*annul/i.test(texte)) await annuler(from);
+      if (/^\s*annu/i.test(texte)) await annuler(from);
       else if (sessions[from].etape === 'genre') await repondreGenre(from, texte);
       else await terminer(from, texte);
       return true;

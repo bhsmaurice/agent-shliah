@@ -190,6 +190,14 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       await client.query('COMMIT'); return { ok: true };
     } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
   }
+  // L'admin saisit lui-même les coordonnées du donateur (fenêtre fermée avant le formulaire Cerfa)
+  app.post('/lettres-sefer-torah/admin/receipt/donor', admin, safe(async (req, res) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.body.orderId || '')) throw problem('Commande invalide.');
+    const donor = validateDonor(req.body.donor);
+    const r = await pool.query(`UPDATE lettres_orders SET receipt_data=$2,receipt_status='requested',updated_at=NOW() WHERE id=$1 AND payment_status='paid' AND donation_cents>0 AND receipt_eligible_cents>0 AND cerfa_numero IS NULL RETURNING id`, [req.body.orderId, JSON.stringify(donor)]);
+    if (!r.rows[0]) throw problem('Aucun Cerfa possible pour ce règlement (pas de don, non payé ou Cerfa déjà créé).', 403);
+    res.json({ ok: true });
+  }));
   app.post('/lettres-sefer-torah/admin/receipt/generate', admin, safe(async (req,res)=>{
     if(!/^[0-9a-f-]{36}$/i.test(req.body.orderId||''))throw problem('Commande invalide.');
     res.json(await issueReceipt(req.body.orderId));
