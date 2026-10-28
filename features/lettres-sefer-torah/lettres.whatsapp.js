@@ -108,7 +108,7 @@ function ligneEnfant(c, nom) {
   return '• ' + morceaux.join(', ');
 }
 
-function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey }) {
+function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey, lienPaiement, envoyerLienPaiement }) {
   const sessions = {};
 
   async function demarrer(from, texte) {
@@ -156,9 +156,18 @@ function init({ pool, sendWhatsApp, isAdmin, ensureDB, anthropicKey }) {
     delete sessions[from];
     const lignes = session.enfants.map(c => ligneEnfant(c, nom)).join('\n');
     const extra = [phone ? '📞 +' + phone : '', email ? '✉️ ' + email : ''].filter(Boolean).join('\n');
+    let infoEmail = '';
+    if (email && envoyerLienPaiement) {
+      try {
+        const r = await envoyerLienPaiement({ id, children, email, total_cents: children.length * 100 });
+        infoEmail = r && r.ok ? `\n\n✉️ Email avec le lien de paiement envoyé à ${email}` : `\n\n⚠️ L'email n'a pas pu partir (${(r && r.error) || 'erreur'}).`;
+      } catch (e) { infoEmail = `\n\n⚠️ L'email n'a pas pu partir.`; }
+    }
+    const lien = lienPaiement ? lienPaiement(id) : null;
     await sendWhatsApp(from,
       `${ENTETE}\n\n✅ Inscrit${children.length > 1 ? 's' : ''} :\n${lignes}${extra ? '\n' + extra : ''}\n\n` +
-      `⏳ *En attente de paiement* (${children.length} €)`);
+      `⏳ *En attente de paiement* (${children.length} €)` + infoEmail +
+      (lien ? `\n\n🔗 Lien de paiement (à transférer au parent si besoin) :\n${lien}` : ''));
   }
 
   // Renvoie true si le message a été traité ici.

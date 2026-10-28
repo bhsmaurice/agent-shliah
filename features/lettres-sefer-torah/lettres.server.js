@@ -4,6 +4,7 @@ const path = require('node:path');
 const { isDeepStrictEqual } = require('node:util');
 const {notifications}=require('./notifications');
 const MAX_DONATION = 10000000;
+const money = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n / 100);
 function problem(message, status = 400) { return Object.assign(new Error(message), { status }); }
 function text(value, label, max = 100) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value)) throw problem(label + ' invalide.');
@@ -197,6 +198,96 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
     if(!/^[0-9a-f-]{36}$/i.test(req.body.orderId||''))throw problem('Commande invalide.');
     res.json(await sendReceipt(req.body.orderId));
   }));
+  // ===== Lien de paiement (inscriptions faites par WhatsApp, statut « En attente ») =====
+  const baseUrl = () => (process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://agent-shliah-production.up.railway.app')).replace(/\/+$/, '');
+  function lienPaiement(orderId) { return secret() ? baseUrl() + '/lettres-sefer-torah/payer?o=' + orderId + '&t=' + tokens(orderId) : null; }
+  async function attacherPaiement(orderId, piId) {
+    if (!/^[0-9a-f-]{36}$/i.test(orderId || '') || !piId) return null;
+    const r = await pool.query("UPDATE lettres_orders SET stripe_payment_intent_id=$2,updated_at=NOW() WHERE id=$1 AND (stripe_payment_intent_id IS NULL OR stripe_payment_intent_id=$2) RETURNING *", [orderId, piId]);
+    return r.rows[0] || null;
+  }
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function pageSimple(titre, texte, ok) {
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lettres Séfer Torah</title></head>
+<body style="margin:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78"><div style="max-width:480px;margin:40px auto;padding:0 16px">
+<div style="background:#fff;border-radius:18px;padding:28px;border-left:6px solid ${ok ? '#2e9e5b' : '#e0a400'}"><p style="margin:0 0 8px;font-size:13px;letter-spacing:1px;color:#7d8aa4">📜 LETTRE DANS LE SÉFER TORAH</p>
+<h1 style="margin:0 0 14px;font-size:24px">${esc(titre)}</h1><p style="margin:0;font-size:16px;line-height:1.7">${texte}</p>
+<p style="margin:22px 0 0;font-size:14px;color:#7d8aa4">Beth Habad S. Maurice Plateau</p></div></div></body></html>`;
+  }
+  async function commandeDuLien(req) {
+    const id = String(req.query.o || ''), t = String(req.query.t || '');
+    if (!secret() || !/^[0-9a-f-]{36}$/i.test(id) || !checkToken(id, t)) return null;
+    return (await pool.query('SELECT * FROM lettres_orders WHERE id=$1', [id])).rows[0] || null;
+  }
+  app.get('/lettres-sefer-torah/payer', publicLimit, async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
+    try {
+      await ensureDB();
+      let order = await commandeDuLien(req);
+      if (!order) return res.status(404).send(pageSimple('Lien invalide', 'Ce lien de paiement n’est pas valide. Contactez le Beth Habad au 07 70 24 17 46.'));
+      if (order.payment_status !== 'paid' && order.stripe_payment_intent_id) order = await confirmOrder(order);
+      if (order.payment_status === 'paid') return res.send(pageSimple('Déjà réglé ✅', 'Ce règlement a déjà été reçu. Merci !', true));
+      const noms = order.children.map(c => c.name).join(', ');
+      const params = {
+        mode: 'payment', locale: 'fr',
+        'line_items[0][price_data][currency]': 'eur',
+        'line_items[0][price_data][unit_amount]': '100',
+        'line_items[0][price_data][product_data][name]': 'Lettre dans le Séfer Torah',
+        'line_items[0][price_data][product_data][description]': ('Pour : ' + noms).slice(0, 300),
+        'line_items[0][quantity]': String(order.children.length),
+        'payment_intent_data[metadata][lettres_order_id]': order.id,
+        'payment_intent_data[metadata][source]': 'lettres_sefer_torah',
+        'payment_intent_data[description]': 'Lettres Séfer Torah enfants — Beth Habad S. Maurice',
+        'metadata[lettres_order_id]': order.id,
+        success_url: baseUrl() + '/lettres-sefer-torah/merci?o=' + order.id + '&t=' + tokens(order.id) + '&s={CHECKOUT_SESSION_ID}',
+        cancel_url: lienPaiement(order.id)
+      };
+      if (order.email) { params.customer_email = order.email; params['payment_intent_data[receipt_email]'] = order.email; }
+      if (order.children.length * 100 !== order.total_cents) return res.status(409).send(pageSimple('Montant à vérifier', 'Merci de contacter le Beth Habad au 07 70 24 17 46.'));
+      const session = await stripe('checkout/sessions', params, 'lettres-co-' + order.id + '-' + Math.floor(Date.now() / 3600000));
+      return res.redirect(303, session.url);
+    } catch (e) {
+      console.error('Lettres payer:', e.message);
+      return res.status(503).send(pageSimple('Petit souci', 'Le paiement est momentanément indisponible. Réessayez dans quelques minutes.'));
+    }
+  });
+  app.get('/lettres-sefer-torah/merci', publicLimit, async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
+    try {
+      await ensureDB();
+      let order = await commandeDuLien(req);
+      if (!order) return res.status(404).send(pageSimple('Lien invalide', 'Contactez le Beth Habad au 07 70 24 17 46.'));
+      const sid = String(req.query.s || '');
+      if (order.payment_status !== 'paid' && /^cs_[A-Za-z0-9_]+$/.test(sid)) {
+        const session = await stripe('checkout/sessions/' + encodeURIComponent(sid));
+        if (session.metadata?.lettres_order_id === order.id && session.payment_intent) {
+          const attached = await attacherPaiement(order.id, typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id);
+          if (attached) order = await confirmOrder(attached);
+        }
+      }
+      if (order.payment_status === 'paid') return res.send(pageSimple('Merci ! ✅', 'Votre paiement est bien reçu. La lettre de ' + esc(order.children.map(c => c.name).join(', ')) + ' dans le Séfer Torah est confirmée.' + (order.email ? '<br>Un e-mail de confirmation vous a été envoyé.' : ''), true));
+      return res.send(pageSimple('Paiement en cours de vérification', 'Merci ! Votre paiement est en cours de vérification. Vous recevrez une confirmation dès qu’il sera validé.'));
+    } catch (e) {
+      console.error('Lettres merci:', e.message);
+      return res.send(pageSimple('Merci !', 'Votre paiement est en cours de vérification.'));
+    }
+  });
+  async function envoyerLienPaiement(order) {
+    const lien = lienPaiement(order.id);
+    if (!order.email || !lien) return { ok: false, error: !lien ? 'Paiement non configuré' : 'Pas d’e-mail' };
+    const enfants = order.children.map(c => `<tr><td style="padding:12px 16px;border-bottom:1px solid #e4eaf5;color:#253d78;font-size:17px;font-weight:bold">${esc(c.name)} ${esc(c.surname)}</td><td style="padding:12px 16px;border-bottom:1px solid #e4eaf5;color:#7d8aa4;text-align:right;font-size:14px">1 lettre · 1 €</td></tr>`).join('');
+    const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#fff;border-radius:22px;overflow:hidden">
+<tr><td style="padding:24px 28px"><img src="https://habadsmaurice.com/wp-content/uploads/2026/09/cropped-logo-Habad-s-Maurice.png" width="155" alt="Beth Habad S. Maurice" style="display:block;width:155px;height:auto"></td></tr>
+<tr><td style="padding:28px;background:#253d78;color:#fff"><p style="margin:0 0 14px;font-size:12px;letter-spacing:1px;color:#ffda7b">LETTRE DANS LE SÉFER TORAH</p><h1 style="font:700 30px/1.2 'Trebuchet MS',Arial,sans-serif;margin:0;color:#fff">Moi aussi, j’ai ma lettre !</h1></td></tr>
+<tr><td style="padding:30px 28px"><p style="font-size:17px;line-height:1.8;margin:0 0 18px">Chère famille ${esc(order.children[0]?.surname)},</p>
+<p style="font-size:17px;line-height:1.8;margin:0 0 22px">Nous avons bien enregistré l’inscription de vos enfants pour leur lettre dans le Séfer Torah. Pour la finaliser, il ne reste plus qu’à régler la participation de <strong>1 € par lettre</strong>.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fc;border-radius:12px">${enfants}</table>
+<p style="text-align:center;margin:28px 0 10px"><a href="${esc(lien)}" style="display:inline-block;background:#253d78;color:#fff;text-decoration:none;font-size:18px;font-weight:bold;padding:16px 34px;border-radius:30px">Régler ${money(order.total_cents)}</a></p>
+<p style="text-align:center;font-size:13px;color:#7d8aa4;margin:0">Apple Pay, Google Pay ou carte bancaire · paiement sécurisé</p>
+<p style="margin:26px 0 0;font-size:16px;line-height:1.8">Avec toute notre amitié,<br><strong>Rav Levi Basanger</strong><br>Beth Habad S. Maurice Plateau</p></td></tr>
+<tr><td style="padding:20px 28px;background:#f5f7fc;text-align:center;font-size:12px;line-height:1.7;color:#7d8aa4">Séfer Torah des enfants · Beth Habad S. Maurice<br><a href="https://habadsmaurice.com" style="color:#253d78">habadsmaurice.com</a></td></tr></table></td></tr></table></body></html>`;
+    return envoyerEmail({ to: order.email, subject: 'Lettre dans le Séfer Torah — finalisez l’inscription', html, idempotencyKey: 'lettres-lien-' + order.id });
+  }
   async function webhook(req, res) {
     res.set('Cache-Control', 'no-store');
     const signingSecret = process.env.LETTRES_STRIPE_WEBHOOK_SECRET;
@@ -213,7 +304,8 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
         const pi = event.data?.object;
         if (pi?.metadata?.source === 'lettres_sefer_torah') {
           await ensureDB();
-          const order = (await pool.query('SELECT * FROM lettres_orders WHERE stripe_payment_intent_id=$1', [pi.id])).rows[0];
+          let order = (await pool.query('SELECT * FROM lettres_orders WHERE stripe_payment_intent_id=$1', [pi.id])).rows[0];
+          if (!order) order = await attacherPaiement(pi.metadata?.lettres_order_id, pi.id);
           if (!order) throw problem('Commande pas encore disponible. Réessayer.', 503);
           await confirmOrder(order); // Revérification auprès de Stripe ; doublons sans effet.
         }
@@ -223,6 +315,6 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   }
   const notificationTimer=setInterval(()=>ensureDB().then(()=>notices.flush()).catch(e=>console.error('Lettres notification:',e.message)),60000);
   notificationTimer.unref();
-  return { ensureDB, confirmOrder, webhook };
+  return { ensureDB, confirmOrder, webhook, lienPaiement, envoyerLienPaiement };
 }
 module.exports = { init, validateOrder, validateDonor, eligibleCents, paymentMatches };
