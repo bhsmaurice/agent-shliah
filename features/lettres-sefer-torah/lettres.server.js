@@ -200,7 +200,11 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   }));
   app.post('/lettres-sefer-torah/admin/receipt/generate', admin, safe(async (req,res)=>{
     if(!/^[0-9a-f-]{36}$/i.test(req.body.orderId||''))throw problem('Commande invalide.');
-    res.json(await issueReceipt(req.body.orderId));
+    const receipt = await issueReceipt(req.body.orderId);
+    // Envoi automatique par e-mail dès la création (si une adresse est connue)
+    const o = (await pool.query('SELECT receipt_data FROM lettres_orders WHERE id=$1', [req.body.orderId])).rows[0];
+    if (o?.receipt_data?.email) { const d = await sendReceipt(req.body.orderId); return res.json({ ...receipt, sent: true, alreadySent: Boolean(d.alreadySent) }); }
+    res.json({ ...receipt, sent: false });
   }));
   app.post('/lettres-sefer-torah/admin/receipt/send', admin, safe(async (req,res)=>{
     if(!/^[0-9a-f-]{36}$/i.test(req.body.orderId||''))throw problem('Commande invalide.');
