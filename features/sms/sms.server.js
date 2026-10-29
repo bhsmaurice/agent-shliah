@@ -121,7 +121,8 @@ async function appelAPI(methode, chemin, corps) {
 async function credits() {
   const d = await appelAPI('GET', '/credits');
   if (String(d.status) !== '1') throw new Error(d.message || 'Réponse SMSFactor inattendue');
-  return { credits: Number(d.credits) || 0, postpaid: !!d.postpaid_limit || Number(d.postpaid) > 0, illimite: !!d.unlimited };
+  const vrai = v => v === true || v === 1 || v === '1' || v === 'true';
+  return { credits: Number(d.credits) || 0, postpaid: vrai(d.postpaid_limit) || Number(d.postpaid) > 0, illimite: vrai(d.unlimited) };
 }
 
 async function numerosStop() {
@@ -298,6 +299,8 @@ function init(options) {
         tous: await compte('SELECT COUNT(*)::int AS n FROM contacts'),
       },
       stops: await compte('SELECT COUNT(*)::int AS n FROM sms_stop'),
+      envoyesMois: await compte("SELECT COALESCE(SUM(nb_envoyes),0)::int AS n FROM sms_envois WHERE created_at >= date_trunc('month', NOW())"),
+      recus: await compte('SELECT COUNT(*)::int AS n FROM sms_recus'),
     });
   });
 
