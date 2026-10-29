@@ -1294,7 +1294,8 @@ async function envoyerRelancePaiement(p) {
   message += `.`;
   if (p.lien_paiement) message += `\n\nVoici le lien pour régler en ligne :\n${p.lien_paiement}`;
   message += `\n\nMerci beaucoup !\n\n${getSignature()}`;
-  await sendWhatsApp(p.phone, message);
+  // WhatsApp d'abord ; si ça ne passe pas (fenêtre 24 h fermée…), secours par SMS
+  await smsFeature.whatsappOuSMS(p.phone, message, 'relance_paiement');
   await pool.query(
     `UPDATE paiements SET nb_relances = nb_relances + 1, derniere_relance = NOW(), statut = CASE WHEN statut = 'en_attente' THEN 'relance' ELSE statut END WHERE id = $1`,
     [p.id]
@@ -1364,6 +1365,7 @@ app.post('/webhook', async (req, res) => {
       const buttonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id;
       if (buttonId && buttonId.indexOf('post_') === 0) { await posts.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
+      if (buttonId && buttonId.indexOf('sms_') === 0) { await smsBot.handleBouton(from, buttonId); return; }
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('lstg_') === 0) { await lettresWhatsapp.handleBouton(from, buttonId); return; }
@@ -1428,6 +1430,8 @@ app.post('/webhook', async (req, res) => {
 
       // POSTS INSTA/FACEBOOK — mot-clé « post » (admin)
       if (await posts.handleText(from, text)) return;
+      // SMS — mot-clé « sms » (admin)
+      if (await smsBot.handleText(from, text)) return;
       // LETTRES SÉFER TORAH — l'admin transfère le message d'un parent
       if (await lettresWhatsapp.handle(from, text, message)) return;
       if (await handleAdminCerfaCommand(from, text)) return;
@@ -3051,6 +3055,18 @@ const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
 const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, sendWhatsAppImage, envoyerEmail, phoneNumberId: PHONE_NUMBER_ID, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
+// SMS (SMSFactor) — page /admin/sms, commande WhatsApp « sms », secours, réponses : voir features/sms/
+async function repondreParSMS(phone, text) {
+  let historique = [];
+  try { const h = await pool.query('SELECT question, reponse FROM conversations WHERE phone=$1 ORDER BY created_at DESC LIMIT 5', [phone]); historique = h.rows.reverse(); } catch (e) {}
+  let extra = "CANAL : cette personne t'écrit par SMS (pas WhatsApp). Réponds en 2 ou 3 lignes maximum, sans emojis.";
+  if (parleDeChabbat(text)) { const d = await getHorairesChabbatCached().catch(() => null); if (d && d.texte) extra += '\n\n' + d.texte; }
+  const r = await askClaude(text, extra, historique);
+  if (!r || /^Erreur/.test(r)) return null;
+  return nettoyerReponseInfoTags(r);
+}
+const smsFeature = require('./features/sms/sms.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, publicBaseUrl: PUBLIC_BASE_URL, phoneNumberId: PHONE_NUMBER_ID, whatsappToken: WHATSAPP_TOKEN, repondre: repondreParSMS });
+const smsBot = require('./features/sms/sms.bot').init({ sms: smsFeature, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, publicBaseUrl: PUBLIC_BASE_URL });
 
 initDB().then(async () => {
   await lettresFeature.ensureDB();
