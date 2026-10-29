@@ -1523,6 +1523,172 @@ body {
   #cerfa-container.list-view .cf-card { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center; }
   #cerfa-container.list-view .cf-actions { grid-column: 2; grid-row: 1 / span 4; margin: 0; padding: 0; border: 0; }
 </style>
+<style id="theme-beth-habad">
+/* ═══════════════════════════════════════════════════════════════
+   THÈME « BETH HABAD » — même style que Lettres Séfer Torah / Tsédaka
+   Uniquement de l'apparence (couleurs, polices, arrondis).
+   Aucune fonction, aucun bouton, aucun identifiant n'est modifié.
+   Le mode sombre (Config → Dark) reste l'ancien design.
+   ═══════════════════════════════════════════════════════════════ */
+:root:not(.theme-dark) {
+  --bh-ink: #253D78;        /* bleu marine */
+  --bh-ink-2: #314F91;
+  --bh-muted: #7D8AA4;      /* gris doux */
+  --bh-line: #DFE6F1;       /* bordures */
+  --bh-bg: #F5F7FC;         /* fond de page */
+  --bh-soft: #EDF2FD;       /* bleu très clair */
+  --bh-gold-bg: #FFFBEF; --bh-gold-line: #EDDCB0; --bh-gold: #98671D;
+  --bh-green-bg: #EEF5E9; --bh-green: #4F7956;
+
+  /* on remplace l'ancien violet par le bleu marine partout */
+  --gold: #253D78; --gold-light: #5A73AD; --gold-dark: #1C2F5E;
+  --c-purple: #253D78; --c-purple-dark: #253D78;
+  --c-pink: #253D78; --c-pink-dark: #253D78;
+  --c-orange2: #253D78; --c-orange2-dark: #253D78;
+  --c-teal: #253D78; --c-teal-dark: #253D78;
+  --icon-primary: #253D78; --icon-secondary: #253D78;
+  --navy: #253D78; --navy2: #314F91;
+  --bg: #F5F7FC; --bg-main: #F5F7FC; --text: #253D78;
+  --text-primary: #253D78; --text-secondary: #7D8AA4; --muted: #7D8AA4;
+  --border: #DFE6F1; --border-color: #DFE6F1; --border-light: #DFE6F1;
+  --badge-bg: #EDF2FD; --badge-text: #253D78; --tab-text: #253D78;
+  --header-bg: #F5F7FC;
+  --r: 14px;
+}
+:root:not(.theme-dark) body { background: #F5F7FC !important; color: #253D78; font-family: Arial, Helvetica, sans-serif; }
+
+/* Titres : même police que les pages Lettres / Tsédaka */
+:root:not(.theme-dark) .card-title,
+:root:not(.theme-dark) .info-card .info-title,
+:root:not(.theme-dark) .insight-title,
+:root:not(.theme-dark) .stat-number,
+:root:not(.theme-dark) .stat-box .stat-num,
+:root:not(.theme-dark) .ring-value,
+:root:not(.theme-dark) .cf-montant,
+:root:not(.theme-dark) .header-left .site-name {
+  font-family: 'Trebuchet MS', Arial, sans-serif !important; letter-spacing: -0.5px;
+}
+
+/* ── En-tête : clair, texte bleu marine, trait fin en dessous ── */
+:root:not(.theme-dark) .header {
+  background: #F5F7FC !important; box-shadow: none !important;
+  border-bottom: 1px solid #DFE6F1;
+}
+:root:not(.theme-dark) .header-left .site-name { color: #253D78 !important; font-weight: 700; }
+:root:not(.theme-dark) .header-left .site-name:hover { transform: none; text-shadow: none; }
+:root:not(.theme-dark) .header-left .site-sub { color: #7D8AA4 !important; font-size: 12px; }
+:root:not(.theme-dark) .header-search { background: #fff !important; border: 1px solid #DFE6F1 !important; border-radius: 11px; }
+:root:not(.theme-dark) .header-search input { color: #253D78 !important; }
+:root:not(.theme-dark) .header-search input::placeholder { color: #7D8AA4 !important; }
+:root:not(.theme-dark) .header-search .kbd { color: #7D8AA4; border-color: #DFE6F1; }
+:root:not(.theme-dark) .header-bell,
+:root:not(.theme-dark) .btn-hamburger {
+  background: #fff !important; border: 1px solid #DFE6F1; color: #253D78 !important; border-radius: 11px;
+}
+:root:not(.theme-dark) .header-bell-badge { background: #98671D !important; }
+:root:not(.theme-dark) .user-badge { background: #EDF2FD !important; border: 1px solid #DFE6F1 !important; color: #253D78 !important; }
+:root:not(.theme-dark) .btn-logout { background: #fff !important; border: 1px solid #DFE6F1 !important; color: #7D8AA4 !important; }
+
+/* ── Onglets : boutons blancs, l'onglet actif en bleu marine ── */
+:root:not(.theme-dark) .tabs { background: #F5F7FC !important; border-bottom: 1px solid #DFE6F1 !important; }
+:root:not(.theme-dark) .tab {
+  background: #fff !important; border: 1px solid #DFE6F1 !important; color: #253D78 !important;
+  border-radius: 11px !important; box-shadow: none !important; transform: none !important;
+}
+:root:not(.theme-dark) .tab:hover:not(.active) { background: #EDF2FD !important; border-color: #BFCDEB !important; }
+:root:not(.theme-dark) .tab.active { background: #253D78 !important; border-color: #253D78 !important; color: #fff !important; }
+:root:not(.theme-dark) .sidenav-item.active { background: #EDF2FD !important; color: #253D78 !important; border-left-color: #253D78 !important; }
+:root:not(.theme-dark) .sidenav-item:hover { background: #F5F7FC !important; }
+
+/* ── Cartes blanches arrondies ── */
+:root:not(.theme-dark) .card,
+:root:not(.theme-dark) .info-card,
+:root:not(.theme-dark) .conv-card,
+:root:not(.theme-dark) .insight-card,
+:root:not(.theme-dark) .demande-card {
+  background: #fff !important; border: 1px solid #DFE6F1 !important; border-radius: 16px !important;
+  box-shadow: 0 3px 14px rgba(37,61,120,0.03) !important;
+}
+:root:not(.theme-dark) .demande-card:hover { transform: none !important; box-shadow: 0 3px 14px rgba(37,61,120,0.07) !important; }
+:root:not(.theme-dark) .card-title { color: #253D78 !important; font-size: 19px; }
+:root:not(.theme-dark) .card-title::before { background: #253D78 !important; border-radius: 7px; }
+:root:not(.theme-dark) #cerfa-container .demande-card.cf-card,
+:root:not(.theme-dark) #cerfa-container .cf-card:nth-child(n) { border-left: 1px solid #DFE6F1 !important; }
+:root:not(.theme-dark) .cf-num { background: #EDF2FD !important; color: #253D78 !important; }
+:root:not(.theme-dark) .cf-montant { color: #253D78 !important; }
+
+/* ── Chiffres en haut des pages (comme « Total réglé » / « Cerfa à préparer ») ── */
+:root:not(.theme-dark) .stat-card {
+  background: #fff !important; border: 1px solid #DFE6F1 !important; border-radius: 16px !important;
+  box-shadow: 0 3px 14px rgba(37,61,120,0.03) !important; transform: none !important;
+}
+:root:not(.theme-dark) .stat-card::before { display: none !important; }
+:root:not(.theme-dark) .stat-card:hover { background: #fff !important; border-color: #BFCDEB !important; box-shadow: 0 5px 18px rgba(37,61,120,0.07) !important; transform: none !important; }
+:root:not(.theme-dark) .stat-label { color: #7D8AA4 !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 14px !important; font-weight: 400 !important; }
+:root:not(.theme-dark) .stat-number { color: #253D78 !important; font-size: 32px !important; }
+:root:not(.theme-dark) .stat-icon { filter: none !important; }
+/* « Cerfa de la journée » en doré, comme « Cerfa à préparer » */
+:root:not(.theme-dark) .stat-card[onclick*="cerfa"] { background: #FFFBEF !important; border-color: #EDDCB0 !important; }
+:root:not(.theme-dark) .stat-card[onclick*="cerfa"] .stat-number { color: #98671D !important; }
+
+:root:not(.theme-dark) .stat-box {
+  background: #fff !important; border: 1px solid #DFE6F1; border-radius: 16px !important;
+  box-shadow: 0 3px 14px rgba(37,61,120,0.03) !important; text-align: left !important; padding: 16px !important;
+  display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 8px;
+}
+:root:not(.theme-dark) .stat-box .stat-num { color: #253D78 !important; font-size: 28px !important; }
+:root:not(.theme-dark) .stat-box .stat-label { color: #7D8AA4 !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; font-weight: 400 !important; margin: 0 !important; }
+/* la 2e case en bleu marine (comme « Total réglé ») */
+:root:not(.theme-dark) .stat-box:nth-child(2) { background: #253D78 !important; border-color: #253D78; }
+:root:not(.theme-dark) .stat-box:nth-child(2) .stat-num { color: #fff !important; }
+:root:not(.theme-dark) .stat-box:nth-child(2) .stat-label { color: #CCD7ED !important; }
+
+/* ── Formulaires ── */
+:root:not(.theme-dark) .field label { color: #7D8AA4 !important; }
+:root:not(.theme-dark) .field input,
+:root:not(.theme-dark) .field textarea,
+:root:not(.theme-dark) .field select,
+:root:not(.theme-dark) .search-box input {
+  border: 1px solid #DFE6F1 !important; border-radius: 11px !important; color: #253D78 !important; background: #fff !important;
+}
+:root:not(.theme-dark) .field input:focus,
+:root:not(.theme-dark) .field textarea:focus,
+:root:not(.theme-dark) .field select:focus,
+:root:not(.theme-dark) .search-box input:focus { border-color: #9FB3EC !important; box-shadow: 0 0 0 3px rgba(159,179,236,0.35) !important; }
+:root:not(.theme-dark) .cat-btn { border: 1px solid #DFE6F1 !important; border-radius: 11px !important; color: #253D78 !important; background: #fff !important; }
+:root:not(.theme-dark) .cat-btn:hover { background: #EDF2FD !important; }
+:root:not(.theme-dark) .cat-btn.active { background: #253D78 !important; border-color: #253D78 !important; color: #fff !important; }
+:root:not(.theme-dark) .dropzone { border-color: #DFE6F1 !important; background: #F5F7FC !important; border-radius: 14px; }
+:root:not(.theme-dark) .dropzone:hover,
+:root:not(.theme-dark) .dropzone.drag { border-color: #253D78 !important; background: #EDF2FD !important; }
+
+/* ── Boutons ── */
+:root:not(.theme-dark) .btn-main {
+  background: #253D78 !important; box-shadow: 0 7px 22px rgba(37,61,120,0.10) !important; border-radius: 11px !important;
+}
+:root:not(.theme-dark) .btn-main:hover { background: #314F91 !important; }
+:root:not(.theme-dark) .btn-main:disabled { background: #A9B4CB !important; box-shadow: none !important; }
+:root:not(.theme-dark) .btn-secondary { border: 1px solid #DFE6F1 !important; border-radius: 11px !important; color: #253D78 !important; background: #fff !important; }
+:root:not(.theme-dark) .btn-secondary:hover { background: #EDF2FD !important; }
+:root:not(.theme-dark) .theme-btn { border-color: #DFE6F1 !important; border-radius: 11px !important; }
+:root:not(.theme-dark) .theme-btn.active { background: #253D78 !important; border-color: #253D78 !important; color: #fff !important; box-shadow: none !important; }
+:root:not(.theme-dark) .view-toggle-btn.active { background: #253D78 !important; border-color: #253D78 !important; }
+/* anciens boutons violets / orange écrits directement dans le code */
+:root:not(.theme-dark) [style*="135deg,#7c3aed"] { background: #253D78 !important; }
+:root:not(.theme-dark) [style*="135deg,#f59e0b,#d97706"] { background: #FFFBEF !important; color: #98671D !important; border: 1px solid #EDDCB0 !important; }
+
+/* ── Petites étiquettes ── */
+:root:not(.theme-dark) .chip { border: 1px solid #DFE6F1 !important; color: #253D78 !important; background: #fff !important; }
+:root:not(.theme-dark) .chip.active { background: #253D78 !important; border-color: #253D78 !important; color: #fff !important; }
+:root:not(.theme-dark) .statut-paye { background: #EEF5E9 !important; color: #4F7956 !important; }
+:root:not(.theme-dark) .statut-relance { background: #FFF7DE !important; color: #98671D !important; }
+:root:not(.theme-dark) .live-badge { background: #EEF5E9 !important; color: #4F7956 !important; }
+:root:not(.theme-dark) .badge-priere { background: #EDF2FD !important; color: #253D78 !important; }
+:root:not(.theme-dark) .badge-evenement { background: #EDF2FD !important; color: #314F91 !important; }
+:root:not(.theme-dark) .hsr-item:hover { background: #F5F7FC !important; }
+:root:not(.theme-dark) .hsr-item-icon { background: #EDF2FD !important; }
+:root:not(.theme-dark) .hsr-item-title { color: #253D78 !important; }
+</style>
 </head>
 <body>
 
