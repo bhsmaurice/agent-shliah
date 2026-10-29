@@ -1362,6 +1362,7 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id;
+      if (buttonId && buttonId.indexOf('post_') === 0) { await posts.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
@@ -1408,6 +1409,8 @@ app.post('/webhook', async (req, res) => {
         if (already.rows.length > 0) return;
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
+      // POSTS INSTA/FACEBOOK — photos envoyées pendant un post en cours
+      if (await posts.handleImage(from, message)) return;
       if (isAuthorizedAdminCerfa(from)) {
         const mediaId = message.image?.id;
         if (mediaId) await demarrerAjoutInfo(from, mediaId);
@@ -1423,6 +1426,8 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
+      // POSTS INSTA/FACEBOOK — mot-clé « post » (admin)
+      if (await posts.handleText(from, text)) return;
       // LETTRES SÉFER TORAH — l'admin transfère le message d'un parent
       if (await lettresWhatsapp.handle(from, text, message)) return;
       if (await handleAdminCerfaCommand(from, text)) return;
@@ -3044,6 +3049,7 @@ repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmi
 require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, getNextCerfaNumero, sendWhatsAppDocument, envoyerEmail, marquerOrigineCerfa });
 const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, envoyerEmail });
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
+const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 
 initDB().then(async () => {
