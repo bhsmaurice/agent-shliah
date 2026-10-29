@@ -213,6 +213,43 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   // ===== Lien de paiement (inscriptions faites par WhatsApp, statut « En attente ») =====
   const baseUrl = () => (process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://agent-shliah-production.up.railway.app')).replace(/\/+$/, '');
   function lienPaiement(orderId) { return secret() ? baseUrl() + '/lettres-sefer-torah/payer?o=' + orderId + '&t=' + tokens(orderId) : null; }
+  // Lien court pour SMS / WhatsApp : /st/<id>/<16 premiers caractères du jeton>
+  function lienCourt(orderId) { return secret() ? baseUrl() + '/st/' + orderId + '/' + tokens(orderId).slice(0, 16) : null; }
+  function messageParent(order) {
+    const noms = order.children.map(c => c.name);
+    const qui = noms.length > 1 ? noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1] : noms[0];
+    const de = /^[aeiouyàâäéèêëîïôöùûüh]/i.test(qui) ? 'd’' : 'de ';
+    return `Beth Habad S Maurice : ${noms.length > 1 ? 'les lettres' : 'la lettre'} ${de}${qui} dans le Séfer Torah ${noms.length > 1 ? 'sont bien enregistrées' : 'est bien enregistrée'}. Pour régler ${money(order.children.length * 100)} (don facultatif) : ${lienCourt(order.id)}`;
+  }
+  app.get('/st/:id/:t', publicLimit, (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
+    const id = String(req.params.id), t = String(req.params.t);
+    if (!secret() || !/^[0-9a-f-]{36}$/i.test(id) || !/^[a-f0-9]{16}$/.test(t) || !crypto.timingSafeEqual(Buffer.from(t), Buffer.from(tokens(id).slice(0, 16)))) return res.status(404).send('Lien invalide.');
+    res.redirect(302, lienPaiement(id));
+  });
+  // Page pour Levi : ouvre l'app Messages avec le numéro et le texte prêts
+  app.get('/lettres-sefer-torah/sms', publicLimit, async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
+    try {
+      await ensureDB();
+      const order = await commandeDuLien(req);
+      if (!order || !order.phone) return res.status(404).send(pageSimple('Lien invalide', 'Numéro introuvable pour cette inscription.'));
+      const tel = '+' + order.phone, body = encodeURIComponent(messageParent(order));
+      res.send(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Envoyer le SMS</title></head>
+<body style="margin:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78"><div style="max-width:480px;margin:40px auto;padding:0 16px;text-align:center">
+<p style="font-size:13px;letter-spacing:1px;color:#7d8aa4">📜 LETTRE DANS LE SÉFER TORAH</p><h1 style="font-size:22px">SMS pour ${esc(tel)}</h1>
+<a id="go" style="display:block;background:#253d78;color:#fff;text-decoration:none;font-size:18px;font-weight:bold;padding:16px;border-radius:30px">📱 Ouvrir Messages</a>
+<p style="font-size:14px;color:#7d8aa4;margin-top:14px">Le texte est déjà écrit, il ne reste qu'à appuyer sur Envoyer.</p></div>
+<script>var ios=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);var u='sms:${tel}'+(ios?'&':'?')+'body=${body}';document.getElementById('go').href=u;location.href=u;</script></body></html>`);
+    } catch (e) { console.error('Lettres sms:', e.message); res.status(503).send('Indisponible, réessayez.'); }
+  });
+  function liensEnvoi(order) {
+    if (!secret() || !order.phone) return null;
+    return {
+      sms: baseUrl() + '/lettres-sefer-torah/sms?o=' + order.id + '&t=' + tokens(order.id),
+      whatsapp: 'https://wa.me/' + order.phone + '?text=' + encodeURIComponent(messageParent(order))
+    };
+  }
   async function attacherPaiement(orderId, piId, donCents) {
     if (!/^[0-9a-f-]{36}$/i.test(orderId || '') || !piId) return null;
     const don = Number.parseInt(donCents, 10);
@@ -369,6 +406,6 @@ try{var r=await fetch('${baseUrl()}/lettres-sefer-torah/api/receipt',{method:'PO
   }
   const notificationTimer=setInterval(()=>ensureDB().then(()=>notices.flush()).catch(e=>console.error('Lettres notification:',e.message)),60000);
   notificationTimer.unref();
-  return { ensureDB, confirmOrder, webhook, lienPaiement, envoyerLienPaiement };
+  return { ensureDB, confirmOrder, webhook, lienPaiement, envoyerLienPaiement, liensEnvoi };
 }
 module.exports = { init, validateOrder, validateDonor, eligibleCents, paymentMatches };

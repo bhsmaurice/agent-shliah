@@ -108,7 +108,7 @@ function ligneEnfant(c, nom) {
   return '• ' + morceaux.join(', ');
 }
 
-function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anthropicKey, lienPaiement, envoyerLienPaiement }) {
+function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anthropicKey, lienPaiement, envoyerLienPaiement, liensEnvoi }) {
   const sessions = {};
 
   async function demarrer(from, texte) {
@@ -199,10 +199,12 @@ function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anth
       } catch (e) { infoEmail = `\n\n⚠️ L'email n'a pas pu partir.`; }
     }
     const lien = lienPaiement ? lienPaiement(id) : null;
+    const envoi = liensEnvoi ? liensEnvoi({ id, children, phone }) : null;
     await sendWhatsApp(from,
       `${ENTETE}\n\n✅ Inscrit${children.length > 1 ? 's' : ''} :\n${lignes}${extra ? '\n' + extra : ''}\n\n` +
       `⏳ *En attente de paiement* (${children.length} €)` + infoEmail +
-      (lien ? `\n\n🔗 Lien de paiement (à transférer au parent si besoin) :\n${lien}` : ''));
+      (envoi ? `\n\n📤 *Envoyer le lien au parent (gratuit) :*\n\n📱 Par SMS :\n${envoi.sms}\n\n💬 Par WhatsApp :\n${envoi.whatsapp}` :
+        lien ? `\n\n🔗 Lien de paiement (à transférer au parent si besoin) :\n${lien}` : ''));
   }
 
   // Renvoie true si le message a été traité ici.
