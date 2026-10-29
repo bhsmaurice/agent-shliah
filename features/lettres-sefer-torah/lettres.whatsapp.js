@@ -199,7 +199,8 @@ function init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin, ensureDB, anth
       } catch (e) { infoEmail = `\n\n⚠️ L'email n'a pas pu partir.`; }
     }
     const lien = lienPaiement ? lienPaiement(id) : null;
-    const envoi = liensEnvoi ? liensEnvoi({ id, children, phone }) : null;
+    let envoi = null;
+    try { envoi = liensEnvoi ? await liensEnvoi({ id, children, phone }) : null; } catch (e) { console.error('Lettres liens envoi:', e.message); }
     await sendWhatsApp(from,
       `${ENTETE}\n\n✅ Inscrit${children.length > 1 ? 's' : ''} :\n${lignes}${extra ? '\n' + extra : ''}\n\n` +
       `⏳ *En attente de paiement* (${children.length} €)` + infoEmail +

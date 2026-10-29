@@ -48,6 +48,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       receipt_data JSONB, cerfa_numero TEXT, diploma_status TEXT NOT NULL DEFAULT 'pending',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), paid_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`)
       .then(() => pool.query('ALTER TABLE lettres_orders ADD COLUMN IF NOT EXISTS email TEXT'))
+      .then(() => pool.query('ALTER TABLE lettres_orders ADD COLUMN IF NOT EXISTS short_code TEXT UNIQUE'))
       .then(() => pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS origine TEXT'))
       .then(() => notices.ensure())
       .catch(e => { ready = null; throw e; });
@@ -213,14 +214,46 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   // ===== Lien de paiement (inscriptions faites par WhatsApp, statut « En attente ») =====
   const baseUrl = () => (process.env.PUBLIC_BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://agent-shliah-production.up.railway.app')).replace(/\/+$/, '');
   function lienPaiement(orderId) { return secret() ? baseUrl() + '/lettres-sefer-torah/payer?o=' + orderId + '&t=' + tokens(orderId) : null; }
-  // Lien court pour SMS / WhatsApp : /st/<id>/<16 premiers caractères du jeton>
-  function lienCourt(orderId) { return secret() ? baseUrl() + '/st/' + orderId + '/' + tokens(orderId).slice(0, 16) : null; }
-  function messageParent(order) {
+  // Lien court pour SMS / WhatsApp : /l/<code de 6 caractères> (code aléatoire enregistré en base)
+  const ALPHA = 'abcdefghjkmnpqrstuvwxyz23456789';
+  async function lienCourt(orderId) {
+    if (!secret()) return null;
+    await ensureDB();
+    const ex = (await pool.query('SELECT short_code FROM lettres_orders WHERE id=$1', [orderId])).rows[0];
+    if (ex && ex.short_code) return baseUrl() + '/l/' + ex.short_code;
+    for (let i = 0; i < 6; i++) {
+      const code = Array.from(crypto.randomBytes(6), b => ALPHA[b % ALPHA.length]).join('');
+      try {
+        const r = await pool.query('UPDATE lettres_orders SET short_code=$2 WHERE id=$1 AND short_code IS NULL RETURNING short_code', [orderId, code]);
+        if (r.rows[0]) return baseUrl() + '/l/' + r.rows[0].short_code;
+        const again = (await pool.query('SELECT short_code FROM lettres_orders WHERE id=$1', [orderId])).rows[0];
+        if (again && again.short_code) return baseUrl() + '/l/' + again.short_code;
+        return null;
+      } catch (e) { if (e.code !== '23505') throw e; } // code déjà pris : on en tire un autre
+    }
+    return null;
+  }
+  async function messageParent(order, whatsapp) {
     const noms = order.children.map(c => c.name);
     const qui = noms.length > 1 ? noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1] : noms[0];
     const de = /^[aeiouyàâäéèêëîïôöùûüh]/i.test(qui) ? 'd’' : 'de ';
-    return `Beth Habad S Maurice : ${noms.length > 1 ? 'les lettres' : 'la lettre'} ${de}${qui} dans le Séfer Torah ${noms.length > 1 ? 'sont bien enregistrées' : 'est bien enregistrée'}. Pour régler ${money(order.children.length * 100)} (don facultatif) : ${lienCourt(order.id)}`;
+    const plusieurs = noms.length > 1;
+    const b = t => whatsapp ? '*' + t + '*' : t, i = t => whatsapp ? '_' + t + '_' : t;
+    return `Bonjour 😊\n\n📜 ${b((plusieurs ? 'Les lettres ' : 'La lettre ') + de + qui + ' dans le Séfer Torah ' + (plusieurs ? 'sont bien enregistrées !' : 'est bien enregistrée !'))}\n\n` +
+      `Pour finaliser l’inscription : ${b(money(order.children.length * 100).replace(',00', ''))} (don facultatif)\n👉 ${await lienCourt(order.id)}\n\n` +
+      `Merci et Kol Touv 🙏\n${i('Beth Habad S Maurice')}`;
   }
+  app.get('/l/:code', publicLimit, async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
+    try {
+      const code = String(req.params.code).toLowerCase();
+      if (!/^[a-z0-9]{6}$/.test(code)) return res.status(404).send(pageSimple('Lien invalide', 'Contactez le Beth Habad au 07 70 24 17 46.'));
+      await ensureDB();
+      const o = (await pool.query('SELECT id FROM lettres_orders WHERE short_code=$1', [code])).rows[0];
+      if (!o) return res.status(404).send(pageSimple('Lien invalide', 'Contactez le Beth Habad au 07 70 24 17 46.'));
+      res.redirect(302, lienPaiement(o.id));
+    } catch (e) { console.error('Lettres lien court:', e.message); res.status(503).send(pageSimple('Petit souci', 'Réessayez dans quelques minutes.')); }
+  });
   app.get('/st/:id/:t', publicLimit, (req, res) => {
     res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer');
     const id = String(req.params.id), t = String(req.params.t);
@@ -234,7 +267,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
       await ensureDB();
       const order = await commandeDuLien(req);
       if (!order || !order.phone) return res.status(404).send(pageSimple('Lien invalide', 'Numéro introuvable pour cette inscription.'));
-      const tel = '+' + order.phone, body = encodeURIComponent(messageParent(order));
+      const tel = '+' + order.phone, body = encodeURIComponent(await messageParent(order, false));
       res.send(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Envoyer le SMS</title></head>
 <body style="margin:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78"><div style="max-width:480px;margin:40px auto;padding:0 16px;text-align:center">
 <p style="font-size:13px;letter-spacing:1px;color:#7d8aa4">📜 LETTRE DANS LE SÉFER TORAH</p><h1 style="font-size:22px">SMS pour ${esc(tel)}</h1>
@@ -243,11 +276,11 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
 <script>var ios=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);var u='sms:${tel}'+(ios?'&':'?')+'body=${body}';document.getElementById('go').href=u;location.href=u;</script></body></html>`);
     } catch (e) { console.error('Lettres sms:', e.message); res.status(503).send('Indisponible, réessayez.'); }
   });
-  function liensEnvoi(order) {
+  async function liensEnvoi(order) {
     if (!secret() || !order.phone) return null;
     return {
       sms: baseUrl() + '/lettres-sefer-torah/sms?o=' + order.id + '&t=' + tokens(order.id),
-      whatsapp: 'https://wa.me/' + order.phone + '?text=' + encodeURIComponent(messageParent(order))
+      whatsapp: 'https://wa.me/' + order.phone + '?text=' + encodeURIComponent(await messageParent(order, true))
     };
   }
   async function attacherPaiement(orderId, piId, donCents) {
@@ -261,7 +294,7 @@ function init({ app, pool, adminPassword, generateCerfaPDF, envoyerEmail }) {
   function pageDon(order, lienBase) {
     const n = order.children.length, noms = esc(order.children.map(c => c.name + ' ' + c.surname).join(', '));
     const choix = [0, 5, 10, 18, 36, 52].map(v => `<label style="flex:1 1 30%;min-width:90px"><input type="radio" name="don" value="${v}" ${v === 0 ? 'checked' : ''} style="display:none" onchange="maj()"><span class="c">${v === 0 ? 'Sans don' : v + ' €'}</span></label>`).join('');
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lettre dans le Séfer Torah</title>
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>📜 Lettre dans le Séfer Torah</title><meta property="og:title" content="📜 Lettre dans le Séfer Torah"><meta property="og:description" content="Beth Habad S Maurice — 1 € par lettre, don facultatif. Paiement sécurisé Apple Pay ou carte."><meta property="og:image" content="https://habadsmaurice.com/wp-content/uploads/2026/09/cropped-logo-Habad-s-Maurice.png">
 <style>body{margin:0;background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#253d78}.w{max-width:480px;margin:28px auto;padding:0 16px}.k{background:#fff;border-radius:18px;padding:24px;border-left:6px solid #253d78}
 .c{display:block;text-align:center;padding:13px 6px;border:2px solid #dbe3f3;border-radius:12px;font-weight:bold;cursor:pointer}input:checked+.c{border-color:#253d78;background:#253d78;color:#fff}
 .g{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#autre{width:100%;box-sizing:border-box;padding:12px;border:2px solid #dbe3f3;border-radius:12px;font-size:16px;margin-top:4px}
