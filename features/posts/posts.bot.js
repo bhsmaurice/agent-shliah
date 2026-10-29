@@ -51,9 +51,9 @@ function sessionActive(from) {
 function toucher(s) { s.maj = Date.now(); }
 function attendre(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function boutonsValidation(from, titre) {
+async function boutonsValidation(from, titre, s) {
   await ctx.sendWhatsAppButtons(from, titre || 'Que veux-tu faire ?', [
-    { id: 'post_publier', title: '✅ Publier' },
+    s && s.programme ? { id: 'post_programmer', title: '📅 Programmer' } : { id: 'post_publier', title: '✅ Publier' },
     { id: 'post_modifier', title: '✏️ Modifier' },
     { id: 'post_annuler', title: '❌ Annuler' }
   ]);
@@ -287,9 +287,9 @@ async function genererEtMontrer(from, s, demandeModif) {
   await attendre(400);
   const config = await configMeta().catch(() => null);
   const titre = config && config.pageToken
-    ? `Je publie sur ${config.igId ? 'Facebook et Instagram' : 'Facebook (Instagram pas encore relié)'} ?\n\nPour modifier, écris directement ce que tu veux changer (texte ou photos), ex. « garde toutes les photos », « mets la 3 en premier », « plus court ».`
+    ? `${s.programme ? 'Je programme ce post' : 'Je publie'} sur ${config.igId ? 'Facebook et Instagram' : 'Facebook (Instagram pas encore relié)'} ?\n\nPour modifier, écris directement ce que tu veux changer (texte ou photos), ex. « garde toutes les photos », « mets la 3 en premier », « plus court ».`
     : `⚠️ La publication automatique n'est pas encore configurée : copie les textes ci-dessus pour l'instant.\n\nPour modifier, écris ce que tu veux changer.`;
-  await boutonsValidation(from, titre);
+  await boutonsValidation(from, titre, s);
 }
 
 // ─── Meta : page Facebook + compte Instagram ──────────────────
@@ -392,31 +392,26 @@ async function publierStoryFacebook(cfg, url) {
   await graphPost(`${cfg.pageId}/photo_stories`, { photo_id: ph.id }, cfg.pageToken);
 }
 
-async function publier(from, s, cibles) {
-  const cfg = await configMeta(true).catch(e => ({ pageToken: null, erreur: e.message }));
-  if (!cfg.pageToken) {
-    await ctx.sendWhatsApp(from, `⚠️ La publication automatique n'est pas encore configurée${cfg.erreur ? ` (${cfg.erreur})` : ''}.\n\nLes textes ci-dessus sont prêts : copie-les et publie avec tes photos.`);
-    return;
-  }
-  s.etape = 'publication';
-  await ctx.sendWhatsApp(from, '🚀 Publication en cours…');
+// Cœur de la publication (utilisé tout de suite ou à l'heure programmée)
+// contenu = { photos: [{url, urlInsta, idBase}], brouillon: {instagram, facebook}, texte, story }
+async function executerPublication(cfg, contenu, cibles) {
   const lignes = [];
   let ok = 0;
-  const photos = (s.selection && s.selection.length ? s.selection : s.photos.map((_, i) => i)).map(i => s.photos[i]);
+  const photos = contenu.photos;
   if (cibles.facebook) {
-    try { lignes.push(`📘 Facebook : publié ✅\n${await publierFacebook(cfg, photos, s.brouillon.facebook)}`); ok++; }
+    try { lignes.push(`📘 Facebook : publié ✅\n${await publierFacebook(cfg, photos, contenu.brouillon.facebook)}`); ok++; }
     catch (e) { lignes.push(`📘 Facebook : échec ❌ (${e.message})`); }
   }
   if (cibles.instagram) {
     if (!cfg.igId) lignes.push("📸 Instagram : pas encore relié à la page Facebook ❌");
     else {
-      const tags = extraireTags(s.texte);
-      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, s.brouillon.instagram, tags)}`); ok++; }
+      const tags = extraireTags(contenu.texte);
+      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, tags)}`); ok++; }
       catch (e) {
         if (tags.length) {
           // Un compte identifié peut être refusé (nom faux, compte privé) : on republie sans les identifications
           try {
-            lignes.push(`📸 Instagram : publié ✅ mais sans les identifications (Instagram les a refusées : ${e.message})\n${await publierInstagram(cfg, photos, s.brouillon.instagram, [])}`);
+            lignes.push(`📸 Instagram : publié ✅ mais sans les identifications (Instagram les a refusées : ${e.message})\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, [])}`);
             ok++;
           } catch (e2) { lignes.push(`📸 Instagram : échec ❌ (${e2.message})`); }
         } else lignes.push(`📸 Instagram : échec ❌ (${e.message})`);
@@ -424,7 +419,7 @@ async function publier(from, s, cibles) {
     }
   }
   // Story avec la photo de couverture (si au moins un post est parti)
-  if (ok > 0 && s.story !== false) {
+  if (ok > 0 && contenu.story !== false) {
     try {
       const urlStory = await fabriquerStory(photos[0]);
       const st = [];
@@ -440,12 +435,237 @@ async function publier(from, s, cibles) {
   try {
     await ctx.pool.query(
       'INSERT INTO posts_sociaux (texte_source, instagram, facebook, photos, resultat) VALUES ($1,$2,$3,$4,$5)',
-      [s.texte, s.brouillon.instagram, s.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n')]
+      [contenu.texte, contenu.brouillon.instagram, contenu.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n')]
     );
   } catch (e) { console.error('Posts — sauvegarde :', e.message); }
+  return { lignes, ok };
+}
+
+function contenuSession(s) {
+  const sel = s.selection && s.selection.length ? s.selection : s.photos.map((_, i) => i);
+  return {
+    photos: sel.map(i => ({ url: s.photos[i].url, urlInsta: s.photos[i].urlInsta, idBase: s.photos[i].idBase })),
+    brouillon: { instagram: s.brouillon.instagram, facebook: s.brouillon.facebook },
+    texte: s.texte,
+    story: s.story
+  };
+}
+
+async function publier(from, s, cibles) {
+  const cfg = await configMeta(true).catch(e => ({ pageToken: null, erreur: e.message }));
+  if (!cfg.pageToken) {
+    await ctx.sendWhatsApp(from, `⚠️ La publication automatique n'est pas encore configurée${cfg.erreur ? ` (${cfg.erreur})` : ''}.\n\nLes textes ci-dessus sont prêts : copie-les et publie avec tes photos.`);
+    return;
+  }
+  s.etape = 'publication';
+  await ctx.sendWhatsApp(from, '🚀 Publication en cours…');
+  const { lignes, ok } = await executerPublication(cfg, contenuSession(s), cibles);
   if (ok > 0) delete sessions[from]; else s.etape = 'validation';
   await ctx.sendWhatsApp(from, lignes.join('\n\n') + (ok > 0 ? '\n\nKol Touv !' : '\n\nTu peux réessayer avec ✅ Publier.'));
-  if (ok === 0) await boutonsValidation(from);
+  if (ok === 0) await boutonsValidation(from, null, s);
+}
+
+// ═══ POSTS PROGRAMMÉS (« post pro ») ════════════════════════════
+const FMT_DATE = { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' };
+function dateLisible(d) { return new Date(d).toLocaleString('fr-FR', FMT_DATE).replace(':', 'h'); }
+
+// Heure de Paris (AAAA-MM-JJ HH:MM) → instant exact, en tenant compte de l'heure d'été
+function parisVersDate(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.map(Number);
+  let t = Date.UTC(y, mo - 1, d, h, mi);
+  for (let i = 0; i < 2; i++) {
+    const p = new Date(new Date(t).toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const voulu = Date.UTC(y, mo - 1, d, h, mi);
+    const vu = Date.UTC(p.getFullYear(), p.getMonth(), p.getDate(), p.getHours(), p.getMinutes());
+    t += voulu - vu;
+  }
+  return new Date(t);
+}
+
+// Comprendre « dimanche 10h », « 3 novembre 18h30 », « demain soir 20h »
+async function comprendreDate(texte) {
+  const now = maintenantParis();
+  const pad = n => String(n).padStart(2, '0');
+  const ref = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ctx.anthropicKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+      system: `Nous sommes le ${dateFr()}, il est ${ref.slice(11)} à Paris (${ref}). Convertis la date/heure demandée en heure de Paris. Si aucune heure n'est donnée, mets 10:00 ; « matin » = 10:00, « midi » = 12:00, « après-midi » = 15:00, « soir » = 20:00. Toujours une date future. Réponds UNIQUEMENT en JSON : {"date": "AAAA-MM-JJ HH:MM"} ou {"date": null} si ce n'est pas une date.`,
+      messages: [{ role: 'user', content: String(texte).slice(0, 200) }]
+    }),
+    signal: AbortSignal.timeout(20000)
+  });
+  const data = await res.json();
+  const txt = (data.content || []).map(c => c.text || '').join('');
+  const m = txt.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  const j = JSON.parse(m[0]);
+  return j.date ? parisVersDate(j.date) : null;
+}
+
+// Chabbat et Yom Tov à Paris (Hebcal) : de l'allumage des bougies à la sortie
+let cacheCalendrier = { t: 0, periodes: null };
+async function periodesInterdites() {
+  if (cacheCalendrier.periodes && Date.now() - cacheCalendrier.t < 6 * 3600 * 1000) return cacheCalendrier.periodes;
+  const iso = d => d.toISOString().slice(0, 10);
+  const debut = new Date(Date.now() - 3 * 86400000), fin = new Date(Date.now() + 75 * 86400000);
+  const url = 'https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&ss=on&c=on&M=on&b=18&i=off&geo=geoname&geonameid=2988507'
+    + `&start=${iso(debut)}&end=${iso(fin)}`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'ShliahBot/1.0' }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error('Hebcal HTTP ' + r.status);
+  const items = (await r.json()).items || [];
+  const periodes = [];
+  for (const it of items.filter(i => i.category === 'candles')) {
+    const a = new Date(it.date).getTime();
+    const sortie = items.find(i => i.category === 'havdalah' && new Date(i.date).getTime() > a);
+    if (sortie) periodes.push({ debut: a, fin: new Date(sortie.date).getTime() });
+  }
+  cacheCalendrier = { t: Date.now(), periodes };
+  return periodes;
+}
+// Renvoie null si la date est permise, sinon la première heure permise après la sortie
+async function verifierChabbat(date) {
+  const t = date.getTime();
+  try {
+    const p = (await periodesInterdites()).find(x => t >= x.debut && t <= x.fin);
+    return p ? new Date(p.fin + 15 * 60000) : null;
+  } catch (e) {
+    // Calendrier indisponible : prudence, on bloque du vendredi 15h au samedi 22h (heure de Paris)
+    console.error('Posts — calendrier :', e.message);
+    const d = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    const minutes = d.getDay() * 1440 + d.getHours() * 60 + d.getMinutes();
+    if (minutes >= 5 * 1440 + 15 * 60 && minutes <= 6 * 1440 + 22 * 60) {
+      const samedi = new Date(d); samedi.setDate(d.getDate() + (6 - d.getDay())); 
+      const pad = n => String(n).padStart(2, '0');
+      return parisVersDate(`${samedi.getFullYear()}-${pad(samedi.getMonth() + 1)}-${pad(samedi.getDate())} 22:15`);
+    }
+    return null;
+  }
+}
+
+async function demanderDate(from, s) {
+  s.etape = 'date';
+  await ctx.sendWhatsApp(from, '📅 Pour quand ?\n\nExemples : « dimanche 10h », « 3 novembre 18h30 », « demain soir 20h ».');
+}
+
+async function gererDate(from, s, t) {
+  let d;
+  try { d = await comprendreDate(t); } catch (e) { d = null; }
+  if (!d || isNaN(d.getTime())) { await ctx.sendWhatsApp(from, "Je n'ai pas compris la date 🤔 Écris par exemple « dimanche 10h » ou « 3 novembre 18h30 »."); return; }
+  if (d.getTime() < Date.now() + 2 * 60000) { await ctx.sendWhatsApp(from, `Cette heure est déjà passée (${dateLisible(d)}). Donne une date à venir.`); return; }
+  if (d.getTime() > Date.now() + 60 * 86400000) { await ctx.sendWhatsApp(from, 'Maximum 60 jours à l\'avance. Donne une date plus proche.'); return; }
+  const apres = await verifierChabbat(d);
+  if (apres) {
+    s.dateProposee = apres.getTime();
+    s.etape = 'date_confirmation';
+    await ctx.sendWhatsApp(from, `🕯️ ${dateLisible(d)} tombe pendant Chabbat ou une fête : je ne publie pas à ce moment-là.`);
+    await ctx.sendWhatsAppButtons(from, `Je te propose juste après la sortie :\n📅 ${dateLisible(apres)}`, [
+      { id: 'post_date_ok', title: '✅ Oui' },
+      { id: 'post_date_changer', title: '📅 Autre date' }
+    ]);
+    return;
+  }
+  s.dateProposee = d.getTime();
+  s.etape = 'date_confirmation';
+  await ctx.sendWhatsAppButtons(from, `📅 Programmé le ${dateLisible(d)} ?\n\nÀ cette heure-là je publie le post sur Facebook et Instagram${s.story === false ? '' : ', avec la story'}, et je te préviens.`, [
+    { id: 'post_date_ok', title: '✅ Oui' },
+    { id: 'post_date_changer', title: '📅 Changer la date' }
+  ]);
+}
+
+async function enregistrerProgramme(from, s) {
+  const r = await ctx.pool.query(
+    `INSERT INTO posts_programmes (phone, date_publication, contenu) VALUES ($1, $2, $3) RETURNING id`,
+    [from, new Date(s.dateProposee), JSON.stringify(contenuSession(s))]
+  );
+  const quand = dateLisible(s.dateProposee);
+  delete sessions[from];
+  await ctx.sendWhatsApp(from, `✅ C'est programmé pour le ${quand}.\n\nÉcris « mes posts » pour voir tes posts programmés, ou « annuler post » pour en supprimer un.`);
+  return r.rows[0].id;
+}
+
+async function listeProgrammes(from) {
+  const r = await ctx.pool.query(`SELECT id, date_publication, contenu FROM posts_programmes WHERE statut='programme' ORDER BY date_publication ASC`);
+  return r.rows;
+}
+
+async function montrerProgrammes(from) {
+  const rows = await listeProgrammes(from);
+  if (!rows.length) { await ctx.sendWhatsApp(from, '📅 Aucun post programmé pour le moment.\n\nÉcris « post pro » pour en programmer un.'); return; }
+  const lignes = rows.map((p, i) => {
+    const c = p.contenu || {};
+    const debut = String((c.brouillon && c.brouillon.instagram) || '').split('\n')[0].slice(0, 70);
+    return `${i + 1}. ${dateLisible(p.date_publication)}\n   ${debut}${(c.photos || []).length ? ` (${c.photos.length} photo${c.photos.length > 1 ? 's' : ''})` : ''}`;
+  });
+  await ctx.sendWhatsApp(from, `📅 Tes posts programmés :\n\n${lignes.join('\n\n')}\n\nPour en supprimer un : « annuler post 2 »`);
+}
+
+async function annulerProgramme(from, numero) {
+  const rows = await listeProgrammes(from);
+  if (!rows.length) { await ctx.sendWhatsApp(from, '📅 Aucun post programmé.'); return; }
+  if (!numero) { await montrerProgrammes(from); return; }
+  const p = rows[numero - 1];
+  if (!p) { await ctx.sendWhatsApp(from, `Il n'y a pas de post n°${numero}. Écris « mes posts » pour voir la liste.`); return; }
+  const r = await ctx.pool.query(`UPDATE posts_programmes SET statut='annule' WHERE id=$1 AND statut='programme' RETURNING id`, [p.id]);
+  await ctx.sendWhatsApp(from, r.rows.length ? `🗑️ Post n°${numero} du ${dateLisible(p.date_publication)} annulé.` : 'Ce post est déjà parti ou annulé.');
+}
+
+// Message WhatsApp avec vérification (la fenêtre de 24 h peut être fermée) ; sinon e-mail de secours
+async function prevenir(phone, texte) {
+  let envoye = false;
+  try {
+    const r = await fetch(`${GRAPH}/${ctx.phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ctx.whatsappToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: texte } })
+    });
+    const d = await r.json();
+    envoye = Boolean(d && d.messages);
+  } catch (e) { /* e-mail ci-dessous */ }
+  if (!envoye && ctx.envoyerEmail) {
+    const html = '<div style="font-family:Arial,sans-serif;white-space:pre-wrap;">' + texte.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>';
+    await ctx.envoyerEmail({ subject: '📅 Post programmé — Shliah Bot', html }).catch(() => {});
+  }
+}
+
+let publicationEnCours = false;
+async function verifierProgrammes() {
+  if (publicationEnCours) return;
+  publicationEnCours = true;
+  try {
+    // On « réserve » chaque post avant de le publier : jamais publié deux fois
+    const r = await ctx.pool.query(`UPDATE posts_programmes SET statut='en_cours'
+      WHERE id IN (SELECT id FROM posts_programmes WHERE statut='programme' AND date_publication <= NOW() ORDER BY date_publication LIMIT 3)
+      RETURNING *`);
+    for (const p of r.rows) {
+      let resultat;
+      try {
+        // Sécurité : jamais pendant Chabbat / Yom Tov (si les fêtes ont changé entre-temps)
+        const apres = await verifierChabbat(new Date());
+        if (apres) {
+          await ctx.pool.query(`UPDATE posts_programmes SET statut='programme', date_publication=$2 WHERE id=$1`, [p.id, apres]);
+          continue;
+        }
+        const cfg = await configMeta(true);
+        if (!cfg.pageToken) throw new Error("publication automatique non configurée");
+        const { lignes, ok } = await executerPublication(cfg, p.contenu, { facebook: true, instagram: true });
+        resultat = lignes.join('\n\n');
+        await ctx.pool.query(`UPDATE posts_programmes SET statut=$2, resultat=$3 WHERE id=$1`, [p.id, ok > 0 ? 'publie' : 'echec', resultat]);
+        await prevenir(p.phone, `📅 Ton post programmé du ${dateLisible(p.date_publication)} :\n\n${resultat}`);
+      } catch (e) {
+        await ctx.pool.query(`UPDATE posts_programmes SET statut='echec', resultat=$2 WHERE id=$1`, [p.id, e.message]);
+        await prevenir(p.phone, `⚠️ Ton post programmé du ${dateLisible(p.date_publication)} n'a pas pu partir : ${e.message}\n\nÉcris « post » pour le refaire.`);
+      }
+    }
+  } catch (e) {
+    console.error('Posts programmés :', e.message);
+  } finally {
+    publicationEnCours = false;
+  }
 }
 
 // ─── Points d'entrée appelés depuis index.js ──────────────────
@@ -459,6 +679,20 @@ async function handleText(from, text) {
   if (!ctx || !ctx.isAdmin(from)) return false;
   const t = String(text || '').trim();
   let s = sessionActive(from);
+
+  // Posts programmés : liste et annulation (à tout moment)
+  if (/^mes posts( programm[ée]s)?\s*[?.!]*$/i.test(t)) { await montrerProgrammes(from); return true; }
+  const annul = t.match(/^(?:annuler|supprimer|annule|supprime)\s+(?:le\s+)?post\s*(?:n?°?\s*(\d+))?\s*$/i);
+  if (annul) { await annulerProgramme(from, annul[1] ? parseInt(annul[1], 10) : null); return true; }
+
+  // « post pro » = post programmé
+  const pro = t.match(/^post\s+(?:pro|programm[ée]e?)(?=$|[\s:\-])\s*[:\-]?\s*([\s\S]*)$/i);
+  if (pro) {
+    s = demarrer(from, pro[1] || '');
+    s.programme = true;
+    await ctx.sendWhatsApp(from, `📅 Nouveau post PROGRAMMÉ (Instagram + Facebook)\n\nEnvoie-moi les photos (jusqu'à ${MAX_PHOTOS})${s.texte ? '' : ' et un petit texte sur l\'activité'}.\n\nQuand c'est tout, écris « fini ». Je te demanderai ensuite la date.\n\n(« annuler » pour arrêter)`);
+    return true;
+  }
 
   const declencheur = t.match(/^post(?:\s+insta(?:gram)?|\s+facebook|\s+fb)?(?=$|[\s:\-])\s*[:\-]?\s*([\s\S]*)$/i);
   if (declencheur && (!s || s.etape !== 'collecte' || /^post$/i.test(t))) {
@@ -498,9 +732,17 @@ async function handleText(from, text) {
     return true;
   }
 
+  if (s.etape === 'date') { await gererDate(from, s, t); return true; }
+  if (s.etape === 'date_confirmation') {
+    if (/^(oui|ok|valide|confirme)\s*[.!]*$/i.test(t)) { await enregistrerProgramme(from, s); return true; }
+    await gererDate(from, s, t); // une autre date
+    return true;
+  }
+
   if (s.etape === 'validation' || s.etape === 'modification') {
-    if (/^(pas de|sans) story\s*[.!]*$/i.test(t)) { s.story = false; await ctx.sendWhatsApp(from, '👍 Pas de story pour ce post.'); await boutonsValidation(from); return true; }
-    if (/^(avec( la)?|mets? (une|la)?) ?story\s*[.!]*$/i.test(t)) { s.story = true; await ctx.sendWhatsApp(from, '👍 La couverture sera aussi publiée en story.'); await boutonsValidation(from); return true; }
+    if (s.programme && /^(programmer|programme|publier|publie|valider|valide|oui)\s*[.!]*$/i.test(t)) { await demanderDate(from, s); return true; }
+    if (/^(pas de|sans) story\s*[.!]*$/i.test(t)) { s.story = false; await ctx.sendWhatsApp(from, '👍 Pas de story pour ce post.'); await boutonsValidation(from, null, s); return true; }
+    if (/^(avec( la)?|mets? (une|la)?) ?story\s*[.!]*$/i.test(t)) { s.story = true; await ctx.sendWhatsApp(from, '👍 La couverture sera aussi publiée en story.'); await boutonsValidation(from, null, s); return true; }
     if (/^(publier|publie|valider|valide|oui)\s*[.!]*$/i.test(t)) { await publier(from, s, { facebook: true, instagram: true }); return true; }
     if (/^(insta(gram)?)\s*(seulement|uniquement)?$/i.test(t)) { await publier(from, s, { facebook: false, instagram: true }); return true; }
     if (/^(facebook|fb)\s*(seulement|uniquement)?$/i.test(t)) { await publier(from, s, { facebook: true, instagram: false }); return true; }
@@ -558,6 +800,11 @@ async function handleBouton(from, buttonId) {
   toucher(s);
   if (s.etape === 'redaction' || s.etape === 'publication') { await ctx.sendWhatsApp(from, '⏳ Un instant…'); return; }
   if (buttonId === 'post_publier') return publier(from, s, { facebook: true, instagram: true });
+  if (buttonId === 'post_programmer' || buttonId === 'post_date_changer') return demanderDate(from, s);
+  if (buttonId === 'post_date_ok') {
+    if (!s.dateProposee) return demanderDate(from, s);
+    return enregistrerProgramme(from, s);
+  }
   if (buttonId === 'post_annuler') { delete sessions[from]; await ctx.sendWhatsApp(from, '❌ Post annulé.'); return; }
   if (buttonId === 'post_modifier') {
     s.etape = 'modification';
@@ -570,6 +817,17 @@ function init(options) {
   ctx.pool.query(`CREATE TABLE IF NOT EXISTS posts_sociaux (
     id SERIAL PRIMARY KEY, texte_source TEXT, instagram TEXT, facebook TEXT,
     photos JSONB, resultat TEXT, created_at TIMESTAMP DEFAULT NOW())`).catch(e => console.error('Table posts_sociaux :', e.message));
+
+  ctx.pool.query(`CREATE TABLE IF NOT EXISTS posts_programmes (
+    id SERIAL PRIMARY KEY, phone TEXT NOT NULL, date_publication TIMESTAMPTZ NOT NULL,
+    contenu JSONB NOT NULL, statut TEXT DEFAULT 'programme', resultat TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW())`)
+    .then(() => {
+      // Vérification chaque minute (et 30 s après le démarrage, pour rattraper un redémarrage)
+      setTimeout(verifierProgrammes, 30000);
+      setInterval(verifierProgrammes, 60000);
+    })
+    .catch(e => console.error('Table posts_programmes :', e.message));
 
   // Vérifier la configuration Meta : /admin/posts/verifier?password=...
   ctx.app.get('/admin/posts/verifier', async (req, res) => {

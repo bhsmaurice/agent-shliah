@@ -13,6 +13,15 @@
    - Rien n'est publié sans appuyer sur ✅ Publier.
 5. « annuler » à tout moment. Une session expire après 3 h.
 
+## Posts programmés (« post pro »)
+- « post pro » (ou « post programmé ») → même parcours (photos, texte, « fini », aperçu), puis bouton 📅 Programmer → « Pour quand ? ».
+- Date en langage naturel (« dimanche 10h », « 3 novembre 18h30 », « demain soir ») comprise par Claude Haiku, en heure de Paris (heure d'été gérée). Sans heure = 10h00. Max 60 jours, minimum 2 minutes dans le futur.
+- Confirmation avec boutons ✅ Oui / 📅 Changer la date.
+- Chabbat et Yom Tov interdits : calendrier Hebcal (Paris, allumage 18 min avant) ; une date pendant Chabbat/fête → proposition 15 min après la sortie. Si Hebcal est injoignable : blocage prudent du vendredi 15h au samedi 22h. Revérification juste avant la publication (si c'est Chabbat, le post est décalé après la sortie).
+- « mes posts » = liste des posts programmés ; « annuler post 2 » = supprimer le n°2.
+- Table `posts_programmes` (statut programme / en_cours / publie / echec / annule). Vérification chaque minute + 30 s après chaque démarrage (rien n'est perdu si Railway redémarre). Le post est réservé (en_cours) avant publication : jamais publié deux fois.
+- À la publication : message WhatsApp à Levi avec les liens ; si la fenêtre WhatsApp de 24 h est fermée, e-mail de secours (Resend, bhsmaurice@gmail.com).
+
 ## Story (automatique)
 - Après publication, la photo de couverture est publiée en story Instagram ET Facebook : format 1080×1920, fond = la photo floutée, photo entière au centre, bandeau blanc avec le logo (logo-bh.png à la racine du dépôt).
 - « pas de story » (dans le texte ou avant de valider) pour l'enlever, « avec story » pour la remettre.
