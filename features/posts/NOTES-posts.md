@@ -13,6 +13,16 @@
    - Rien n'est publié sans appuyer sur ✅ Publier.
 5. « annuler » à tout moment. Une session expire après 3 h.
 
+## Story (automatique)
+- Après publication, la photo de couverture est publiée en story Instagram ET Facebook : format 1080×1920, fond = la photo floutée, photo entière au centre, bandeau blanc avec le logo (logo-bh.png à la racine du dépôt).
+- « pas de story » (dans le texte ou avant de valider) pour l'enlever, « avec story » pour la remettre.
+- Une story ratée n'empêche pas le post. Pas de stickers/lien/musique possibles via l'API.
+
+## Tags Instagram
+- Écrire les comptes dans le message : « tag @moshe.cohen @sarah_levy ». Ils sont identifiés sur la photo de couverture et mentionnés dans le texte Instagram (pas de @ dans le texte Facebook).
+- Facebook ne permet pas d'identifier des personnes via l'API.
+- Si Instagram refuse un compte (nom faux, compte privé), le post est republié sans les identifications et le bot le signale.
+
 ## Règles de rédaction
 - Toujours « Beth Habad S. Maurice », jamais « Saint-Maurice » (même en hashtag).
 - Aucun fait inventé (nombres, noms, dates), personne nommée sur les photos.

@@ -20,6 +20,8 @@
 //   POSTS_MODEL      (facultatif) — modèle Claude pour la rédaction
 // ═══════════════════════════════════════════════════════════════
 const sharp = require('sharp');
+const path = require('node:path');
+const fs = require('node:fs');
 
 const GRAPH = 'https://graph.facebook.com/v25.0';
 const MAX_PHOTOS = 10;
@@ -95,8 +97,62 @@ async function preparerPhoto(mediaId) {
   return {
     url: `${ctx.publicBaseUrl}/media/${idBase}`,
     urlInsta: `${ctx.publicBaseUrl}/media/${idInsta}`,
+    idBase,
     apercuB64: apercu.toString('base64')
   };
+}
+
+// ─── Story : photo de couverture en 1080×1920 + bandeau logo ───
+let logoCache = null;
+function logoBuffer() {
+  if (logoCache === null) {
+    try { logoCache = fs.readFileSync(path.join(__dirname, '..', '..', 'logo-bh.png')); }
+    catch (e) { logoCache = false; console.error('Posts — logo introuvable :', e.message); }
+  }
+  return logoCache || null;
+}
+async function fabriquerStory(photo) {
+  const r = await ctx.pool.query('SELECT data FROM medias WHERE id=$1', [photo.idBase]);
+  if (!r.rows.length) throw new Error('photo introuvable');
+  const src = r.rows[0].data;
+  const W = 1080, H = 1920;
+  // Fond : la même photo, agrandie et floutée
+  const fond = await sharp(src).resize(W, H, { fit: 'cover' }).blur(40).modulate({ brightness: 0.75 }).toBuffer();
+  // Photo entière, centrée dans la zone au-dessus du bandeau (y de 80 à 1440)
+  const zoneHaut = 80, zoneBas = 1440;
+  const centre = await sharp(src).resize(W - 60, zoneBas - zoneHaut, { fit: 'inside' }).toBuffer();
+  const mc = await sharp(centre).metadata();
+  const couches = [{ input: centre, left: Math.round((W - mc.width) / 2), top: zoneHaut + Math.round((zoneBas - zoneHaut - mc.height) / 2) }];
+  // Bandeau blanc arrondi avec le logo
+  const logo = logoBuffer();
+  if (logo) {
+    const lg = await sharp(logo).resize(760, null, { fit: 'inside' }).png().toBuffer();
+    const ml = await sharp(lg).metadata();
+    const bw = ml.width + 80, bh = ml.height + 50;
+    const bande = Buffer.from(`<svg width="${bw}" height="${bh}"><rect width="${bw}" height="${bh}" rx="34" ry="34" fill="#ffffff" fill-opacity="0.94"/></svg>`);
+    const bx = Math.round((W - bw) / 2), by = H - bh - 150;
+    couches.push({ input: bande, left: bx, top: by });
+    couches.push({ input: lg, left: bx + 40, top: by + 25 });
+  }
+  const img = await sharp(fond).composite(couches).jpeg({ quality: 90 }).toBuffer();
+  const id = await stocker(img);
+  return `${ctx.publicBaseUrl}/media/${id}`;
+}
+
+// ─── Tags Instagram : « tag @moshe.cohen @sarah_levy » ─────────
+function extraireTags(texte) {
+  const tags = [];
+  const re = /(^|[\s,;(])@([A-Za-z0-9._]{1,30})/g;
+  let m;
+  while ((m = re.exec(String(texte || ''))) !== null) {
+    const u = m[2].replace(/\.+$/, '');
+    if (u && !tags.some(t => t.toLowerCase() === u.toLowerCase())) tags.push(u);
+  }
+  return tags.slice(0, 20);
+}
+function userTagsJson(tags) {
+  // Positions réparties sur la photo (Instagram exige x et y entre 0 et 1)
+  return JSON.stringify(tags.map((u, i) => ({ username: u, x: Number(((i + 1) / (tags.length + 1)).toFixed(2)), y: 0.85 })));
 }
 
 // ─── Rédaction par Claude (community manager) ─────────────────
@@ -120,6 +176,7 @@ RÈGLES STRICTES :
 - Ne nomme jamais une personne visible sur les photos si son nom n'est pas donné.
 - Vocabulaire juif juste et respectueux (Chabbat, Torah, mitsva, Hassidout, fêtes…), orthographe française.
 - Pas d'astérisques ni de mise en forme Markdown.
+- Si on te donne des comptes Instagram à identifier, mentionne-les tous (avec le @) dans le texte Instagram, naturellement. Dans le texte Facebook, n'écris aucun @ ni nom de compte. N'ajoute jamais de @ que le Rav n'a pas donné (sauf @habadsmaurice si utile).
 
 CHOIX DES PHOTOS (comme un vrai community manager) :
 - Chaque photo est annoncée par « Photo N ». Choisis lesquelles publier et dans quel ordre.
@@ -161,6 +218,8 @@ async function rediger(s, demandeModif) {
     contenu.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.apercuB64 } });
   });
   let consigne = `Date d'aujourd'hui : ${dateFr()}.\nNombre de photos reçues : ${s.photos.length}.\n\nMessage du Rav :\n${s.texte.trim() || '(pas de texte, base-toi sur les photos)'}`;
+  const tags = extraireTags(s.texte);
+  if (tags.length) consigne += `\n\nComptes Instagram à identifier : ${tags.map(t => '@' + t).join(' ')}`;
   if (demandeModif && s.brouillon) {
     const ordreActuel = (s.selection || []).map((n, i) => `position ${i + 1} de l'aperçu = Photo ${n + 1}`).join(', ');
     consigne += `\n\nVoici le post actuel :\nPHOTOS PUBLIÉES DANS CET ORDRE : ${ordreActuel}\n(Quand le Rav parle de « la photo 2 », il parle de la position 2 de l'aperçu.)\n\nINSTAGRAM :\n${s.brouillon.instagram}\n\nFACEBOOK :\n${s.brouillon.facebook}\n\nLe Rav demande cette modification : ${demandeModif}\nApplique sa demande (textes et/ou photos). Ne change que ce qu'il demande, garde le reste identique. Renvoie toujours le JSON complet avec la liste des photos.`;
@@ -218,6 +277,14 @@ async function genererEtMontrer(from, s, demandeModif) {
   await attendre(500);
   await ctx.sendWhatsApp(from, `📘 FACEBOOK\n\n${s.brouillon.facebook}`);
   await attendre(500);
+  const tagsApercu = extraireTags(s.texte);
+  const infos = [];
+  if (tagsApercu.length) infos.push(`🏷️ Identifiés sur Instagram : ${tagsApercu.map(t => '@' + t).join(', ')}`);
+  infos.push(s.story === false
+    ? '📲 Story : non (écris « avec story » pour l\'ajouter)'
+    : '📲 Story : la photo de couverture sera aussi publiée en story Instagram et Facebook (écris « pas de story » pour l\'enlever)');
+  await ctx.sendWhatsApp(from, infos.join('\n\n'));
+  await attendre(400);
   const config = await configMeta().catch(() => null);
   const titre = config && config.pageToken
     ? `Je publie sur ${config.igId ? 'Facebook et Instagram' : 'Facebook (Instagram pas encore relié)'} ?\n\nPour modifier, écris directement ce que tu veux changer (texte ou photos), ex. « garde toutes les photos », « mets la 3 en premier », « plus court ».`
@@ -289,16 +356,18 @@ async function attendreConteneur(id, token) {
   }
   throw new Error('Instagram met trop de temps à traiter les photos');
 }
-async function publierInstagram(cfg, photos, caption) {
+async function publierInstagram(cfg, photos, caption, tags) {
   const tok = cfg.pageToken;
+  const avecTags = tags && tags.length ? { user_tags: userTagsJson(tags) } : {};
   let conteneur;
   if (photos.length === 1) {
-    const c = await graphPost(`${cfg.igId}/media`, { image_url: photos[0].urlInsta, caption }, tok);
+    const c = await graphPost(`${cfg.igId}/media`, { image_url: photos[0].urlInsta, caption, ...avecTags }, tok);
     conteneur = c.id;
   } else {
     const enfants = [];
-    for (const p of photos) {
-      const c = await graphPost(`${cfg.igId}/media`, { image_url: p.urlInsta, is_carousel_item: 'true' }, tok);
+    for (let i = 0; i < photos.length; i++) {
+      const extra = i === 0 ? avecTags : {}; // les identifications vont sur la couverture
+      const c = await graphPost(`${cfg.igId}/media`, { image_url: photos[i].urlInsta, is_carousel_item: 'true', ...extra }, tok);
       enfants.push(c.id);
     }
     for (const id of enfants) await attendreConteneur(id, tok);
@@ -311,6 +380,16 @@ async function publierInstagram(cfg, photos, caption) {
     const d = await graphGet(`${pub.id}?fields=permalink`, tok);
     return d.permalink || 'https://www.instagram.com/habadsmaurice/';
   } catch (e) { return 'https://www.instagram.com/habadsmaurice/'; }
+}
+
+async function publierStoryInstagram(cfg, url) {
+  const c = await graphPost(`${cfg.igId}/media`, { image_url: url, media_type: 'STORIES' }, cfg.pageToken);
+  await attendreConteneur(c.id, cfg.pageToken);
+  await graphPost(`${cfg.igId}/media_publish`, { creation_id: c.id }, cfg.pageToken);
+}
+async function publierStoryFacebook(cfg, url) {
+  const ph = await graphPost(`${cfg.pageId}/photos`, { url, published: 'false' }, cfg.pageToken);
+  await graphPost(`${cfg.pageId}/photo_stories`, { photo_id: ph.id }, cfg.pageToken);
 }
 
 async function publier(from, s, cibles) {
@@ -331,9 +410,32 @@ async function publier(from, s, cibles) {
   if (cibles.instagram) {
     if (!cfg.igId) lignes.push("📸 Instagram : pas encore relié à la page Facebook ❌");
     else {
-      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, s.brouillon.instagram)}`); ok++; }
-      catch (e) { lignes.push(`📸 Instagram : échec ❌ (${e.message})`); }
+      const tags = extraireTags(s.texte);
+      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, s.brouillon.instagram, tags)}`); ok++; }
+      catch (e) {
+        if (tags.length) {
+          // Un compte identifié peut être refusé (nom faux, compte privé) : on republie sans les identifications
+          try {
+            lignes.push(`📸 Instagram : publié ✅ mais sans les identifications (Instagram les a refusées : ${e.message})\n${await publierInstagram(cfg, photos, s.brouillon.instagram, [])}`);
+            ok++;
+          } catch (e2) { lignes.push(`📸 Instagram : échec ❌ (${e2.message})`); }
+        } else lignes.push(`📸 Instagram : échec ❌ (${e.message})`);
+      }
     }
+  }
+  // Story avec la photo de couverture (si au moins un post est parti)
+  if (ok > 0 && s.story !== false) {
+    try {
+      const urlStory = await fabriquerStory(photos[0]);
+      const st = [];
+      if (cibles.instagram && cfg.igId) {
+        try { await publierStoryInstagram(cfg, urlStory); st.push('Instagram ✅'); } catch (e) { st.push(`Instagram ❌ (${e.message})`); }
+      }
+      if (cibles.facebook) {
+        try { await publierStoryFacebook(cfg, urlStory); st.push('Facebook ✅'); } catch (e) { st.push(`Facebook ❌ (${e.message})`); }
+      }
+      if (st.length) lignes.push(`📲 Story : ${st.join(' · ')}`);
+    } catch (e) { lignes.push(`📲 Story : échec ❌ (${e.message})`); }
   }
   try {
     await ctx.pool.query(
@@ -388,6 +490,7 @@ async function handleText(from, text) {
       await genererEtMontrer(from, s);
       return true;
     }
+    if (/\b(pas de|sans) story\b/i.test(t)) s.story = false;
     s.texte = (s.texte ? s.texte + '\n' : '') + t;
     await ctx.sendWhatsApp(from, s.photos.length
       ? '📝 Texte noté. Écris « fini » quand c\'est tout.'
@@ -396,6 +499,8 @@ async function handleText(from, text) {
   }
 
   if (s.etape === 'validation' || s.etape === 'modification') {
+    if (/^(pas de|sans) story\s*[.!]*$/i.test(t)) { s.story = false; await ctx.sendWhatsApp(from, '👍 Pas de story pour ce post.'); await boutonsValidation(from); return true; }
+    if (/^(avec( la)?|mets? (une|la)?) ?story\s*[.!]*$/i.test(t)) { s.story = true; await ctx.sendWhatsApp(from, '👍 La couverture sera aussi publiée en story.'); await boutonsValidation(from); return true; }
     if (/^(publier|publie|valider|valide|oui)\s*[.!]*$/i.test(t)) { await publier(from, s, { facebook: true, instagram: true }); return true; }
     if (/^(insta(gram)?)\s*(seulement|uniquement)?$/i.test(t)) { await publier(from, s, { facebook: false, instagram: true }); return true; }
     if (/^(facebook|fb)\s*(seulement|uniquement)?$/i.test(t)) { await publier(from, s, { facebook: true, instagram: false }); return true; }
