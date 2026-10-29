@@ -89,7 +89,7 @@ async function preparerPhoto(mediaId) {
   const brut = await telechargerMedia(mediaId);
   const base = await sharp(brut).rotate().resize(2048, 2048, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 90, progressive: true }).toBuffer();
   const insta = await versionInstagram(base);
-  const apercu = await sharp(base).resize(1024, 1024, { fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
+  const apercu = await sharp(base).resize(900, 900, { fit: 'inside' }).jpeg({ quality: 75 }).toBuffer();
   const idBase = await stocker(base);
   const idInsta = await stocker(insta);
   return {
@@ -121,7 +121,15 @@ RÈGLES STRICTES :
 - Vocabulaire juif juste et respectueux (Chabbat, Torah, mitsva, Hassidout, fêtes…), orthographe française.
 - Pas d'astérisques ni de mise en forme Markdown.
 
-Réponds UNIQUEMENT avec un objet JSON : {"instagram": "...", "facebook": "..."}`;
+CHOIX DES PHOTOS (comme un vrai community manager) :
+- Chaque photo est annoncée par « Photo N ». Choisis lesquelles publier et dans quel ordre.
+- La photo n°1 est la couverture : elle doit donner envie de s'arrêter. Privilégie les visages souriants, le groupe, l'ambiance, l'action, une belle lumière. Évite en couverture un plat, un objet ou une table vide, sauf si l'activité porte justement sur ça.
+- Alterne ensuite les plans (groupe, détails, moments forts) pour raconter l'activité.
+- Retire les photos floues, trop sombres, mal cadrées ou presque identiques à une autre. Garde au moins 3 photos s'il y en a 3 ou plus, sauf demande contraire du Rav.
+- Le conseil : 1 à 3 phrases courtes et simples pour le Rav, qui expliquent ton choix (quelle photo en couverture et pourquoi, ce que tu as retiré et pourquoi). Désigne les photos par ce qu'on y voit (« la photo du groupe autour de la table »), pas seulement par leur numéro.
+
+Réponds UNIQUEMENT avec un objet JSON :
+{"photos": [numéros des photos à publier, dans l'ordre], "conseil": "...", "instagram": "...", "facebook": "..."}`;
 
 async function appelClaude(modele, contenu) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -137,18 +145,25 @@ async function appelClaude(modele, contenu) {
   if (!m) throw new Error('Réponse illisible');
   const json = JSON.parse(m[0]);
   if (!json.instagram || !json.facebook) throw new Error('Textes incomplets');
-  return { instagram: String(json.instagram).trim(), facebook: String(json.facebook).trim() };
+  return {
+    instagram: String(json.instagram).trim(),
+    facebook: String(json.facebook).trim(),
+    photos: Array.isArray(json.photos) ? json.photos : null,
+    conseil: json.conseil ? String(json.conseil).trim() : ''
+  };
 }
 
 async function rediger(s, demandeModif) {
   const contenu = [];
-  // Claude regarde au maximum 6 photos (suffisant pour l'ambiance)
-  for (const p of s.photos.slice(0, 6)) {
+  // Claude regarde toutes les photos (max 10), chacune annoncée par son numéro
+  s.photos.forEach((p, i) => {
+    contenu.push({ type: 'text', text: `Photo ${i + 1}` });
     contenu.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.apercuB64 } });
-  }
-  let consigne = `Date d'aujourd'hui : ${dateFr()}.\nNombre de photos : ${s.photos.length}.\n\nMessage du Rav :\n${s.texte.trim() || '(pas de texte, base-toi sur les photos)'}`;
+  });
+  let consigne = `Date d'aujourd'hui : ${dateFr()}.\nNombre de photos reçues : ${s.photos.length}.\n\nMessage du Rav :\n${s.texte.trim() || '(pas de texte, base-toi sur les photos)'}`;
   if (demandeModif && s.brouillon) {
-    consigne += `\n\nVoici les textes actuels :\nINSTAGRAM :\n${s.brouillon.instagram}\n\nFACEBOOK :\n${s.brouillon.facebook}\n\nLe Rav demande cette modification : ${demandeModif}\nRéécris les deux textes en appliquant sa demande.`;
+    const ordreActuel = (s.selection || []).map((n, i) => `position ${i + 1} de l'aperçu = Photo ${n + 1}`).join(', ');
+    consigne += `\n\nVoici le post actuel :\nPHOTOS PUBLIÉES DANS CET ORDRE : ${ordreActuel}\n(Quand le Rav parle de « la photo 2 », il parle de la position 2 de l'aperçu.)\n\nINSTAGRAM :\n${s.brouillon.instagram}\n\nFACEBOOK :\n${s.brouillon.facebook}\n\nLe Rav demande cette modification : ${demandeModif}\nApplique sa demande (textes et/ou photos). Ne change que ce qu'il demande, garde le reste identique. Renvoie toujours le JSON complet avec la liste des photos.`;
   }
   contenu.push({ type: 'text', text: consigne });
   const modeles = [process.env.POSTS_MODEL || 'claude-sonnet-5-5', 'claude-haiku-4-5-20251001'];
@@ -158,6 +173,18 @@ async function rediger(s, demandeModif) {
     catch (e) { derniereErreur = e; console.error('Posts — rédaction échouée avec', m, ':', e.message); }
   }
   throw derniereErreur;
+}
+
+// Numéros renvoyés par Claude (1, 2, 3…) → index valides, sans doublon.
+// Si la liste est vide ou illisible, on garde toutes les photos dans l'ordre reçu.
+function choisirSelection(liste, total) {
+  const vus = new Set();
+  const sel = [];
+  for (const v of liste || []) {
+    const i = parseInt(v, 10) - 1;
+    if (Number.isInteger(i) && i >= 0 && i < total && !vus.has(i)) { vus.add(i); sel.push(i); }
+  }
+  return sel.length ? sel.slice(0, MAX_PHOTOS) : Array.from({ length: total }, (_, i) => i);
 }
 
 async function genererEtMontrer(from, s, demandeModif) {
@@ -170,15 +197,30 @@ async function genererEtMontrer(from, s, demandeModif) {
     await ctx.sendWhatsApp(from, `⚠️ Je n'ai pas réussi à rédiger le post (${e.message}). Écris « fini » pour réessayer, ou « annuler ».`);
     return;
   }
+  const ancienne = (s.selection || []).join(',');
+  s.selection = choisirSelection(s.brouillon.photos, s.photos.length);
   s.etape = 'validation';
   toucher(s);
+  // Aperçu des photos dans l'ordre de publication (au premier passage, ou si l'ordre a changé)
+  if (!demandeModif || ancienne !== s.selection.join(',')) {
+    const n = s.selection.length, total = s.photos.length;
+    await ctx.sendWhatsApp(from, `🖼️ Mon choix : ${n} photo${n > 1 ? 's' : ''}${n < total ? ` sur ${total}` : ''}, dans cet ordre (la n°1 = la couverture) :`);
+    for (let i = 0; i < n; i++) {
+      await ctx.sendWhatsAppImage(from, s.photos[s.selection[i]].urlInsta, `${i + 1}${i === 0 ? ' · couverture' : ''}`);
+      await attendre(700);
+    }
+  }
+  if (s.brouillon.conseil) {
+    await ctx.sendWhatsApp(from, `💡 ${s.brouillon.conseil}`);
+    await attendre(500);
+  }
   await ctx.sendWhatsApp(from, `📸 INSTAGRAM\n\n${s.brouillon.instagram}`);
   await attendre(500);
   await ctx.sendWhatsApp(from, `📘 FACEBOOK\n\n${s.brouillon.facebook}`);
   await attendre(500);
   const config = await configMeta().catch(() => null);
   const titre = config && config.pageToken
-    ? `Je publie sur ${config.igId ? 'Facebook et Instagram' : 'Facebook (Instagram pas encore relié)'} ?\n\nPour modifier, appuie sur ✏️ ou écris directement ce que tu veux changer.`
+    ? `Je publie sur ${config.igId ? 'Facebook et Instagram' : 'Facebook (Instagram pas encore relié)'} ?\n\nPour modifier, écris directement ce que tu veux changer (texte ou photos), ex. « garde toutes les photos », « mets la 3 en premier », « plus court ».`
     : `⚠️ La publication automatique n'est pas encore configurée : copie les textes ci-dessus pour l'instant.\n\nPour modifier, écris ce que tu veux changer.`;
   await boutonsValidation(from, titre);
 }
@@ -281,21 +323,22 @@ async function publier(from, s, cibles) {
   await ctx.sendWhatsApp(from, '🚀 Publication en cours…');
   const lignes = [];
   let ok = 0;
+  const photos = (s.selection && s.selection.length ? s.selection : s.photos.map((_, i) => i)).map(i => s.photos[i]);
   if (cibles.facebook) {
-    try { lignes.push(`📘 Facebook : publié ✅\n${await publierFacebook(cfg, s.photos, s.brouillon.facebook)}`); ok++; }
+    try { lignes.push(`📘 Facebook : publié ✅\n${await publierFacebook(cfg, photos, s.brouillon.facebook)}`); ok++; }
     catch (e) { lignes.push(`📘 Facebook : échec ❌ (${e.message})`); }
   }
   if (cibles.instagram) {
     if (!cfg.igId) lignes.push("📸 Instagram : pas encore relié à la page Facebook ❌");
     else {
-      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, s.photos, s.brouillon.instagram)}`); ok++; }
+      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, s.brouillon.instagram)}`); ok++; }
       catch (e) { lignes.push(`📸 Instagram : échec ❌ (${e.message})`); }
     }
   }
   try {
     await ctx.pool.query(
       'INSERT INTO posts_sociaux (texte_source, instagram, facebook, photos, resultat) VALUES ($1,$2,$3,$4,$5)',
-      [s.texte, s.brouillon.instagram, s.brouillon.facebook, JSON.stringify(s.photos.map(p => p.url)), lignes.join('\n')]
+      [s.texte, s.brouillon.instagram, s.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n')]
     );
   } catch (e) { console.error('Posts — sauvegarde :', e.message); }
   if (ok > 0) delete sessions[from]; else s.etape = 'validation';
@@ -413,7 +456,7 @@ async function handleBouton(from, buttonId) {
   if (buttonId === 'post_annuler') { delete sessions[from]; await ctx.sendWhatsApp(from, '❌ Post annulé.'); return; }
   if (buttonId === 'post_modifier') {
     s.etape = 'modification';
-    await ctx.sendWhatsApp(from, '✏️ Dis-moi ce que tu veux changer.\n\nExemples : « plus court », « ajoute que c\'était pour Sim\'hat Torah », « plus joyeux », « enlève les hashtags ».\n\nTu peux aussi écrire « insta seulement » ou « facebook seulement » pour publier sur un seul réseau.');
+    await ctx.sendWhatsApp(from, '✏️ Dis-moi ce que tu veux changer.\n\nExemples : « plus court », « ajoute que c\'était pour Sim\'hat Torah », « mets la photo 3 en premier », « garde toutes les photos », « enlève la pizza ».\n\nTu peux aussi écrire « insta seulement » ou « facebook seulement » pour publier sur un seul réseau.');
   }
 }
 

@@ -3,9 +3,12 @@
 ## Utilisation (numéro admin seulement)
 1. Écrire « post » au bot (ou « post Soirée Sim'hat Torah… » avec le texte direct).
 2. Transférer les photos (max 10) + un petit texte (la légende d'une photo compte aussi).
-3. Écrire « fini » → le bot rédige un post Instagram ET un post Facebook (style community manager).
+3. Écrire « fini » → le bot (community manager) :
+   - choisit les photos et leur ordre (couverture = visages/groupe/ambiance plutôt qu'un plat ; retire floues/doublons ; garde au moins 3 photos s'il y en a 3+),
+   - envoie l'aperçu des photos dans l'ordre (n°1 = couverture, version recadrée Instagram) + un conseil qui explique son choix,
+   - rédige le post Instagram ET le post Facebook.
 4. Boutons : ✅ Publier (les deux réseaux) · ✏️ Modifier · ❌ Annuler.
-   - Tout texte écrit à ce moment = demande de modification (« plus court », « plus joyeux »…).
+   - Tout texte écrit à ce moment = demande de modification, textes ou photos (« plus court », « garde toutes les photos », « mets la 3 en premier »). Les numéros = positions de l'aperçu. L'aperçu est renvoyé si l'ordre change.
    - « insta seulement » / « facebook seulement » pour un seul réseau.
    - Rien n'est publié sans appuyer sur ✅ Publier.
 5. « annuler » à tout moment. Une session expire après 3 h.
@@ -19,7 +22,7 @@
 ## Technique
 - Fichier : `features/posts/posts.bot.js` (branché dans index.js : boutons `post_`, images, texte avant les Lettres Séfer Torah).
 - Photos stockées dans la table `medias` (servies par /media/:id) : une version normale + une version recadrée pour Instagram (entre 4:5 et 1,91:1).
-- Rédaction : Claude (POSTS_MODEL, défaut claude-sonnet-5-5, repli Haiku) qui regarde jusqu'à 6 photos.
+- Rédaction + choix des photos : Claude (POSTS_MODEL, défaut claude-sonnet-5-5, repli Haiku) voit toutes les photos (max 10), répond en JSON {photos, conseil, instagram, facebook}. Facebook et Instagram sont publiés avec la même sélection, dans le même ordre.
 - Publication : API Meta v25.0. Facebook = photos non publiées puis /feed avec attached_media. Instagram = photo seule ou carrousel, puis media_publish.
 - Historique : table `posts_sociaux`, consultable via /admin/posts?password=...
 
