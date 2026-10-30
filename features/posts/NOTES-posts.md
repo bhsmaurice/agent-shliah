@@ -54,3 +54,13 @@
 ## Permissions Meta nécessaires
 pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish, business_management.
 Le compte Instagram doit être professionnel et relié à la page Facebook.
+
+## Onglet « Posts Insta / Facebook » dans l'admin (30 octobre 2026)
+- Menu Communauté → Posts Insta / Facebook (admin seulement). Code : bloc `<style id="posts-admin">` + `<script id="posts-admin-js">` dans admin.html.
+- Affiche les posts programmés (photo, date, texte, Modifier, Annuler) et les posts publiés (couverture, nb de photos, texte Instagram/Facebook, liens « Voir », Copier, Modifier, étiquette Publié / Facebook seulement / Erreur).
+- Routes : GET /admin/posts (publiés), GET /admin/posts/programmes, POST /admin/posts/programmes/:id/annuler, POST /admin/posts/programmes/:id/modifier, POST /admin/posts/:id/modifier.
+- Modifier un post publié : seulement le TEXTE (l'API Meta ne permet pas de changer les photos).
+  - Facebook : modifié directement (POST /{post-id} message) — possible car le post a été publié par notre application.
+  - Instagram : essai POST /{ig-media-id} caption ; si Meta refuse, ou pour les posts publiés avant le 30/10/2026 (pas d'ig_media_id), l'admin affiche « Copier le texte Instagram » + lien pour le modifier à la main dans l'appli.
+  - Le nouveau texte est toujours gardé dans posts_sociaux (colonne modifie_le).
+- Nouvelles colonnes posts_sociaux : ig_media_id, modifie_le.
