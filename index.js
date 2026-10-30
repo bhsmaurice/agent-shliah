@@ -1420,6 +1420,19 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
+    // MON CARNET — message vocal de l'admin → tâche(s)
+    if (message && message.type === 'audio') {
+      const from = message.from, msgId = message.id;
+      try {
+        const already = await pool.query('SELECT 1 FROM messages_traites WHERE msg_id=$1', [msgId]);
+        if (already.rows.length > 0) return;
+        await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
+      } catch (e) { console.error('Dedup error:', e.message); }
+      taches.vu(from);
+      await taches.handleAudio(from, message);
+      return;
+    }
+
     if (message && message.type === 'text') {
       const from = message.from, text = message.text.body, msgId = message.id;
       try {
@@ -1428,10 +1441,13 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch(e) { console.error('Dedup error:', e.message); }
 
+      taches.vu(from);
       // POSTS INSTA/FACEBOOK — mot-clé « post » (admin)
       if (await posts.handleText(from, text)) return;
       // SMS — mot-clé « sms » (admin)
       if (await smsBot.handleText(from, text)) return;
+      // MON CARNET — « tâche … », « mes tâches », « fait 2 », « résumé » (admin)
+      if (await taches.handleText(from, text)) return;
       // LETTRES SÉFER TORAH — l'admin transfère le message d'un parent
       if (await lettresWhatsapp.handle(from, text, message)) return;
       if (await handleAdminCerfaCommand(from, text)) return;
@@ -3054,6 +3070,8 @@ require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMI
 const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, envoyerEmail });
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
 const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, sendWhatsAppImage, envoyerEmail, phoneNumberId: PHONE_NUMBER_ID, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
+// MON CARNET — tâches personnelles de l'admin (WhatsApp + page admin) : voir features/taches/
+const taches = require('./features/taches/taches.bot').init({ app, pool, sendWhatsApp, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, adminPhone: ADMIN_PHONE, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 // SMS (SMSFactor) — page /admin/sms, commande WhatsApp « sms », secours, réponses : voir features/sms/
 async function repondreParSMS(phone, text) {
