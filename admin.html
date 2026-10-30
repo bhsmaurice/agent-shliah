@@ -1925,6 +1925,83 @@ body {
 @keyframes poSpin { to { transform: rotate(360deg); } }
 @media (max-width: 899px) { .po-md { padding: 18px; } .po-md-bg { padding-top: 3vh; } }
 </style>
+<style id="carnet-admin">
+/* ═══ Page « Mon carnet » (tâches personnelles de l'admin) ═══ */
+#tab-carnet .inner { max-width: 900px !important; }
+.ca-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin: 4px 0 16px; }
+.ca-head h1 { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -1px; color: #253D78; margin: 0 0 4px; }
+.ca-head p { color: #7D8AA4; font-size: 15px; margin: 0; }
+.ca-add { display: flex; gap: 8px; background: #fff; border: 1px solid #DFE6F1; border-radius: 14px; padding: 6px 6px 6px 14px; align-items: center; margin-bottom: 8px; box-shadow: 0 3px 14px rgba(37,61,120,.03); }
+.ca-add .ti { color: #9AA5BC; font-size: 20px; vertical-align: 0; }
+.ca-add input { flex: 1; border: 0; outline: 0; font: 16px Arial, sans-serif; color: #253D78; background: none; min-width: 0; padding: 8px 0; }
+.ca-hint { font-size: 12px; color: #9AA5BC; margin: 0 4px 16px; }
+.ca-btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 11px; font: 14px Arial, sans-serif; white-space: nowrap; border: 1px solid #DFE6F1; background: #fff; color: #253D78; }
+.ca-btn .ti { font-size: 16px; vertical-align: 0; color: inherit; }
+.ca-btn:hover { background: #EDF2FD; }
+.ca-btn.primary { background: #253D78; border-color: #253D78; color: #fff; }
+.ca-btn.primary:hover { background: #314F91; }
+.ca-btn.danger { color: #A33B3E; } .ca-btn.danger:hover { background: #FCEFEF; }
+.ca-btn[disabled] { opacity: .6; cursor: wait; }
+.ca-filtres { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.ca-filtres button { all: unset; cursor: pointer; font: 13px Arial; padding: 6px 12px; border-radius: 20px; border: 1px solid #DFE6F1; background: #fff; color: #4A5D86; }
+.ca-filtres button.on { background: #253D78; border-color: #253D78; color: #fff; }
+.ca-filtres button span { opacity: .65; margin-left: 4px; }
+.ca-sec { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
+.ca-sec h3 { margin: 0; padding: 13px 16px; font: 600 13px Arial; letter-spacing: .5px; text-transform: uppercase; color: #7D8AA4; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #EEF1F6; }
+.ca-sec h3 .ti { font-size: 17px; vertical-align: 0; }
+.ca-sec h3 .n { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; color: #9AA5BC; }
+.ca-sec.retard h3 { color: #A33B3E; }
+.ca-sec.jour h3 { color: #253D78; }
+.ca-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-top: 1px solid #F2F4F9; cursor: pointer; }
+.ca-row:first-of-type { border-top: 0; }
+.ca-row:hover { background: #FAFBFE; }
+.ca-check { all: unset; cursor: pointer; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #BFCDEB; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; color: transparent; transition: all .15s; }
+.ca-check:hover { border-color: #4F7956; color: #4F7956; }
+.ca-check .ti { font-size: 14px; vertical-align: 0; }
+.ca-row.fait .ca-check { background: #4F7956; border-color: #4F7956; color: #fff; }
+.ca-row.fait .ca-t b { text-decoration: line-through; color: #9AA5BC; }
+.ca-t { flex: 1; min-width: 0; }
+.ca-t b { display: block; font: 600 15px/1.45 Arial; color: #253D78; }
+.ca-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 4px; font-size: 12px; color: #7D8AA4; align-items: center; }
+.ca-meta .ti { font-size: 14px; vertical-align: -2px; }
+.ca-meta .late { color: #A33B3E; }
+.ca-dos { padding: 2px 8px; border-radius: 20px; font-size: 11px; background: var(--gb, #EEF1F6); color: var(--g, #5F6B82); }
+.ca-notes { font-size: 13px; color: #7D8AA4; margin-top: 4px; white-space: pre-wrap; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ca-empty { padding: 30px 16px; text-align: center; color: #7D8AA4; font-size: 14px; line-height: 1.8; }
+.ca-empty b { color: #253D78; }
+.ca-wa { background: #F5F7FC; border: 1px solid #DFE6F1; border-radius: 16px; padding: 16px; margin-top: 18px; font-size: 14px; color: #4A5D86; line-height: 1.8; }
+.ca-wa h4 { margin: 0 0 6px; font: 600 14px Arial; color: #253D78; display: flex; align-items: center; gap: 7px; }
+.ca-wa code { background: #fff; border: 1px solid #DFE6F1; border-radius: 6px; padding: 1px 6px; font: 13px Arial; color: #253D78; }
+.ca-wa .reg { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ca-wa select { border: 1px solid #DFE6F1; border-radius: 9px; padding: 6px 8px; font: 14px Arial; color: #253D78; background: #fff; }
+/* Dossiers en couleur (mêmes couleurs que le menu) */
+[data-dos="Mezouzot et Téfilines"] { --g: #253D78; --gb: #EDF2FD; }
+[data-dos="Commandes"] { --g: #A86A0E; --gb: #FCF1DD; }
+[data-dos="Communauté"] { --g: #0E8378; --gb: #E2F4F1; }
+[data-dos="Dons"] { --g: #B2405F; --gb: #FBEAF0; }
+[data-dos="Personnel"] { --g: #5B4FCF; --gb: #EFEDFC; }
+[data-dos="Autre"] { --g: #5F6B82; --gb: #EEF1F6; }
+/* Fenêtre de modification */
+.ca-md-bg { position: fixed; inset: 0; background: rgba(21,33,62,.45); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 8vh 14px 14px; overflow-y: auto; }
+.ca-md-bg.open { display: flex; }
+.ca-md { width: 100%; max-width: 520px; background: #fff; border-radius: 18px; box-shadow: 0 20px 70px rgba(21,33,62,.3); padding: 22px; font-family: Arial, sans-serif; color: #253D78; }
+.ca-md h2 { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 22px; margin: 0 0 14px; }
+.ca-md label { display: block; font: 600 12px Arial; color: #7D8AA4; margin: 12px 0 5px; text-transform: uppercase; letter-spacing: .5px; }
+.ca-md input, .ca-md select, .ca-md textarea { width: 100%; box-sizing: border-box; border: 1px solid #DFE6F1; border-radius: 10px; padding: 10px 12px; font: 15px Arial, sans-serif; color: #253D78; background: #fff; outline: none; }
+.ca-md input:focus, .ca-md select:focus, .ca-md textarea:focus { border-color: #9FB3EC; box-shadow: 0 0 0 3px rgba(159,179,236,.35); }
+.ca-md .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ca-md-f { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.ca-md-f div { display: flex; gap: 8px; }
+/* Accueil : priorités du jour */
+.acc-prio { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; padding: 6px 6px 8px; margin-bottom: 14px; }
+.acc-prio h3 { font-size: 13px; font-weight: 600; color: #7D8AA4; text-transform: uppercase; letter-spacing: .6px; padding: 12px 12px 6px; margin: 0; display: flex; justify-content: space-between; align-items: center; }
+.acc-prio h3 a { text-transform: none; letter-spacing: 0; font-weight: 400; color: #4A5D86; cursor: pointer; font-size: 13px; }
+.acc-prio .ca-row { border-top: 0; border-radius: 11px; padding: 9px 12px; }
+@media (max-width: 899px) {
+  .ca-head h1 { font-size: 26px; }
+  .ca-md .two { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
@@ -4587,6 +4664,7 @@ document.addEventListener('click', function(e) {
   var TSEDAKA = function () { window.open('https://agent-shliah-production.up.railway.app/tsedaka?password=' + encodeURIComponent(localStorage.getItem('railway_admin_pw') || '')); };
   var PAGES = [
     { tab: 'ajouter', label: 'Accueil', ico: 'home', group: '' },
+    { tab: 'carnet', label: 'Mon carnet', ico: 'checklist', group: '', admin: true },
     { tab: 'infos', label: 'Infos du bot', ico: 'info-circle', group: 'Bot' },
     { tab: 'histoires', label: 'Histoires', ico: 'book', group: 'Bot' },
     { tab: 'musiques', label: 'Musiques', ico: 'music', group: 'Bot' },
@@ -4604,7 +4682,7 @@ document.addEventListener('click', function(e) {
     { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
-  var MOTS = { posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var MOTS = { carnet: 'tâches taches todo à faire rappel liste organiser', posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
   var GRP = { '': 'home', 'Bot': 'bot', 'Communauté': 'com', 'Dons et reçus': 'don', 'Outils': 'out' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
@@ -4657,7 +4735,7 @@ document.addEventListener('click', function(e) {
     var B = [
       { t: 'ajouter', l: 'Accueil', i: 'home', f: function () { showTab('ajouter'); } },
       { t: 'demandes', l: 'Demandes', i: 'inbox', f: function () { showTab('demandes'); } },
-      { t: 'cerfa', l: 'Cerfa', i: 'file-invoice', f: function () { showTab('cerfa'); } },
+      { t: 'carnet', l: 'Carnet', i: 'checklist', f: function () { showTab('carnet'); } },
       { t: '', l: 'Rechercher', i: 'search', f: function () { ouvrirPalette(); } },
       { t: '', l: 'Menu', i: 'menu-2', f: function () { toggleSidebar(true); } }
     ];
@@ -5069,6 +5147,195 @@ document.addEventListener('click', function(e) {
     construire();
     var orig = window.showTab;
     window.showTab = function (name) { orig.apply(this, arguments); if (name === 'posts') chargerPosts(); };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<script id="carnet-admin-js">
+/* ═══ Page « Mon carnet » : tâches personnelles de l'admin ═══
+   Lit /admin/taches ; ajoute (phrase libre rangée par le bot), coche, modifie, supprime. */
+(function () {
+  function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'], MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var etat = { taches: [], auj: '', dossiers: [], filtre: 'tous', heure: '08:00' };
+
+  function plus(iso, n) { var p = iso.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2] + n)).toISOString().slice(0, 10); }
+  function dateCourte(iso) { var p = iso.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2])); return JOURS[d.getUTCDay()] + ' ' + p[2] + ' ' + MOIS[p[1] - 1]; }
+  function quand(t) {
+    if (!t.echeance) return '';
+    var s = t.echeance === etat.auj ? "Aujourd'hui" : t.echeance === plus(etat.auj, 1) ? 'Demain' : t.echeance === plus(etat.auj, -1) ? 'Hier' : dateCourte(t.echeance);
+    return s + (t.heure ? ' · ' + t.heure.replace(':', 'h') : '');
+  }
+  function groupe(t) {
+    if (t.statut === 'fait') return 5;
+    if (!t.echeance) return 4;
+    if (t.echeance < etat.auj) return 0;
+    if (t.echeance === etat.auj) return 1;
+    if (t.echeance <= plus(etat.auj, 7)) return 2;
+    return 3;
+  }
+  function trier(a, b) { return groupe(a) - groupe(b) || String(a.echeance || '').localeCompare(String(b.echeance || '')) || String(a.heure || '99').localeCompare(String(b.heure || '99')) || new Date(a.created_at) - new Date(b.created_at); }
+
+  function ligne(t) {
+    var late = groupe(t) === 0;
+    return '<div class="ca-row' + (t.statut === 'fait' ? ' fait' : '') + '" data-id="' + t.id + '">' +
+      '<button class="ca-check" data-check="' + t.id + '" aria-label="' + (t.statut === 'fait' ? 'Remettre à faire' : 'Marquer comme fait') + '">' + ic('check') + '</button>' +
+      '<div class="ca-t"><b>' + esc(t.titre) + '</b><div class="ca-meta">' +
+      '<span class="ca-dos" data-dos="' + esc(t.dossier) + '">' + esc(t.dossier) + '</span>' +
+      (t.echeance ? '<span class="' + (late ? 'late' : '') + '">' + ic(t.heure ? 'alarm' : 'calendar') + ' ' + esc(quand(t)) + '</span>' : '') +
+      (t.personne ? '<span>' + ic('user') + ' ' + esc(t.personne) + '</span>' : '') +
+      (t.source === 'vocal' ? '<span>' + ic('microphone') + '</span>' : '') +
+      '</div>' + (t.notes ? '<div class="ca-notes">' + esc(t.notes) + '</div>' : '') + '</div></div>';
+  }
+
+  function afficher() {
+    var liste = etat.taches.filter(function (t) { return etat.filtre === 'tous' || t.dossier === etat.filtre; }).sort(trier);
+    var ouvertes = etat.taches.filter(function (t) { return t.statut === 'a_faire'; });
+    var f = '<button data-f="tous" class="' + (etat.filtre === 'tous' ? 'on' : '') + '">Tout<span>' + ouvertes.length + '</span></button>';
+    etat.dossiers.forEach(function (d) {
+      var n = ouvertes.filter(function (t) { return t.dossier === d; }).length;
+      if (n || etat.filtre === d) f += '<button data-f="' + esc(d) + '" class="' + (etat.filtre === d ? 'on' : '') + '">' + esc(d) + '<span>' + n + '</span></button>';
+    });
+    document.getElementById('ca-filtres').innerHTML = f;
+    var SECS = [['retard', 'alert-triangle', 'En retard'], ['jour', 'target', "Aujourd'hui"], ['', 'calendar-event', 'Cette semaine'], ['', 'calendar', 'Plus tard'], ['', 'note', 'Sans date'], ['', 'circle-check', 'Fait récemment']];
+    var html = '';
+    SECS.forEach(function (s, g) {
+      var items = liste.filter(function (t) { return groupe(t) === g; });
+      if (!items.length) return;
+      html += '<div class="ca-sec ' + s[0] + '"><h3>' + ic(s[1]) + s[2] + '<span class="n">' + items.length + '</span></h3>' + items.slice(0, g === 5 ? 15 : 500).map(ligne).join('') + '</div>';
+    });
+    if (!liste.filter(function (t) { return t.statut === 'a_faire'; }).length && !html) html = '<div class="ca-sec"><div class="ca-empty">Rien à faire pour l\'instant.<br>Écris une tâche ci-dessus, ou sur WhatsApp au bot : <b>« tâche commander les plaques dimanche »</b>.</div></div>';
+    document.getElementById('ca-liste').innerHTML = html;
+    var sel = document.getElementById('ca-heure'); if (sel) sel.value = etat.heure;
+  }
+
+  async function api(route, body) {
+    var url = getUrl(), pw = getAdminPw();
+    var r = body ? await fetch(url + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ password: pw }, body)) })
+                 : await fetch(url + route + '?password=' + encodeURIComponent(pw));
+    return r.json();
+  }
+  async function chargerCarnet() {
+    var box = document.getElementById('ca-liste');
+    if (!getUrl()) { box.innerHTML = '<div class="ca-sec"><div class="ca-empty">Configure l\'adresse du serveur dans Config.</div></div>'; return; }
+    try {
+      var d = await api('/admin/taches');
+      if (!d.ok) { box.innerHTML = '<div class="ca-sec"><div class="ca-empty">Impossible de charger le carnet.</div></div>'; return; }
+      etat.taches = d.taches || []; etat.auj = d.aujourdhui; etat.dossiers = d.dossiers || []; etat.heure = d.heure_resume || '08:00';
+      afficher(); prioritesAccueil();
+    } catch (e) { box.innerHTML = '<div class="ca-sec"><div class="ca-empty">Erreur de connexion au serveur.</div></div>'; }
+  }
+  window.chargerCarnet = chargerCarnet;
+
+  async function ajouter() {
+    var inp = document.getElementById('ca-input'), btn = document.getElementById('ca-ajout'), txt = inp.value.trim();
+    if (!txt) { inp.focus(); return; }
+    btn.disabled = true; btn.innerHTML = ic('loader-2') + 'Je range…';
+    try {
+      var d = await api('/admin/taches', { texte: txt });
+      if (d.ok) { inp.value = ''; alert('✓ ' + (d.taches.length > 1 ? d.taches.length + ' tâches ajoutées' : 'Tâche ajoutée : ' + d.taches[0].titre)); await chargerCarnet(); }
+      else alert('❌ ' + (d.message || 'Erreur'));
+    } catch (e) { alert('❌ Erreur de connexion'); }
+    btn.disabled = false; btn.innerHTML = ic('plus') + 'Ajouter';
+  }
+  async function basculer(id) {
+    var t = etat.taches.find(function (x) { return x.id == id; }); if (!t) return;
+    var nouveau = t.statut === 'fait' ? 'a_faire' : 'fait';
+    t.statut = nouveau; afficher(); prioritesAccueil();
+    try { var d = await api('/admin/taches/' + id, { statut: nouveau }); if (!d.ok) throw 0; if (nouveau === 'fait') alert('✓ Fait : ' + t.titre); }
+    catch (e) { alert('❌ Pas enregistré'); chargerCarnet(); }
+  }
+
+  /* ── Modifier ── */
+  var md, cur;
+  function construireModal() {
+    md = document.createElement('div'); md.className = 'ca-md-bg';
+    md.innerHTML = '<div class="ca-md" role="dialog" aria-label="Modifier la tâche"><h2>Modifier la tâche</h2>' +
+      '<label for="cm-titre">Tâche</label><input id="cm-titre">' +
+      '<label for="cm-dossier">Dossier</label><select id="cm-dossier"></select>' +
+      '<div class="two"><div><label for="cm-date">Date</label><input type="date" id="cm-date"></div><div><label for="cm-heure">Rappel à (facultatif)</label><input type="time" id="cm-heure"></div></div>' +
+      '<label for="cm-personne">Personne concernée</label><input id="cm-personne" placeholder="Mme Cohen">' +
+      '<label for="cm-notes">Notes</label><textarea id="cm-notes" rows="3"></textarea>' +
+      '<div class="ca-md-f"><button class="ca-btn danger" id="cm-suppr">' + ic('trash') + 'Supprimer</button><div><button class="ca-btn" id="cm-annul">Fermer</button><button class="ca-btn primary" id="cm-ok">' + ic('check') + 'Enregistrer</button></div></div></div>';
+    document.body.appendChild(md);
+    md.addEventListener('click', function (e) { if (e.target === md || e.target.id === 'cm-annul') md.classList.remove('open'); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && md.classList.contains('open')) md.classList.remove('open'); });
+    document.getElementById('cm-ok').onclick = async function () {
+      var b = { titre: document.getElementById('cm-titre').value.trim(), dossier: document.getElementById('cm-dossier').value, echeance: document.getElementById('cm-date').value || null, heure: document.getElementById('cm-heure').value || null, personne: document.getElementById('cm-personne').value.trim(), notes: document.getElementById('cm-notes').value.trim() };
+      if (!b.titre) { document.getElementById('cm-titre').focus(); return; }
+      try { var d = await api('/admin/taches/' + cur.id, b); if (d.ok) { md.classList.remove('open'); alert('✓ Tâche modifiée'); chargerCarnet(); } else alert('❌ ' + (d.message || 'Erreur')); }
+      catch (e) { alert('❌ Erreur de connexion'); }
+    };
+    document.getElementById('cm-suppr').onclick = async function () {
+      if (!confirm('Supprimer cette tâche ?')) return;
+      try { var d = await api('/admin/taches/' + cur.id, { statut: 'supprime' }); if (d.ok) { md.classList.remove('open'); alert('✓ Tâche supprimée'); chargerCarnet(); } }
+      catch (e) { alert('❌ Erreur de connexion'); }
+    };
+  }
+  function ouvrir(id) {
+    cur = etat.taches.find(function (x) { return x.id == id; }); if (!cur) return;
+    if (!md) construireModal();
+    document.getElementById('cm-dossier').innerHTML = etat.dossiers.map(function (d) { return '<option>' + esc(d) + '</option>'; }).join('');
+    document.getElementById('cm-titre').value = cur.titre || '';
+    document.getElementById('cm-dossier').value = cur.dossier || 'Autre';
+    document.getElementById('cm-date').value = cur.echeance || '';
+    document.getElementById('cm-heure').value = cur.heure || '';
+    document.getElementById('cm-personne').value = cur.personne || '';
+    document.getElementById('cm-notes').value = cur.notes || '';
+    md.classList.add('open');
+  }
+
+  /* ── Accueil : tes priorités du jour ── */
+  function prioritesAccueil() {
+    var acc = document.getElementById('acc'); if (!acc) return;
+    if (typeof currentUser !== 'undefined' && currentUser === 'user2') { var old = document.getElementById('acc-prio'); if (old) old.remove(); return; }
+    var box = document.getElementById('acc-prio');
+    if (!box) { box = document.createElement('div'); box.className = 'acc-prio'; box.id = 'acc-prio'; var cols = acc.querySelector('.acc-cols'); acc.insertBefore(box, cols); }
+    var prio = etat.taches.filter(function (t) { return t.statut === 'a_faire' && t.echeance && t.echeance <= etat.auj; }).sort(trier).slice(0, 3);
+    var total = etat.taches.filter(function (t) { return t.statut === 'a_faire'; }).length;
+    box.innerHTML = '<h3>Tes priorités du jour<a data-carnet="1">Mon carnet · ' + total + ' ' + ic('arrow-right') + '</a></h3>' +
+      (prio.length ? prio.map(ligne).join('') : '<div class="ca-empty" style="padding:14px">' + (total ? "Rien de prévu aujourd'hui. " : '') + 'Note une tâche sur WhatsApp : <b>« tâche … »</b></div>');
+  }
+
+  function construire() {
+    var main = document.querySelector('.main-content');
+    if (!main || document.getElementById('tab-carnet')) return;
+    var page = document.createElement('div'); page.className = 'page'; page.id = 'tab-carnet';
+    page.innerHTML = '<div class="inner">' +
+      '<div class="ca-head"><div><h1>Mon carnet</h1><p>Tes tâches, rangées par le bot. Visible par toi seul.</p></div><button class="ca-btn" id="ca-refresh">' + ic('refresh') + 'Actualiser</button></div>' +
+      '<div class="ca-add">' + ic('plus') + '<input id="ca-input" placeholder="Ex : commander les plaques dimanche" aria-label="Nouvelle tâche"><button class="ca-btn primary" id="ca-ajout">' + ic('plus') + 'Ajouter</button></div>' +
+      '<div class="ca-hint">Écris comme tu parles : le bot comprend la date, la personne et range dans le bon dossier.</div>' +
+      '<div class="ca-filtres" id="ca-filtres"></div><div id="ca-liste"><div class="ca-sec"><div class="ca-empty">Chargement…</div></div></div>' +
+      '<div class="ca-wa"><h4>' + ic('brand-whatsapp') + 'Depuis WhatsApp</h4>' +
+        '<code>tâche relancer Mme Cohen vendredi</code> pour noter · un <b>message vocal</b> marche aussi<br>' +
+        '<code>mes tâches</code> pour la liste · <code>fait 2</code> pour cocher · <code>résumé</code> pour le résumé du jour' +
+        '<div class="reg">' + ic('sun') + 'Résumé chaque matin à <select id="ca-heure">' +
+          ['06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', 'off'].map(function (h) { return '<option value="' + h + '">' + (h === 'off' ? 'Désactivé' : h.replace(':', 'h')) + '</option>'; }).join('') +
+        '</select> <span style="color:#9AA5BC">(sauf Chabbat et fêtes)</span></div></div></div>';
+    main.appendChild(page);
+    document.getElementById('ca-refresh').onclick = chargerCarnet;
+    document.getElementById('ca-ajout').onclick = ajouter;
+    document.getElementById('ca-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') ajouter(); });
+    document.getElementById('ca-heure').onchange = async function () {
+      var v = this.value;
+      try { var d = await api('/admin/taches/config', { heure_resume: v }); alert(d.ok ? '✓ ' + d.message : '❌ ' + (d.message || 'Erreur')); etat.heure = v; } catch (e) { alert('❌ Erreur de connexion'); }
+    };
+    function clic(e) {
+      var f = e.target.closest('[data-f]'); if (f) { etat.filtre = f.dataset.f; afficher(); return; }
+      var c = e.target.closest('[data-check]'); if (c) { e.stopPropagation(); basculer(c.dataset.check); return; }
+      if (e.target.closest('[data-carnet]')) { showTab('carnet'); return; }
+      var r = e.target.closest('.ca-row'); if (r) ouvrir(r.dataset.id);
+    }
+    page.addEventListener('click', clic);
+    document.addEventListener('click', function (e) { if (e.target.closest('#acc-prio')) clic(e); });
+  }
+
+  function init() {
+    construire();
+    var orig = window.showTab;
+    window.showTab = function (name) { orig.apply(this, arguments); if (name === 'carnet' || name === 'ajouter') chargerCarnet(); };
+    if (document.getElementById('app').style.display === 'block') chargerCarnet();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
