@@ -1774,6 +1774,63 @@ body {
   .np-logo { width: 36px; height: 36px; }
 }
 </style>
+<style id="accueil">
+/* ═══ ÉTAPE 2 : accueil « À faire aujourd'hui » + petits messages propres ═══ */
+#acc { margin-bottom: 26px; font-family: Arial, Helvetica, sans-serif; }
+#acc h1 { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -1px; color: #253D78; margin: 4px 0 4px; }
+#acc .acc-sub { color: #7D8AA4; font-size: 15px; margin-bottom: 20px; }
+#acc .acc-sub b { color: #4A5D86; font-weight: 600; }
+.acc-kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 22px; }
+.acc-kpi { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; min-width: 0; }
+.acc-kpi:hover { border-color: #BFCDEB; box-shadow: 0 5px 18px rgba(37,61,120,.07); }
+.acc-kpi .l { font-size: 13px; color: #7D8AA4; display: flex; align-items: center; gap: 6px; }
+.acc-kpi .l .ti { font-size: 16px; vertical-align: 0; }
+.acc-kpi .n { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -1px; color: #253D78; margin: 8px 0 2px; line-height: 1.1; }
+.acc-kpi .s { font-size: 12px; color: #9AA5BC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-kpi.navy { background: #253D78; border-color: #253D78; }
+.acc-kpi.navy .l, .acc-kpi.navy .s { color: #CCD7ED; }
+.acc-kpi.navy .n { color: #fff; }
+.acc-kpi.gold { background: #FFFBEF; border-color: #EDDCB0; }
+.acc-kpi.gold .n { color: #98671D; }
+.acc-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+.acc-box { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; padding: 6px 6px 8px; min-width: 0; }
+.acc-box h3 { font-size: 13px; font-weight: 600; color: #7D8AA4; text-transform: uppercase; letter-spacing: .6px; padding: 12px 12px 8px; display: flex; justify-content: space-between; align-items: center; }
+.acc-box h3 a { text-transform: none; letter-spacing: 0; font-weight: 400; color: #4A5D86; cursor: pointer; text-decoration: none; font-size: 13px; }
+.acc-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 11px; cursor: pointer; color: #253D78; font-size: 14px; }
+.acc-row:hover { background: #F5F7FC; }
+.acc-row .ic { width: 34px; height: 34px; border-radius: 10px; background: #F5F7FC; border: 1px solid #EBEFF7; display: flex; align-items: center; justify-content: center; color: #4A5D86; flex-shrink: 0; }
+.acc-row .ic .ti { vertical-align: 0; }
+.acc-row .t { min-width: 0; flex: 1; }
+.acc-row .t b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-row .t span { display: block; font-size: 12px; color: #9AA5BC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-row .tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: #FFF7DE; color: #98671D; white-space: nowrap; }
+.acc-row .chev { color: #B3BDD0; }
+.acc-empty { padding: 18px 12px; color: #9AA5BC; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.acc-empty .ti { color: #4F7956; }
+.acc-form-title { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #7D8AA4; margin: 0 0 10px 4px; }
+@media (max-width: 899px) {
+  #acc h1 { font-size: 26px; }
+  .acc-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .acc-kpi { padding: 14px; }
+  .acc-kpi .n { font-size: 28px; }
+  .acc-cols { grid-template-columns: 1fr; }
+}
+#tab-ajouter .inner { max-width: 1000px !important; }
+
+/* ── Petits messages en bas de l'écran (remplacent les fenêtres « alert ») ── */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: calc(100% - 28px); max-width: 460px; }
+@media (max-width: 899px) { .toasts { bottom: calc(96px + env(safe-area-inset-bottom)); } }
+.toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; background: #253D78; color: #fff; padding: 12px 14px 12px 14px; border-radius: 13px; box-shadow: 0 10px 30px rgba(21,33,62,.28); font: 14px/1.5 Arial, Helvetica, sans-serif; width: 100%; animation: toastIn .2s ease; }
+.toast .ti { font-size: 19px; vertical-align: 0; margin-top: 1px; flex-shrink: 0; }
+.toast .m { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.toast button { all: unset; cursor: pointer; opacity: .7; padding: 0 2px; }
+.toast button .ti { font-size: 16px; }
+.toast.ok .ti-circle-check { color: #9FD6A9; }
+.toast.err { background: #fff; color: #8E3B3E; border: 1px solid #F1D3D4; }
+.toast.err .ti-alert-circle { color: #C0392B; }
+.toast.out { opacity: 0; transform: translateY(6px); transition: all .2s ease; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+</style>
 </head>
 <body>
 
@@ -4435,7 +4492,7 @@ document.addEventListener('click', function(e) {
 (function () {
   var TSEDAKA = function () { window.open('https://agent-shliah-production.up.railway.app/tsedaka?password=' + encodeURIComponent(localStorage.getItem('railway_admin_pw') || '')); };
   var PAGES = [
-    { tab: 'ajouter', label: 'Ajouter une info', ico: 'circle-plus', group: '' },
+    { tab: 'ajouter', label: 'Accueil', ico: 'home', group: '' },
     { tab: 'infos', label: 'Infos du bot', ico: 'info-circle', group: 'Bot' },
     { tab: 'histoires', label: 'Histoires', ico: 'book', group: 'Bot' },
     { tab: 'musiques', label: 'Musiques', ico: 'music', group: 'Bot' },
@@ -4452,7 +4509,7 @@ document.addEventListener('click', function(e) {
     { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
-  var MOTS = { cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var MOTS = { ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
   function hidden(p) { var el = document.querySelector('.sidebar [data-tab="' + p.tab + '"]'); return el && el.classList.contains('hidden'); }
@@ -4572,6 +4629,130 @@ document.addEventListener('click', function(e) {
     var orig = window.showTab;
     window.showTab = function (name) { orig.apply(this, arguments); syncBas(name); hauteurEntete(); };
     var actif = document.querySelector('.page.active'); syncBas(actif ? actif.id.replace('tab-', '') : 'ajouter');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<script id="accueil-js">
+/* ═══ ÉTAPE 2 : accueil « À faire aujourd'hui » + petits messages propres ═══
+   Lecture seule : l'accueil lit les mêmes adresses que les onglets
+   (/admin/demandes, /admin/paiements, /admin/questions) et ne modifie rien. */
+(function () {
+  function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function euros(n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €'; }
+
+  /* ── Petits messages : remplacent alert() ── */
+  var zone;
+  function toast(msg, type) {
+    if (!zone) { zone = document.createElement('div'); zone.className = 'toasts'; zone.setAttribute('role', 'status'); document.body.appendChild(zone); }
+    var t = document.createElement('div');
+    var texte = String(msg == null ? '' : msg);
+    if (!type) type = /^\s*(❌|✗|⚠)|erreur|impossible|introuvable|échec|trop grand|merci de choisir|configur/i.test(texte) ? 'err' : (/^\s*(✅|✓)|envoyé|enregistr|ajouté|supprimé|généré|copié|mis à jour/i.test(texte) ? 'ok' : 'info');
+    texte = texte.replace(/^\s*(✅|❌|✓|✗|⚠️?|ℹ️?)\s*/, '').replace(/⚙️\s*/g, '');
+    t.className = 'toast ' + type;
+    t.innerHTML = ic(type === 'err' ? 'alert-circle' : type === 'ok' ? 'circle-check' : 'info-circle') + '<span class="m"></span><button type="button" aria-label="Fermer">' + ic('x') + '</button>';
+    t.querySelector('.m').textContent = texte;
+    var fermer = function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 220); };
+    t.querySelector('button').onclick = fermer;
+    zone.appendChild(t);
+    setTimeout(fermer, Math.min(9000, 3200 + texte.length * 40));
+  }
+  window.toast = toast;
+  window.alert = function (m) { toast(m); };
+
+  /* ── Accueil ── */
+  function construire() {
+    var inner = document.querySelector('#tab-ajouter .inner');
+    if (!inner || document.getElementById('acc')) return;
+    var conv = document.getElementById('home-conv-count');
+    var ancien = conv && conv.closest('.stat-card') && conv.closest('.stat-card').parentElement;
+    if (ancien && ancien.parentElement === inner) ancien.style.display = 'none';
+    var acc = document.createElement('div'); acc.id = 'acc';
+    acc.innerHTML =
+      '<h1 id="acc-hello">Bonjour</h1><div class="acc-sub" id="acc-date"></div>' +
+      '<div class="acc-kpis">' +
+        '<div class="acc-kpi navy" data-go="demandes"><div class="l">' + ic('inbox') + 'Demandes à traiter</div><div class="n" id="acc-dem">–</div><div class="s" id="acc-dem-s">&nbsp;</div></div>' +
+        '<div class="acc-kpi gold" data-go="demandes"><div class="l">' + ic('file-invoice') + 'Cerfa à préparer</div><div class="n" id="acc-cerfa">–</div><div class="s">Demandes de reçu fiscal</div></div>' +
+        '<div class="acc-kpi" data-go="paiements"><div class="l">' + ic('credit-card') + 'Paiements en attente</div><div class="n" id="acc-pay">–</div><div class="s" id="acc-pay-s">&nbsp;</div></div>' +
+        '<div class="acc-kpi" data-go="questions"><div class="l">' + ic('messages') + 'Conversations</div><div class="n" id="acc-conv">–</div><div class="s">Aujourd\'hui sur WhatsApp</div></div>' +
+      '</div>' +
+      '<div class="acc-cols">' +
+        '<div class="acc-box"><h3>Dernières demandes <a data-go="demandes">Tout voir ' + ic('arrow-right') + '</a></h3><div id="acc-list"><div class="acc-empty">Chargement…</div></div></div>' +
+        '<div class="acc-box"><h3>Actions rapides</h3>' +
+          '<div class="acc-row" data-act="form"><span class="ic">' + ic('circle-plus') + '</span><span class="t"><b>Ajouter une info au bot</b><span>Horaire, cours, événement…</span></span>' + ic('chevron-right chev') + '</div>' +
+          '<div class="acc-row acc-admin" data-go="broadcast"><span class="ic">' + ic('speakerphone') + '</span><span class="t"><b>Envoyer un message groupé</b><span>Broadcast WhatsApp</span></span>' + ic('chevron-right chev') + '</div>' +
+          '<div class="acc-row" data-go="cerfa"><span class="ic">' + ic('file-invoice') + '</span><span class="t"><b>Voir les Cerfa</b><span>Reçus fiscaux</span></span>' + ic('chevron-right chev') + '</div>' +
+          '<div class="acc-row" data-act="search"><span class="ic">' + ic('search') + '</span><span class="t"><b>Chercher</b><span>Contact, reçu, montant · Ctrl K</span></span>' + ic('chevron-right chev') + '</div>' +
+        '</div>' +
+      '</div>';
+    inner.insertBefore(acc, inner.firstChild);
+    var form = inner.querySelector('.card');
+    if (form) { var ti = document.createElement('div'); ti.className = 'acc-form-title'; ti.id = 'acc-form-title'; ti.textContent = 'Ajouter une info au bot'; inner.insertBefore(ti, form); }
+    acc.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-go],[data-act]'); if (!el) return;
+      if (el.dataset.go) return showTab(el.dataset.go);
+      if (el.dataset.act === 'search' && window.ouvrirPalette) return ouvrirPalette();
+      if (el.dataset.act === 'form') { var f = document.getElementById('acc-form-title'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); var t = document.querySelector('#tab-ajouter input[type="text"]'); if (t) setTimeout(function () { t.focus({ preventScroll: true }); }, 400); }
+    });
+  }
+
+  function entete() {
+    var h = new Date().getHours();
+    var nom = (typeof currentUser !== 'undefined' && currentUser === 'user2' && typeof getPin2Name === 'function') ? getPin2Name() : 'Rav Levi';
+    document.getElementById('acc-hello').textContent = (h >= 18 || h < 5 ? 'Bonsoir ' : 'Bonjour ') + nom;
+    var d = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('acc-date').innerHTML = '<b>' + esc(d.charAt(0).toUpperCase() + d.slice(1)) + '</b> · Voici ce qui t\'attend aujourd\'hui.';
+    var adminOnly = !(typeof currentUser !== 'undefined' && currentUser === 'user2');
+    document.querySelectorAll('#acc .acc-admin').forEach(function (el) { el.style.display = adminOnly ? '' : 'none'; });
+  }
+
+  function typeNom(t) { return { cerfa: 'Demande de Cerfa', sefer_torah: 'Séfer Torah', location_salle: 'Location de salle', pane: 'Pane' }[t] || ('Demande ' + (t || '')); }
+  function typeIcone(t) { return { cerfa: 'file-invoice', sefer_torah: 'feather', location_salle: 'building', pane: 'mail' }[t] || 'inbox'; }
+  function dateCourte(d) { var x = new Date(d); if (isNaN(x)) return String(d || ''); return x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' · ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+  function quand(d) { var v = d.created_at || d.date || d.timestamp || ''; var x = new Date(v); return isNaN(x) ? 0 : x.getTime(); }
+
+  async function charger() {
+    if (!document.getElementById('acc')) return;
+    entete();
+    var url = typeof getUrl === 'function' ? getUrl() : '', pw = typeof getAdminPw === 'function' ? getAdminPw() : '';
+    if (!url) { document.getElementById('acc-list').innerHTML = '<div class="acc-empty">Configure l\'adresse du serveur dans Config.</div>'; return; }
+    var q = '?password=' + encodeURIComponent(pw);
+    try {
+      var r = await fetch(url + '/admin/demandes' + q), d = await r.json();
+      if (d.ok) {
+        var nouv = (d.demandes || []).filter(function (x) { return x.statut === 'nouveau' || x.statut === 'urgent'; });
+        var urg = nouv.filter(function (x) { return x.statut === 'urgent'; }).length;
+        document.getElementById('acc-dem').textContent = nouv.length;
+        document.getElementById('acc-dem-s').textContent = urg ? urg + ' urgente' + (urg > 1 ? 's' : '') : (nouv.length ? 'Nouvelles demandes' : 'Tout est à jour');
+        document.getElementById('acc-cerfa').textContent = nouv.filter(function (x) { return x.type === 'cerfa'; }).length;
+        nouv.sort(function (a, b) { return quand(b) - quand(a); });
+        var html = nouv.slice(0, 5).map(function (x) {
+          var nom = [x.prenom, x.nom].filter(Boolean).join(' ') || x.phone || 'Sans nom';
+          return '<div class="acc-row" data-go="demandes"><span class="ic">' + ic(typeIcone(x.type)) + '</span><span class="t"><b>' + esc(nom) + '</b><span>' + esc(typeNom(x.type)) + ' · ' + esc(dateCourte(x.created_at || x.date || x.timestamp)) + '</span></span>' + (x.statut === 'urgent' ? '<span class="tag">Urgent</span>' : '') + ic('chevron-right chev') + '</div>';
+        }).join('');
+        document.getElementById('acc-list').innerHTML = html || '<div class="acc-empty">' + ic('circle-check') + 'Aucune demande en attente.</div>';
+      }
+    } catch (e) { document.getElementById('acc-list').innerHTML = '<div class="acc-empty">Impossible de charger les demandes.</div>'; }
+    try {
+      var r2 = await fetch(url + '/admin/paiements' + q), p = await r2.json();
+      if (p.ok) {
+        var att = (p.paiements || []).filter(function (x) { return x.statut !== 'paye'; });
+        document.getElementById('acc-pay').textContent = att.length;
+        document.getElementById('acc-pay-s').textContent = att.length ? euros(att.reduce(function (s, x) { return s + parseFloat(x.montant || 0); }, 0)) + ' à recevoir' : 'Rien en attente';
+      }
+    } catch (e) {}
+    var c = document.getElementById('home-conv-count');
+    setTimeout(function () { if (c) document.getElementById('acc-conv').textContent = c.textContent || '0'; }, 1500);
+  }
+
+  function init() {
+    construire();
+    var origStats = window.chargerStatsHome;
+    window.chargerStatsHome = function () { var r = origStats && origStats.apply(this, arguments); charger(); if (r && r.then) r.then(function () { var c = document.getElementById('home-conv-count'); if (c) document.getElementById('acc-conv').textContent = c.textContent || '0'; }); return r; };
+    var sb = document.querySelector('.sidebar [data-tab="ajouter"]');
+    if (sb) sb.innerHTML = '<span class="sidenav-icon">' + ic('home') + '</span>Accueil';
+    if (document.getElementById('app').style.display === 'block' && document.getElementById('tab-ajouter').classList.contains('active')) charger();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
