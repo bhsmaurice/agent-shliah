@@ -356,7 +356,7 @@ async function attendreConteneur(id, token) {
   }
   throw new Error('Instagram met trop de temps à traiter les photos');
 }
-async function publierInstagram(cfg, photos, caption, tags) {
+async function publierInstagram(cfg, photos, caption, tags, infos) {
   const tok = cfg.pageToken;
   const avecTags = tags && tags.length ? { user_tags: userTagsJson(tags) } : {};
   let conteneur;
@@ -376,6 +376,7 @@ async function publierInstagram(cfg, photos, caption, tags) {
   }
   await attendreConteneur(conteneur, tok);
   const pub = await graphPost(`${cfg.igId}/media_publish`, { creation_id: conteneur }, tok);
+  if (infos) infos.id = pub.id; // gardé pour pouvoir modifier la légende depuis l'admin
   try {
     const d = await graphGet(`${pub.id}?fields=permalink`, tok);
     return d.permalink || 'https://www.instagram.com/habadsmaurice/';
@@ -398,6 +399,7 @@ async function executerPublication(cfg, contenu, cibles) {
   const lignes = [];
   let ok = 0;
   const photos = contenu.photos;
+  const igInfos = {};
   if (cibles.facebook) {
     try { lignes.push(`📘 Facebook : publié ✅\n${await publierFacebook(cfg, photos, contenu.brouillon.facebook)}`); ok++; }
     catch (e) { lignes.push(`📘 Facebook : échec ❌ (${e.message})`); }
@@ -406,12 +408,12 @@ async function executerPublication(cfg, contenu, cibles) {
     if (!cfg.igId) lignes.push("📸 Instagram : pas encore relié à la page Facebook ❌");
     else {
       const tags = extraireTags(contenu.texte);
-      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, tags)}`); ok++; }
+      try { lignes.push(`📸 Instagram : publié ✅\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, tags, igInfos)}`); ok++; }
       catch (e) {
         if (tags.length) {
           // Un compte identifié peut être refusé (nom faux, compte privé) : on republie sans les identifications
           try {
-            lignes.push(`📸 Instagram : publié ✅ mais sans les identifications (Instagram les a refusées : ${e.message})\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, [])}`);
+            lignes.push(`📸 Instagram : publié ✅ mais sans les identifications (Instagram les a refusées : ${e.message})\n${await publierInstagram(cfg, photos, contenu.brouillon.instagram, [], igInfos)}`);
             ok++;
           } catch (e2) { lignes.push(`📸 Instagram : échec ❌ (${e2.message})`); }
         } else lignes.push(`📸 Instagram : échec ❌ (${e.message})`);
@@ -434,10 +436,17 @@ async function executerPublication(cfg, contenu, cibles) {
   }
   try {
     await ctx.pool.query(
-      'INSERT INTO posts_sociaux (texte_source, instagram, facebook, photos, resultat) VALUES ($1,$2,$3,$4,$5)',
-      [contenu.texte, contenu.brouillon.instagram, contenu.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n')]
+      'INSERT INTO posts_sociaux (texte_source, instagram, facebook, photos, resultat, ig_media_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      [contenu.texte, contenu.brouillon.instagram, contenu.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n'), igInfos.id || null]
     );
-  } catch (e) { console.error('Posts — sauvegarde :', e.message); }
+  } catch (e) {
+    console.error('Posts — sauvegarde :', e.message);
+    // Secours : sauvegarde sans la colonne ig_media_id (si elle n'existe pas encore)
+    try {
+      await ctx.pool.query('INSERT INTO posts_sociaux (texte_source, instagram, facebook, photos, resultat) VALUES ($1,$2,$3,$4,$5)',
+        [contenu.texte, contenu.brouillon.instagram, contenu.brouillon.facebook, JSON.stringify(photos.map(p => p.url)), lignes.join('\n')]);
+    } catch (e2) { console.error('Posts — sauvegarde (secours) :', e2.message); }
+  }
   return { lignes, ok };
 }
 
@@ -816,7 +825,9 @@ function init(options) {
   ctx = options;
   ctx.pool.query(`CREATE TABLE IF NOT EXISTS posts_sociaux (
     id SERIAL PRIMARY KEY, texte_source TEXT, instagram TEXT, facebook TEXT,
-    photos JSONB, resultat TEXT, created_at TIMESTAMP DEFAULT NOW())`).catch(e => console.error('Table posts_sociaux :', e.message));
+    photos JSONB, resultat TEXT, created_at TIMESTAMP DEFAULT NOW())`)
+    .then(() => ctx.pool.query(`ALTER TABLE posts_sociaux ADD COLUMN IF NOT EXISTS ig_media_id TEXT, ADD COLUMN IF NOT EXISTS modifie_le TIMESTAMP`))
+    .catch(e => console.error('Table posts_sociaux :', e.message));
 
   ctx.pool.query(`CREATE TABLE IF NOT EXISTS posts_programmes (
     id SERIAL PRIMARY KEY, phone TEXT NOT NULL, date_publication TIMESTAMPTZ NOT NULL,
@@ -870,6 +881,53 @@ function init(options) {
     try {
       const r = await ctx.pool.query(`UPDATE posts_programmes SET statut='annule' WHERE id=$1 AND statut='programme' RETURNING id`, [req.params.id]);
       res.json(r.rows.length ? { ok: true, message: 'Post programmé annulé' } : { ok: false, message: 'Ce post est déjà parti ou annulé.' });
+    } catch (e) { res.json({ ok: false, message: e.message }); }
+  });
+
+  // Modifier le texte d'un post programmé (avant qu'il parte)
+  ctx.app.post('/admin/posts/programmes/:id/modifier', async (req, res) => {
+    const b = req.body || {};
+    if (b.password !== ctx.adminPassword) return res.status(401).json({ ok: false });
+    try {
+      const r = await ctx.pool.query(`UPDATE posts_programmes
+        SET contenu = jsonb_set(jsonb_set(contenu, '{brouillon,instagram}', to_jsonb($2::text)), '{brouillon,facebook}', to_jsonb($3::text))
+        WHERE id=$1 AND statut='programme' RETURNING id`, [req.params.id, String(b.instagram || ''), String(b.facebook || '')]);
+      res.json(r.rows.length ? { ok: true, message: 'Texte du post programmé modifié' } : { ok: false, message: 'Ce post est déjà parti ou annulé.' });
+    } catch (e) { res.json({ ok: false, message: e.message }); }
+  });
+
+  // Modifier le texte d'un post déjà publié, directement sur Facebook et/ou Instagram
+  // (les photos ne peuvent pas être changées par l'API Meta)
+  ctx.app.post('/admin/posts/:id/modifier', async (req, res) => {
+    const b = req.body || {};
+    if (b.password !== ctx.adminPassword) return res.status(401).json({ ok: false });
+    try {
+      const r = await ctx.pool.query('SELECT * FROM posts_sociaux WHERE id=$1', [req.params.id]);
+      const post = r.rows[0];
+      if (!post) return res.json({ ok: false, message: 'Post introuvable' });
+      const cfg = await configMeta(true);
+      if (!cfg.pageToken) return res.json({ ok: false, message: "La variable META_PAGE_TOKEN n'est pas configurée sur Railway." });
+      const reponse = { ok: true };
+      const fbTexte = typeof b.facebook === 'string' ? b.facebook : post.facebook;
+      const igTexte = typeof b.instagram === 'string' ? b.instagram : post.instagram;
+      if (b.reseaux && b.reseaux.facebook) {
+        const m = String(post.resultat || '').match(/facebook\.com\/(\d+(?:_\d+)?)/);
+        if (!m) reponse.facebook = { ok: false, message: 'Post Facebook introuvable' };
+        else {
+          try { await graphPost(m[1], { message: fbTexte }, cfg.pageToken); reponse.facebook = { ok: true }; }
+          catch (e) { reponse.facebook = { ok: false, message: e.message }; }
+        }
+      }
+      if (b.reseaux && b.reseaux.instagram) {
+        if (!post.ig_media_id) reponse.instagram = { ok: false, manuel: true, message: "Ce post a été publié avant la mise à jour : Instagram ne peut pas être modifié automatiquement." };
+        else {
+          try { await graphPost(post.ig_media_id, { caption: igTexte }, cfg.pageToken); reponse.instagram = { ok: true }; }
+          catch (e) { reponse.instagram = { ok: false, manuel: true, message: e.message }; }
+        }
+      }
+      // On garde toujours le nouveau texte dans l'historique (même si Instagram doit être corrigé à la main)
+      await ctx.pool.query('UPDATE posts_sociaux SET facebook=$2, instagram=$3, modifie_le=NOW() WHERE id=$1', [post.id, fbTexte, igTexte]);
+      res.json(reponse);
     } catch (e) { res.json({ ok: false, message: e.message }); }
   });
 

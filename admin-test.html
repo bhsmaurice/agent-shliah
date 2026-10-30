@@ -1896,6 +1896,34 @@ body {
   .po-kpi { padding: 12px; } .po-kpi .n { font-size: 24px; } .po-kpi .l { font-size: 12px; }
   .po-grid { grid-template-columns: 1fr; }
 }
+/* Fenêtre « Modifier le post » */
+.po-md-bg { position: fixed; inset: 0; background: rgba(21,33,62,.45); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 6vh 14px 14px; overflow-y: auto; }
+.po-md-bg.open { display: flex; }
+.po-md { width: 100%; max-width: 620px; background: #fff; border-radius: 18px; box-shadow: 0 20px 70px rgba(21,33,62,.3); padding: 22px 24px; font-family: Arial, Helvetica, sans-serif; color: #253D78; }
+.po-md-h { display: flex; justify-content: space-between; align-items: center; }
+.po-md-h h2 { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 24px; margin: 0; letter-spacing: -.5px; }
+.po-x { all: unset; cursor: pointer; color: #7D8AA4; padding: 4px; } .po-x .ti { font-size: 22px; vertical-align: 0; }
+.po-md-note { color: #7D8AA4; font-size: 14px; margin: 6px 0 14px; line-height: 1.6; }
+.po-md > label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #4A5D86; margin: 12px 0 6px; }
+.po-md textarea { width: 100%; box-sizing: border-box; border: 1px solid #DFE6F1; border-radius: 11px; padding: 11px 13px; font: 15px/1.6 Arial, sans-serif; color: #253D78; resize: vertical; outline: none; }
+.po-md textarea:focus { border-color: #9FB3EC; box-shadow: 0 0 0 3px rgba(159,179,236,.35); }
+.po-md-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 14px; font-size: 14px; color: #4A5D86; }
+.po-md-reseaux .ck { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.po-md-reseaux input { width: 17px; height: 17px; accent-color: #253D78; }
+.po-md-f { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.po-btn.primary { background: #253D78; border-color: #253D78; color: #fff; }
+.po-btn.primary:hover { background: #314F91; }
+.po-btn[disabled] { opacity: .6; cursor: wait; }
+.po-md-res { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.po-r { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 11px; font-size: 14px; line-height: 1.55; }
+.po-r .ti { font-size: 18px; vertical-align: 0; flex-shrink: 0; margin-top: 1px; }
+.po-r.ok { background: #EEF5E9; color: #4F7956; }
+.po-r.err { background: #FCEFEF; color: #A33B3E; }
+.po-r.warn { background: #FFF7DE; color: #7A5414; }
+.po-r-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ti-loader-2 { animation: poSpin 1s linear infinite; display: inline-block; }
+@keyframes poSpin { to { transform: rotate(360deg); } }
+@media (max-width: 899px) { .po-md { padding: 18px; } .po-md-bg { padding-top: 3vh; } }
 </style>
 </head>
 <body>
@@ -4870,6 +4898,8 @@ document.addEventListener('click', function(e) {
       '<div class="po-actions">';
     if (o.links.ig) h += '<a class="po-btn" href="' + esc(o.links.ig) + '" target="_blank" rel="noopener">' + ic('brand-instagram') + 'Voir</a>';
     if (o.links.fb) h += '<a class="po-btn" href="' + esc(o.links.fb) + '" target="_blank" rel="noopener">' + ic('brand-facebook') + 'Voir</a>';
+    window._poData[id] = { prog: o.prog, id: o.prog ? o.progId : o.postId, ig: o.ig || '', fb: o.fb || '', links: o.links };
+    if (!o.prog || o.statut === 'programme') h += '<button class="po-btn" data-edit="' + id + '">' + ic('edit') + 'Modifier</button>';
     h += '<button class="po-btn" data-copy="' + id + '">' + ic('copy') + 'Copier le texte</button>';
     if (o.prog && o.statut === 'programme') h += '<button class="po-btn danger" data-cancel="' + o.progId + '">' + ic('calendar-x') + 'Annuler</button>';
     h += '</div></div></div>';
@@ -4883,7 +4913,7 @@ document.addEventListener('click', function(e) {
     document.getElementById('po-n-pub').textContent = donnees.posts.length;
     document.getElementById('po-n-prog').textContent = avenir.length;
     document.getElementById('po-n-mois').textContent = mois;
-    window._poTextes = {};
+    window._poTextes = {}; window._poData = {};
     var html = '';
     if (donnees.prog.length) {
       html += '<div class="po-sec">' + ic('calendar-time') + 'Programmés</div><div class="po-grid">';
@@ -4903,7 +4933,7 @@ document.addEventListener('click', function(e) {
       donnees.posts.forEach(function (p) {
         var cle = 's' + p.id;
         window._poTextes['po' + cle] = { ig: p.instagram || '', fb: p.facebook || '' };
-        html += carte({ cle: cle, prog: false, date: p.created_at, photos: photosDe(p.photos), ig: p.instagram, fb: p.facebook, links: liens(p.resultat), st: etat(p.resultat) });
+        html += carte({ cle: cle, prog: false, postId: p.id, date: p.created_at, photos: photosDe(p.photos), ig: p.instagram, fb: p.facebook, links: liens(p.resultat), st: etat(p.resultat) });
       });
       html += '</div>';
     }
@@ -4926,6 +4956,75 @@ document.addEventListener('click', function(e) {
     afficher();
   }
   window.chargerPosts = chargerPosts;
+
+  /* ── Fenêtre « Modifier le post » ── */
+  var md, cur;
+  function construireEdition() {
+    md = document.createElement('div'); md.className = 'po-md-bg';
+    md.innerHTML = '<div class="po-md" role="dialog" aria-label="Modifier le post">' +
+      '<div class="po-md-h"><h2>Modifier le post</h2><button class="po-x" aria-label="Fermer">' + ic('x') + '</button></div>' +
+      '<p class="po-md-note" id="po-md-note"></p>' +
+      '<label>' + ic('brand-instagram') + 'Texte Instagram</label><textarea id="po-md-ig" rows="7"></textarea>' +
+      '<label>' + ic('brand-facebook') + 'Texte Facebook</label><textarea id="po-md-fb" rows="7"></textarea>' +
+            '<div class="po-md-reseaux" id="po-md-reseaux"><span>Mettre à jour sur :</span>' +
+        '<label class="ck"><input type="checkbox" id="po-ck-fb" checked>Facebook</label>' +
+        '<label class="ck"><input type="checkbox" id="po-ck-ig" checked>Instagram</label></div>' +
+      '<div class="po-md-res" id="po-md-res"></div>' +
+      '<div class="po-md-f"><button class="po-btn" id="po-md-annul">Fermer</button><button class="po-btn primary" id="po-md-ok">' + ic('check') + 'Enregistrer</button></div></div>';
+    document.body.appendChild(md);
+    md.addEventListener('click', function (e) { if (e.target === md || e.target.closest('.po-x') || e.target.id === 'po-md-annul') fermerEdition(); });
+    document.getElementById('po-md-ok').onclick = enregistrer;
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && md.classList.contains('open')) fermerEdition(); });
+  }
+  function ouvrirEdition(d) {
+    if (!d) return; cur = d; if (!md) construireEdition();
+    document.getElementById('po-md-ig').value = d.ig; document.getElementById('po-md-fb').value = d.fb;
+    document.getElementById('po-md-res').innerHTML = '';
+    var ok = document.getElementById('po-md-ok'); ok.disabled = false; ok.style.display = ''; document.getElementById('po-md-annul').textContent = 'Fermer';
+    document.getElementById('po-md-note').textContent = d.prog
+      ? 'Ce post n\'est pas encore publié : le nouveau texte partira à l\'heure prévue.'
+      : 'Le texte sera modifié directement sur les réseaux. Les photos ne peuvent pas être changées.';
+    document.getElementById('po-md-reseaux').style.display = d.prog ? 'none' : '';
+    var fb = document.getElementById('po-ck-fb'), ig = document.getElementById('po-ck-ig');
+    fb.checked = !!d.links.fb; fb.disabled = !d.links.fb; fb.parentElement.style.opacity = d.links.fb ? 1 : .45;
+    ig.checked = !!d.links.ig; ig.disabled = !d.links.ig; ig.parentElement.style.opacity = d.links.ig ? 1 : .45;
+    md.classList.add('open');
+    setTimeout(function () { document.getElementById('po-md-ig').focus(); }, 20);
+  }
+  function fermerEdition() { md.classList.remove('open'); }
+  async function enregistrer() {
+    var btn = document.getElementById('po-md-ok'), res = document.getElementById('po-md-res');
+    var ig = document.getElementById('po-md-ig').value, fb = document.getElementById('po-md-fb').value;
+    var body = { password: getAdminPw(), instagram: ig, facebook: fb };
+    var route;
+    if (cur.prog) route = '/admin/posts/programmes/' + cur.id + '/modifier';
+    else {
+      body.reseaux = { facebook: document.getElementById('po-ck-fb').checked, instagram: document.getElementById('po-ck-ig').checked };
+      route = '/admin/posts/' + cur.id + '/modifier';
+    }
+    btn.disabled = true; btn.innerHTML = ic('loader-2') + 'Enregistrement…';
+    try {
+      var r = await fetch(getUrl() + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      var d = await r.json();
+      btn.innerHTML = ic('check') + 'Enregistrer'; btn.disabled = false;
+      if (!d.ok) { res.innerHTML = '<div class="po-r err">' + ic('alert-triangle') + esc(d.message || 'Erreur') + '</div>'; return; }
+      if (cur.prog) { fermerEdition(); alert('✓ ' + d.message); chargerPosts(); return; }
+      var html = '';
+      if (d.facebook) html += d.facebook.ok ? '<div class="po-r ok">' + ic('brand-facebook') + 'Facebook : texte modifié</div>' : '<div class="po-r err">' + ic('brand-facebook') + 'Facebook : pas modifié (' + esc(d.facebook.message) + ')</div>';
+      if (d.instagram) {
+        if (d.instagram.ok) html += '<div class="po-r ok">' + ic('brand-instagram') + 'Instagram : légende modifiée</div>';
+        else html += '<div class="po-r warn">' + ic('brand-instagram') + '<div><b>Instagram n\'a pas accepté la modification automatique.</b><br>Copie le nouveau texte puis, dans l\'appli Instagram : ouvre le post → … → Modifier → colle.' +
+          '<div class="po-r-act"><button class="po-btn" id="po-cp-ig">' + ic('copy') + 'Copier le texte Instagram</button>' + (cur.links.ig ? '<a class="po-btn" href="' + esc(cur.links.ig) + '" target="_blank" rel="noopener">' + ic('external-link') + 'Ouvrir le post</a>' : '') + '</div></div></div>';
+      }
+      if (!d.facebook && !d.instagram) html = '<div class="po-r ok">' + ic('circle-check') + 'Texte enregistré dans l\'historique</div>';
+      res.innerHTML = html;
+      var cp = document.getElementById('po-cp-ig');
+      if (cp) cp.onclick = async function () { try { await navigator.clipboard.writeText(ig); alert('✓ Texte copié'); } catch (e) { alert('Impossible de copier le texte'); } };
+      btn.style.display = 'none';
+      document.getElementById('po-md-annul').textContent = 'Terminé';
+      chargerPosts();
+    } catch (e) { btn.innerHTML = ic('check') + 'Enregistrer'; btn.disabled = false; res.innerHTML = '<div class="po-r err">' + ic('alert-triangle') + 'Erreur de connexion</div>'; }
+  }
 
   function construire() {
     var main = document.querySelector('.main-content');
@@ -4953,6 +5052,8 @@ document.addEventListener('click', function(e) {
       if (more) { var tx = document.getElementById(more.dataset.more); var full = tx.classList.toggle('full'); more.textContent = full ? 'Réduire' : 'Voir tout le texte'; return; }
       var cp = e.target.closest('[data-copy]');
       if (cp) { var txt = document.getElementById(cp.dataset.copy).textContent; try { await navigator.clipboard.writeText(txt); alert('✓ Texte copié'); } catch (er) { alert('Impossible de copier le texte'); } return; }
+      var ed = e.target.closest('[data-edit]');
+      if (ed) { ouvrirEdition(window._poData[ed.dataset.edit]); return; }
       var ca = e.target.closest('[data-cancel]');
       if (ca) {
         if (!confirm('Annuler ce post programmé ? Il ne sera pas publié.')) return;
