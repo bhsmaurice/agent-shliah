@@ -1773,6 +1773,20 @@ body {
   .header-left .site-name { font-size: 20px !important; }
   .np-logo { width: 36px; height: 36px; }
 }
+
+/* ── Icônes en couleur : une couleur par famille, dans un petit carré clair ── */
+.sidebar .sidenav-item .sidenav-icon { width: 30px !important; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s, color .15s; }
+.sidebar .sidenav-item .sidenav-icon .ti { font-size: 17px; vertical-align: 0; }
+[data-grp="home"] { --g: #253D78; --gb: #EDF2FD; }
+[data-grp="bot"]  { --g: #5B4FCF; --gb: #EFEDFC; }
+[data-grp="com"]  { --g: #0E8378; --gb: #E2F4F1; }
+[data-grp="don"]  { --g: #A86A0E; --gb: #FCF1DD; }
+[data-grp="out"]  { --g: #5F6B82; --gb: #EEF1F6; }
+.sidebar .sidenav-item[data-grp] .sidenav-icon { background: var(--gb); color: var(--g) !important; }
+.sidebar .sidenav-item[data-grp].active .sidenav-icon { background: var(--g); color: #fff !important; }
+.sidebar .sidenav-item { padding-top: 6px !important; padding-bottom: 6px !important; }
+.np-pal-item[data-grp] .np-ic { background: var(--gb); border-color: transparent; color: var(--g); }
+.np-pal-item[data-grp].sel .np-ic { background: var(--g); border-color: var(--g); color: #fff; }
 </style>
 <style id="accueil">
 /* ═══ ÉTAPE 2 : accueil « À faire aujourd'hui » + petits messages propres ═══ */
@@ -4510,6 +4524,7 @@ document.addEventListener('click', function(e) {
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
   var MOTS = { ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var GRP = { '': 'home', 'Bot': 'bot', 'Communauté': 'com', 'Dons et reçus': 'don', 'Outils': 'out' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
   function hidden(p) { var el = document.querySelector('.sidebar [data-tab="' + p.tab + '"]'); return el && el.classList.contains('hidden'); }
@@ -4525,6 +4540,7 @@ document.addEventListener('click', function(e) {
       var el = items[p.tab];
       if (!el) { el = document.createElement('div'); el.className = 'sidenav-item'; el.dataset.tab = p.tab; el.onclick = function () { go(p); toggleSidebar(false); }; }
       el.innerHTML = '<span class="sidenav-icon">' + ic(p.ico) + '</span>' + p.label + (p.ext ? '<i class="ti ti-external-link np-ext" aria-hidden="true"></i>' : '');
+      el.dataset.grp = GRP[p.group];
       if (p.tab === 'lettres') el.setAttribute('onclick', 'ouvrirLettresSeferTorah();toggleSidebar(false)');
       frag.appendChild(el);
     });
@@ -4597,7 +4613,7 @@ document.addEventListener('click', function(e) {
     res.forEach(function (r, i) {
       var s = r.type === 'page' ? 'Pages' : 'Contacts, reçus, montants';
       if (s !== sec) { sec = s; html += '<div class="np-pal-sec">' + s + '</div>'; }
-      if (r.type === 'page') html += '<div class="np-pal-item" data-i="' + i + '"><span class="np-ic">' + ic(r.p.ico) + '</span>' + r.p.label + '<small>' + (r.p.group || 'Accueil') + '</small></div>';
+      if (r.type === 'page') html += '<div class="np-pal-item" data-i="' + i + '" data-grp="' + GRP[r.p.group] + '"><span class="np-ic">' + ic(r.p.ico) + '</span>' + r.p.label + '<small>' + (r.p.group || 'Accueil') + '</small></div>';
       else html += '<div class="np-pal-item" data-i="' + i + '"><span class="np-ic">' + ic('search') + '</span>Chercher « ' + r.q.replace(/[<>&"]/g, '') + ' »<small>dans tout l\'admin</small></div>';
     });
     list.innerHTML = html || '<div class="np-pal-empty">Aucun résultat</div>';
