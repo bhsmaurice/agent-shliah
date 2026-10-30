@@ -1689,6 +1689,91 @@ body {
 :root:not(.theme-dark) .hsr-item-icon { background: #EDF2FD !important; }
 :root:not(.theme-dark) .hsr-item-title { color: #253D78 !important; }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.50.0/dist/tabler-icons.min.css">
+<style id="nav-pro">
+/* ═══ ÉTAPE 1 « PRO » : icônes, menu rangé, recherche Ctrl+K, barre du bas ═══
+   Uniquement la navigation. Les pages et leurs fonctions ne changent pas. */
+.ti { font-size: 18px; line-height: 1; vertical-align: -3px; }
+
+/* Logo carré bleu marine comme Lettres / Tsédaka */
+.np-logo { width: 40px; height: 40px; border-radius: 11px; background: #253D78; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 9px rgba(37,61,120,.12); }
+.np-logo .ti { font-size: 22px; vertical-align: 0; }
+.header-left { gap: 12px !important; }
+.header-bell .ti, .btn-logout .ti { font-size: 18px; vertical-align: 0; }
+.header-search .ti { color: #7D8AA4; }
+.btn-logout { width: 34px; height: 34px; padding: 0 !important; border-radius: 11px !important; display: flex; align-items: center; justify-content: center; }
+
+/* L'ancienne barre d'onglets est remplacée par le menu */
+#main-tabs { display: none !important; }
+
+/* ── Menu de gauche ── */
+.sidebar { display: flex !important; background: #fff !important; padding: 14px 10px !important; }
+.np-group { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #9AA5BC; padding: 16px 12px 6px; }
+.np-group:first-child { padding-top: 4px; }
+.sidebar .sidenav-item { padding: 9px 12px !important; font-size: 14px !important; color: #4A5D86 !important; border-left: 0 !important; border-radius: 10px !important; gap: 11px !important; }
+.sidebar .sidenav-item .sidenav-icon { width: 20px; font-size: 0 !important; color: #7D8AA4; }
+.sidebar .sidenav-item:hover { background: #F5F7FC !important; color: #253D78 !important; }
+.sidebar .sidenav-item.active { background: #EDF2FD !important; color: #253D78 !important; font-weight: 600 !important; }
+.sidebar .sidenav-item.active .sidenav-icon { color: #253D78; }
+.sidebar .sidenav-item.hidden { display: none !important; }
+.np-ext { margin-left: auto; font-size: 13px !important; color: #B3BDD0; }
+.sidebar-divider { display: none; }
+.sidebar-foot { margin-top: auto !important; }
+.np-kbd-hint { margin: 14px 4px 0; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #DFE6F1; border-radius: 10px; color: #7D8AA4; font-size: 13px; cursor: pointer; background: #F5F7FC; }
+.np-kbd-hint kbd { margin-left: auto; font: 11px Arial, sans-serif; border: 1px solid #DFE6F1; border-radius: 5px; padding: 1px 5px; background: #fff; }
+
+@media (min-width: 900px) {
+  .sidebar { position: sticky !important; top: var(--np-head, 70px) !important; height: calc(100vh - var(--np-head, 70px)) !important; width: 240px !important; transform: none !important; box-shadow: none !important; border-right: 1px solid #DFE6F1 !important; z-index: auto !important; }
+  .btn-hamburger { display: none !important; }
+  .sidebar-overlay { display: none !important; }
+  .main-content .inner { max-width: 820px; padding: 24px; }
+  .np-bottom { display: none !important; }
+}
+@media (max-width: 899px) {
+  .btn-hamburger { display: none !important; }
+  .sidebar { position: fixed !important; top: 0 !important; height: 100vh !important; width: 280px !important; transform: translateX(-105%); }
+  .sidebar.mobile-open { transform: translateX(0) !important; }
+  .sidebar-overlay.active { display: block !important; }
+  .main-content { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .header-left .site-sub { display: none; }
+}
+
+/* ── Barre du bas sur téléphone (comme la page Tsédaka) ── */
+.np-bottom { position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 200; display: grid; grid-template-columns: repeat(5, 1fr); background: #fff; border: 1px solid #DFE6F1; border-radius: 18px; box-shadow: 0 8px 30px rgba(37,61,120,.12); padding: 6px; }
+.np-bottom button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0; border-radius: 12px; color: #7D8AA4; font: 11px Arial, sans-serif; position: relative; }
+.np-bottom button .ti { font-size: 22px; vertical-align: 0; }
+.np-bottom button.active { color: #253D78; font-weight: 700; background: #EDF2FD; }
+
+/* ── Recherche rapide Ctrl+K ── */
+.np-pal-bg { position: fixed; inset: 0; background: rgba(21,33,62,.45); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 12vh 14px 14px; }
+.np-pal-bg.open { display: flex; }
+.np-pal { width: 100%; max-width: 560px; background: #fff; border-radius: 16px; box-shadow: 0 20px 70px rgba(21,33,62,.3); overflow: hidden; font-family: Arial, Helvetica, sans-serif; }
+.np-pal-in { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #EBEFF7; }
+.np-pal-in .ti { font-size: 20px; color: #7D8AA4; }
+.np-pal-in input { flex: 1; border: 0; outline: 0; font: 17px Arial, sans-serif; color: #253D78; background: none; }
+.np-pal-in kbd { font: 11px Arial; color: #7D8AA4; border: 1px solid #DFE6F1; border-radius: 5px; padding: 2px 6px; }
+.np-pal-list { max-height: 50vh; overflow-y: auto; padding: 6px; }
+.np-pal-sec { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #9AA5BC; padding: 10px 10px 4px; }
+.np-pal-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; cursor: pointer; color: #253D78; font-size: 15px; }
+.np-pal-item .np-ic { width: 32px; height: 32px; border-radius: 9px; background: #F5F7FC; border: 1px solid #EBEFF7; display: flex; align-items: center; justify-content: center; color: #4A5D86; flex-shrink: 0; }
+.np-pal-item .np-ic .ti { vertical-align: 0; }
+.np-pal-item small { color: #9AA5BC; font-size: 12px; margin-left: auto; }
+.np-pal-item.sel { background: #EDF2FD; }
+.np-pal-item.sel .np-ic { background: #253D78; border-color: #253D78; color: #fff; }
+.np-pal-foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid #EBEFF7; font-size: 12px; color: #9AA5BC; background: #FAFBFE; }
+.np-pal-empty { padding: 22px; text-align: center; color: #9AA5BC; font-size: 14px; }
+@media (min-width: 900px) {
+  .sidebar .sidenav-item { padding: 8px 12px !important; }
+  .np-group { padding: 12px 12px 4px; }
+}
+/* Téléphone : en-tête sur une seule ligne (la recherche est dans la barre du bas) */
+@media (max-width: 899px) {
+  .header { flex-wrap: nowrap !important; padding: 10px 14px !important; }
+  .header-search-wrap, .header-right a.header-bell, .header-right .user-badge { display: none !important; }
+  .header-left .site-name { font-size: 20px !important; }
+  .np-logo { width: 36px; height: 36px; }
+}
+</style>
 </head>
 <body>
 
@@ -4343,5 +4428,153 @@ document.addEventListener('click', function(e) {
 
 <div style="position:fixed;bottom:16px;right:16px;padding:8px 12px;font-size:11px;color:#a0a0a0;background:rgba(26,31,50,0.8);border:1px solid rgba(74,158,255,0.2);border-radius:6px;font-family:monospace;z-index:50;">V1</div>
 
+<script id="nav-pro-js">
+/* ═══ ÉTAPE 1 « PRO » : menu rangé, icônes, recherche Ctrl+K, barre du bas ═══
+   Ce bloc ne fait que réorganiser la navigation. Il réutilise les fonctions
+   existantes (showTab, ouvrirLettresSeferTorah, toggleSidebar, rechercheGlobale). */
+(function () {
+  var TSEDAKA = function () { window.open('https://agent-shliah-production.up.railway.app/tsedaka?password=' + encodeURIComponent(localStorage.getItem('railway_admin_pw') || '')); };
+  var PAGES = [
+    { tab: 'ajouter', label: 'Ajouter une info', ico: 'circle-plus', group: '' },
+    { tab: 'infos', label: 'Infos du bot', ico: 'info-circle', group: 'Bot' },
+    { tab: 'histoires', label: 'Histoires', ico: 'book', group: 'Bot' },
+    { tab: 'musiques', label: 'Musiques', ico: 'music', group: 'Bot' },
+    { tab: 'questions', label: 'Questions', ico: 'messages', group: 'Bot' },
+    { tab: 'contacts', label: 'Contacts', ico: 'users', group: 'Communauté' },
+    { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
+    { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
+    { tab: 'prive', label: 'Privé', ico: 'lock', group: 'Communauté' },
+    { tab: 'paiements', label: 'Paiements', ico: 'credit-card', group: 'Dons et reçus' },
+    { tab: 'tsedaka-ext', label: 'Tsédaka', ico: 'heart-handshake', group: 'Dons et reçus', ext: true, run: TSEDAKA },
+    { tab: 'lettres', label: 'Lettres Séfer Torah', ico: 'feather', group: 'Dons et reçus', ext: true },
+    { tab: 'cerfa', label: 'Cerfa', ico: 'file-invoice', group: 'Dons et reçus' },
+    { tab: 'export', label: 'Export', ico: 'download', group: 'Outils' },
+    { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
+    { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
+  ];
+  var MOTS = { cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
+  function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
+  function hidden(p) { var el = document.querySelector('.sidebar [data-tab="' + p.tab + '"]'); return el && el.classList.contains('hidden'); }
+
+  function construireMenu() {
+    var nav = document.querySelector('#app-sidebar .sidebar-nav');
+    if (!nav) return;
+    var items = {};
+    nav.querySelectorAll('.sidenav-item').forEach(function (el) { items[el.dataset.tab] = el; });
+    var frag = document.createDocumentFragment(), groupe = null;
+    PAGES.forEach(function (p) {
+      if (p.group !== groupe) { groupe = p.group; if (groupe) { var g = document.createElement('div'); g.className = 'np-group'; g.textContent = groupe; frag.appendChild(g); } }
+      var el = items[p.tab];
+      if (!el) { el = document.createElement('div'); el.className = 'sidenav-item'; el.dataset.tab = p.tab; el.onclick = function () { go(p); toggleSidebar(false); }; }
+      el.innerHTML = '<span class="sidenav-icon">' + ic(p.ico) + '</span>' + p.label + (p.ext ? '<i class="ti ti-external-link np-ext" aria-hidden="true"></i>' : '');
+      if (p.tab === 'lettres') el.setAttribute('onclick', 'ouvrirLettresSeferTorah();toggleSidebar(false)');
+      frag.appendChild(el);
+    });
+    nav.innerHTML = '';
+    nav.appendChild(frag);
+    var hint = document.createElement('div');
+    hint.className = 'np-kbd-hint';
+    hint.innerHTML = ic('search') + 'Recherche rapide<kbd>Ctrl K</kbd>';
+    hint.onclick = function () { toggleSidebar(false); ouvrirPalette(); };
+    nav.appendChild(hint);
+  }
+
+  function iconesEntete() {
+    var left = document.querySelector('.header-left');
+    if (left && !left.querySelector('.np-logo')) {
+      var logo = document.createElement('div'); logo.className = 'np-logo'; logo.innerHTML = ic('message-chatbot');
+      logo.style.cursor = 'pointer'; logo.title = 'Menu';
+      logo.onclick = function () { if (window.innerWidth < 900) toggleSidebar(true); else showTab('ajouter'); };
+      var ham = left.querySelector('.btn-hamburger');
+      left.insertBefore(logo, ham ? ham.nextSibling : left.firstChild);
+    }
+    var name = document.querySelector('.header-left .site-name'); if (name) name.textContent = 'Shliah Bot';
+    var bell = document.querySelector('.header-right .header-bell'); if (bell && bell.firstChild && bell.firstChild.nodeType === 3) bell.replaceChild(document.createRange().createContextualFragment(ic('bell')), bell.firstChild);
+    var heart = document.querySelector('.header-right a.header-bell'); if (heart) heart.innerHTML = ic('heart-handshake');
+    var lock = document.querySelector('.header-right .btn-logout'); if (lock) { lock.innerHTML = ic('logout'); lock.title = 'Se déconnecter'; }
+    var loupe = document.querySelector('.header-search > span:first-child'); if (loupe) loupe.innerHTML = ic('search');
+    var kbd = document.querySelector('.header-search .kbd'); if (kbd) kbd.textContent = 'Ctrl K';
+  }
+
+  function barreDuBas() {
+    var bar = document.createElement('nav'); bar.className = 'np-bottom';
+    var B = [
+      { t: 'ajouter', l: 'Accueil', i: 'home', f: function () { showTab('ajouter'); } },
+      { t: 'demandes', l: 'Demandes', i: 'inbox', f: function () { showTab('demandes'); } },
+      { t: 'cerfa', l: 'Cerfa', i: 'file-invoice', f: function () { showTab('cerfa'); } },
+      { t: '', l: 'Rechercher', i: 'search', f: function () { ouvrirPalette(); } },
+      { t: '', l: 'Menu', i: 'menu-2', f: function () { toggleSidebar(true); } }
+    ];
+    B.forEach(function (b) {
+      var btn = document.createElement('button'); btn.type = 'button'; if (b.t) btn.dataset.np = b.t;
+      btn.innerHTML = ic(b.i) + b.l; btn.onclick = b.f; bar.appendChild(btn);
+    });
+    document.getElementById('app').appendChild(bar);
+  }
+  function syncBas(name) { document.querySelectorAll('.np-bottom button').forEach(function (b) { b.classList.toggle('active', b.dataset.np === name); }); }
+
+  /* ── Recherche rapide ── */
+  var bg, input, list, sel = 0, res = [];
+  function construirePalette() {
+    bg = document.createElement('div'); bg.className = 'np-pal-bg';
+    bg.innerHTML = '<div class="np-pal" role="dialog" aria-label="Recherche rapide"><div class="np-pal-in">' + ic('search') + '<input placeholder="Aller à une page, chercher un contact, un reçu…" aria-label="Recherche rapide"><kbd>Échap</kbd></div><div class="np-pal-list"></div><div class="np-pal-foot"><span>↑ ↓ choisir</span><span>Entrée ouvrir</span><span>Échap fermer</span></div></div>';
+    document.body.appendChild(bg);
+    input = bg.querySelector('input'); list = bg.querySelector('.np-pal-list');
+    bg.addEventListener('click', function (e) { if (e.target === bg) fermerPalette(); });
+    input.addEventListener('input', function () { sel = 0; remplir(); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, res.length - 1); marquer(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); marquer(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (res[sel]) choisir(res[sel]); }
+      else if (e.key === 'Escape') { e.preventDefault(); fermerPalette(); }
+    });
+  }
+  function norm(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function remplir() {
+    var q = norm(input.value.trim());
+    res = PAGES.filter(function (p) { return !hidden(p) && (!q || norm(p.label + ' ' + p.group + ' ' + (MOTS[p.tab] || '')).indexOf(q) > -1); })
+      .map(function (p) { return { type: 'page', p: p }; });
+    if (q) res.push({ type: 'cherche', q: input.value.trim() });
+    var html = '', sec = '';
+    res.forEach(function (r, i) {
+      var s = r.type === 'page' ? 'Pages' : 'Contacts, reçus, montants';
+      if (s !== sec) { sec = s; html += '<div class="np-pal-sec">' + s + '</div>'; }
+      if (r.type === 'page') html += '<div class="np-pal-item" data-i="' + i + '"><span class="np-ic">' + ic(r.p.ico) + '</span>' + r.p.label + '<small>' + (r.p.group || 'Accueil') + '</small></div>';
+      else html += '<div class="np-pal-item" data-i="' + i + '"><span class="np-ic">' + ic('search') + '</span>Chercher « ' + r.q.replace(/[<>&"]/g, '') + ' »<small>dans tout l\'admin</small></div>';
+    });
+    list.innerHTML = html || '<div class="np-pal-empty">Aucun résultat</div>';
+    list.querySelectorAll('.np-pal-item').forEach(function (el) {
+      el.onmouseenter = function () { sel = +el.dataset.i; marquer(); };
+      el.onclick = function () { choisir(res[+el.dataset.i]); };
+    });
+    marquer();
+  }
+  function marquer() { list.querySelectorAll('.np-pal-item').forEach(function (el) { var on = +el.dataset.i === sel; el.classList.toggle('sel', on); if (on) el.scrollIntoView({ block: 'nearest' }); }); }
+  function choisir(r) {
+    fermerPalette();
+    if (r.type === 'page') { go(r.p); return; }
+    var h = document.getElementById('header-search-input');
+    if (h) { h.value = r.q; h.focus(); try { rechercheGlobale(); } catch (e) {} }
+  }
+  function ouvrirPalette() { if (document.getElementById('app').style.display !== 'block') return; bg.classList.add('open'); input.value = ''; sel = 0; remplir(); setTimeout(function () { input.focus(); }, 10); }
+  function fermerPalette() { bg.classList.remove('open'); }
+  window.ouvrirPalette = ouvrirPalette;
+
+  function hauteurEntete() { var h = document.querySelector('.header'); if (h) document.documentElement.style.setProperty('--np-head', h.offsetHeight + 'px'); }
+
+  function init() {
+    construireMenu(); iconesEntete(); barreDuBas(); construirePalette(); hauteurEntete();
+    window.addEventListener('resize', hauteurEntete);
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); e.stopImmediatePropagation(); bg.classList.contains('open') ? fermerPalette() : ouvrirPalette(); }
+    }, true);
+    var orig = window.showTab;
+    window.showTab = function (name) { orig.apply(this, arguments); syncBas(name); hauteurEntete(); };
+    var actif = document.querySelector('.page.active'); syncBas(actif ? actif.id.replace('tab-', '') : 'ajouter');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
 </body>
 </html>
