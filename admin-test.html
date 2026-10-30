@@ -1845,6 +1845,58 @@ body {
 .toast.out { opacity: 0; transform: translateY(6px); transition: all .2s ease; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 </style>
+<style id="posts-admin">
+/* ═══ Onglet « Posts » : posts Instagram / Facebook créés par le bot ═══ */
+#tab-posts .inner { max-width: 1100px !important; }
+.po-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin: 4px 0 18px; }
+.po-head h1 { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -1px; color: #253D78; margin: 0 0 4px; }
+.po-head p { color: #7D8AA4; font-size: 15px; margin: 0; }
+.po-btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #DFE6F1; border-radius: 11px; background: #fff; color: #253D78; font: 14px Arial, sans-serif; white-space: nowrap; }
+.po-btn:hover { background: #EDF2FD; border-color: #BFCDEB; }
+.po-btn .ti { font-size: 16px; vertical-align: 0; }
+.po-btn.danger { color: #A33B3E; }
+.po-btn.danger:hover { background: #FCEFEF; border-color: #F1D3D4; }
+.po-kpis { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
+.po-kpi { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; padding: 16px; }
+.po-kpi .l { font-size: 13px; color: #7D8AA4; }
+.po-kpi .n { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -1px; color: #253D78; margin-top: 6px; }
+.po-kpi.navy { background: #253D78; border-color: #253D78; } .po-kpi.navy .l { color: #CCD7ED; } .po-kpi.navy .n { color: #fff; }
+.po-kpi.gold { background: #FFFBEF; border-color: #EDDCB0; } .po-kpi.gold .n { color: #98671D; }
+.po-sec { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #7D8AA4; margin: 6px 0 10px 2px; display: flex; align-items: center; gap: 8px; }
+.po-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.po-card { background: #fff; border: 1px solid #DFE6F1; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 3px 14px rgba(37,61,120,.03); }
+.po-cover { position: relative; aspect-ratio: 4 / 3; background: #EEF1F6; }
+.po-cover img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
+.po-cover .nb, .po-cover .st { z-index: 2; }
+.po-cover .vide { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #B3BDD0; font-size: 34px; }
+.po-cover .nb { position: absolute; right: 10px; bottom: 10px; background: rgba(21,33,62,.72); color: #fff; font: 12px Arial; padding: 4px 9px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+.po-cover .nb .ti { font-size: 14px; vertical-align: 0; }
+.po-cover .st { position: absolute; left: 10px; top: 10px; font: 12px Arial; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+.po-cover .st .ti { font-size: 14px; vertical-align: 0; }
+.st.ok { background: #EEF5E9; color: #4F7956; } .st.prog { background: #EDF2FD; color: #253D78; } .st.err { background: #FCEFEF; color: #A33B3E; } .st.part { background: #FFF7DE; color: #98671D; }
+.po-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.po-date { font-size: 13px; color: #7D8AA4; display: flex; align-items: center; gap: 6px; }
+.po-date .ti { font-size: 15px; vertical-align: 0; }
+.po-date b { color: #253D78; font-weight: 600; }
+.po-tabs { display: flex; gap: 6px; }
+.po-tabs button { all: unset; cursor: pointer; font: 12px Arial; padding: 5px 10px; border-radius: 20px; color: #7D8AA4; border: 1px solid #DFE6F1; display: inline-flex; align-items: center; gap: 5px; }
+.po-tabs button .ti { font-size: 14px; vertical-align: 0; }
+.po-tabs button.on { background: #253D78; border-color: #253D78; color: #fff; }
+.po-txt { font: 14px/1.6 Arial, sans-serif; color: #52658E; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.po-txt.full { display: block; }
+.po-more { all: unset; cursor: pointer; color: #4A5D86; font: 13px Arial; text-decoration: underline; align-self: flex-start; }
+.po-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 6px; }
+.po-actions .po-btn { padding: 7px 11px; font-size: 13px; }
+.po-empty { background: #fff; border: 1px dashed #DFE6F1; border-radius: 16px; padding: 26px; text-align: center; color: #7D8AA4; font-size: 14px; line-height: 1.7; margin-bottom: 26px; }
+.po-empty b { color: #253D78; }
+@media (max-width: 899px) {
+  .po-head { flex-direction: column; }
+  .po-head h1 { font-size: 26px; }
+  .po-kpis { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+  .po-kpi { padding: 12px; } .po-kpi .n { font-size: 24px; } .po-kpi .l { font-size: 12px; }
+  .po-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
@@ -4514,6 +4566,7 @@ document.addEventListener('click', function(e) {
     { tab: 'contacts', label: 'Contacts', ico: 'users', group: 'Communauté' },
     { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
     { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
+    { tab: 'posts', label: 'Posts Insta / Facebook', ico: 'brand-instagram', group: 'Communauté', admin: true },
     { tab: 'prive', label: 'Privé', ico: 'lock', group: 'Communauté' },
     { tab: 'paiements', label: 'Paiements', ico: 'credit-card', group: 'Dons et reçus' },
     { tab: 'tsedaka-ext', label: 'Tsédaka', ico: 'heart-handshake', group: 'Dons et reçus', ext: true, run: TSEDAKA },
@@ -4523,7 +4576,7 @@ document.addEventListener('click', function(e) {
     { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
-  var MOTS = { ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var MOTS = { posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
   var GRP = { '': 'home', 'Bot': 'bot', 'Communauté': 'com', 'Dons et reçus': 'don', 'Outils': 'out' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
@@ -4538,7 +4591,8 @@ document.addEventListener('click', function(e) {
     PAGES.forEach(function (p) {
       if (p.group !== groupe) { groupe = p.group; if (groupe) { var g = document.createElement('div'); g.className = 'np-group'; g.textContent = groupe; frag.appendChild(g); } }
       var el = items[p.tab];
-      if (!el) { el = document.createElement('div'); el.className = 'sidenav-item'; el.dataset.tab = p.tab; el.onclick = function () { go(p); toggleSidebar(false); }; }
+      if (!el) { el = document.createElement('div'); el.className = 'sidenav-item'; el.dataset.tab = p.tab; el.onclick = function () { go(p); toggleSidebar(false); };
+        if (p.admin) { el.classList.add('tab-admin-only'); if (typeof currentUser !== 'undefined' && currentUser === 'user2') el.classList.add('hidden'); } }
       el.innerHTML = '<span class="sidenav-icon">' + ic(p.ico) + '</span>' + p.label + (p.ext ? '<i class="ti ti-external-link np-ext" aria-hidden="true"></i>' : '');
       el.dataset.grp = GRP[p.group];
       if (p.tab === 'lettres') el.setAttribute('onclick', 'ouvrirLettresSeferTorah();toggleSidebar(false)');
@@ -4769,6 +4823,151 @@ document.addEventListener('click', function(e) {
     var sb = document.querySelector('.sidebar [data-tab="ajouter"]');
     if (sb) sb.innerHTML = '<span class="sidenav-icon">' + ic('home') + '</span>Accueil';
     if (document.getElementById('app').style.display === 'block' && document.getElementById('tab-ajouter').classList.contains('active')) charger();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<script id="posts-admin-js">
+/* ═══ Onglet « Posts » : posts Instagram / Facebook créés par le bot ═══
+   Lit /admin/posts (publiés) et /admin/posts/programmes (à venir).
+   Seule action qui modifie : « Annuler » un post programmé (avec confirmation). */
+(function () {
+  function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function quand(v) { var d = new Date(v); if (isNaN(d)) return ''; return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+  function photosDe(v) { if (!v) return []; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return []; } } return (v || []).map(function (p) { return typeof p === 'string' ? p : (p && p.url); }).filter(Boolean); }
+  function liens(txt) {
+    var out = { fb: '', ig: '' };
+    (String(txt || '').match(/https?:\/\/[^\s)]+/g) || []).forEach(function (u) {
+      if (!out.fb && /facebook\.com/.test(u)) out.fb = u;
+      if (!out.ig && /instagram\.com/.test(u)) out.ig = u;
+    });
+    return out;
+  }
+  function etat(resultat) {
+    var r = String(resultat || '');
+    var fbOk = /Facebook\s*:\s*publié/i.test(r), igOk = /Instagram\s*:\s*publié/i.test(r);
+    if (fbOk && igOk) return { c: 'ok', t: 'Publié', i: 'circle-check' };
+    if (fbOk || igOk) return { c: 'part', t: fbOk ? 'Facebook seulement' : 'Instagram seulement', i: 'alert-triangle' };
+    if (!r) return { c: 'ok', t: 'Publié', i: 'circle-check' };
+    return { c: 'err', t: 'Erreur', i: 'alert-triangle' };
+  }
+
+  var donnees = { posts: [], prog: [] };
+
+  function carte(o) {
+    var photos = o.photos, cover = photos[0];
+    var id = 'po' + o.cle;
+    var h = '<div class="po-card">' +
+      '<div class="po-cover">' + (cover ? '<img loading="lazy" src="' + esc(cover) + '" alt="" onerror="this.remove()">' : '') + '<div class="vide">' + ic('photo') + '</div>' +
+      '<span class="st ' + o.st.c + '">' + ic(o.st.i) + esc(o.st.t) + '</span>' +
+      (photos.length > 1 ? '<span class="nb">' + ic('photo') + photos.length + ' photos</span>' : '') + '</div>' +
+      '<div class="po-body">' +
+      '<div class="po-date">' + ic(o.prog ? 'calendar-time' : 'clock') + (o.prog ? 'Prévu le <b>' + esc(quand(o.date)) + '</b>' : esc(quand(o.date))) + '</div>' +
+      '<div class="po-tabs" data-id="' + id + '"><button class="on" data-r="ig">' + ic('brand-instagram') + 'Instagram</button><button data-r="fb">' + ic('brand-facebook') + 'Facebook</button></div>' +
+      '<div class="po-txt" id="' + id + '">' + esc(o.ig || o.fb || '(pas de texte)') + '</div>' +
+      '<button class="po-more" data-more="' + id + '">Voir tout le texte</button>' +
+      '<div class="po-actions">';
+    if (o.links.ig) h += '<a class="po-btn" href="' + esc(o.links.ig) + '" target="_blank" rel="noopener">' + ic('brand-instagram') + 'Voir</a>';
+    if (o.links.fb) h += '<a class="po-btn" href="' + esc(o.links.fb) + '" target="_blank" rel="noopener">' + ic('brand-facebook') + 'Voir</a>';
+    h += '<button class="po-btn" data-copy="' + id + '">' + ic('copy') + 'Copier le texte</button>';
+    if (o.prog && o.statut === 'programme') h += '<button class="po-btn danger" data-cancel="' + o.progId + '">' + ic('calendar-x') + 'Annuler</button>';
+    h += '</div></div></div>';
+    return h;
+  }
+
+  function afficher() {
+    var box = document.getElementById('po-contenu');
+    var now = new Date(), mois = donnees.posts.filter(function (p) { var d = new Date(p.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+    var avenir = donnees.prog.filter(function (p) { return p.statut === 'programme' || p.statut === 'en_cours'; });
+    document.getElementById('po-n-pub').textContent = donnees.posts.length;
+    document.getElementById('po-n-prog').textContent = avenir.length;
+    document.getElementById('po-n-mois').textContent = mois;
+    window._poTextes = {};
+    var html = '';
+    if (donnees.prog.length) {
+      html += '<div class="po-sec">' + ic('calendar-time') + 'Programmés</div><div class="po-grid">';
+      donnees.prog.forEach(function (p) {
+        var c = p.contenu || {}; if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { c = {}; } }
+        var b = c.brouillon || {}, cle = 'p' + p.id;
+        window._poTextes['po' + cle] = { ig: b.instagram || '', fb: b.facebook || '' };
+        html += carte({ cle: cle, prog: true, progId: p.id, statut: p.statut, date: p.date_publication, photos: photosDe(c.photos), ig: b.instagram, fb: b.facebook, links: liens(p.resultat),
+          st: p.statut === 'echec' ? { c: 'err', t: 'Pas parti', i: 'alert-triangle' } : p.statut === 'en_cours' ? { c: 'prog', t: 'En cours…', i: 'clock' } : { c: 'prog', t: 'Programmé', i: 'calendar-time' } });
+      });
+      html += '</div>';
+    }
+    html += '<div class="po-sec">' + ic('circle-check') + 'Publiés</div>';
+    if (!donnees.posts.length) html += '<div class="po-empty">Aucun post publié pour l\'instant.<br>Sur WhatsApp, écris <b>« post »</b> au bot, envoie tes photos et un petit texte, puis <b>« fini »</b>.<br>Pour programmer : <b>« post pro »</b>.</div>';
+    else {
+      html += '<div class="po-grid">';
+      donnees.posts.forEach(function (p) {
+        var cle = 's' + p.id;
+        window._poTextes['po' + cle] = { ig: p.instagram || '', fb: p.facebook || '' };
+        html += carte({ cle: cle, prog: false, date: p.created_at, photos: photosDe(p.photos), ig: p.instagram, fb: p.facebook, links: liens(p.resultat), st: etat(p.resultat) });
+      });
+      html += '</div>';
+    }
+    box.innerHTML = html;
+    box.querySelectorAll('.po-txt').forEach(function (t) { var m = box.querySelector('[data-more="' + t.id + '"]'); if (m && t.scrollHeight <= t.clientHeight + 2) m.style.display = 'none'; });
+  }
+
+  async function chargerPosts() {
+    var url = typeof getUrl === 'function' ? getUrl() : '', pw = typeof getAdminPw === 'function' ? getAdminPw() : '';
+    var box = document.getElementById('po-contenu');
+    if (!url) { box.innerHTML = '<div class="po-empty">Configure l\'adresse du serveur dans Config.</div>'; return; }
+    box.innerHTML = '<div class="po-empty">Chargement…</div>';
+    var q = '?password=' + encodeURIComponent(pw);
+    try {
+      var r = await fetch(url + '/admin/posts' + q), d = await r.json();
+      if (!d.ok) { box.innerHTML = '<div class="po-empty">Impossible de charger les posts (mot de passe admin ?).</div>'; return; }
+      donnees.posts = d.posts || [];
+    } catch (e) { box.innerHTML = '<div class="po-empty">Erreur de connexion au serveur.</div>'; return; }
+    try { var r2 = await fetch(url + '/admin/posts/programmes' + q), d2 = await r2.json(); donnees.prog = d2.ok ? (d2.programmes || []) : []; } catch (e) { donnees.prog = []; }
+    afficher();
+  }
+  window.chargerPosts = chargerPosts;
+
+  function construire() {
+    var main = document.querySelector('.main-content');
+    if (!main || document.getElementById('tab-posts')) return;
+    var page = document.createElement('div'); page.className = 'page'; page.id = 'tab-posts';
+    page.innerHTML = '<div class="inner">' +
+      '<div class="po-head"><div><h1>Posts Instagram et Facebook</h1><p>Les posts créés avec le bot sur WhatsApp (« post » ou « post pro »).</p></div>' +
+      '<button class="po-btn" id="po-refresh">' + ic('refresh') + 'Actualiser</button></div>' +
+      '<div class="po-kpis"><div class="po-kpi navy"><div class="l">Publiés</div><div class="n" id="po-n-pub">–</div></div>' +
+      '<div class="po-kpi gold"><div class="l">Programmés</div><div class="n" id="po-n-prog">–</div></div>' +
+      '<div class="po-kpi"><div class="l">Ce mois-ci</div><div class="n" id="po-n-mois">–</div></div></div>' +
+      '<div id="po-contenu"></div></div>';
+    main.appendChild(page);
+    document.getElementById('po-refresh').onclick = chargerPosts;
+    page.addEventListener('click', async function (e) {
+      var tab = e.target.closest('.po-tabs button');
+      if (tab) {
+        var wrap = tab.parentElement, id = wrap.dataset.id, t = (window._poTextes || {})[id] || {};
+        wrap.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === tab); });
+        var el = document.getElementById(id); el.textContent = (tab.dataset.r === 'fb' ? t.fb : t.ig) || '(pas de texte pour ce réseau)';
+        var m = page.querySelector('[data-more="' + id + '"]'); if (m) { el.classList.remove('full'); m.textContent = 'Voir tout le texte'; m.style.display = el.scrollHeight > el.clientHeight + 2 ? '' : 'none'; }
+        return;
+      }
+      var more = e.target.closest('[data-more]');
+      if (more) { var tx = document.getElementById(more.dataset.more); var full = tx.classList.toggle('full'); more.textContent = full ? 'Réduire' : 'Voir tout le texte'; return; }
+      var cp = e.target.closest('[data-copy]');
+      if (cp) { var txt = document.getElementById(cp.dataset.copy).textContent; try { await navigator.clipboard.writeText(txt); alert('✓ Texte copié'); } catch (er) { alert('Impossible de copier le texte'); } return; }
+      var ca = e.target.closest('[data-cancel]');
+      if (ca) {
+        if (!confirm('Annuler ce post programmé ? Il ne sera pas publié.')) return;
+        try {
+          var res = await fetch(getUrl() + '/admin/posts/programmes/' + ca.dataset.cancel + '/annuler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: getAdminPw() }) });
+          var d = await res.json(); alert(d.ok ? '✓ ' + d.message : '❌ ' + (d.message || 'Erreur')); chargerPosts();
+        } catch (er) { alert('❌ Erreur de connexion'); }
+      }
+    });
+  }
+
+  function init() {
+    construire();
+    var orig = window.showTab;
+    window.showTab = function (name) { orig.apply(this, arguments); if (name === 'posts') chargerPosts(); };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

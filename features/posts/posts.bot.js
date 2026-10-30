@@ -853,6 +853,26 @@ function init(options) {
     res.json({ ok: true, posts: r.rows });
   });
 
+  // Onglet « Posts » de l'admin : posts programmés (à venir, en cours, en échec)
+  ctx.app.get('/admin/posts/programmes', async (req, res) => {
+    if (req.query.password !== ctx.adminPassword) return res.status(401).json({ ok: false });
+    try {
+      const r = await ctx.pool.query(`SELECT id, date_publication, contenu, statut, resultat, created_at FROM posts_programmes
+        WHERE statut IN ('programme','en_cours') OR (statut = 'echec' AND date_publication > NOW() - INTERVAL '30 days')
+        ORDER BY date_publication ASC LIMIT 100`);
+      res.json({ ok: true, programmes: r.rows });
+    } catch (e) { res.json({ ok: false, message: e.message }); }
+  });
+
+  // Annuler un post programmé depuis l'admin (même règle que « annuler post » sur WhatsApp)
+  ctx.app.post('/admin/posts/programmes/:id/annuler', async (req, res) => {
+    if (!req.body || req.body.password !== ctx.adminPassword) return res.status(401).json({ ok: false });
+    try {
+      const r = await ctx.pool.query(`UPDATE posts_programmes SET statut='annule' WHERE id=$1 AND statut='programme' RETURNING id`, [req.params.id]);
+      res.json(r.rows.length ? { ok: true, message: 'Post programmé annulé' } : { ok: false, message: 'Ce post est déjà parti ou annulé.' });
+    } catch (e) { res.json({ ok: false, message: e.message }); }
+  });
+
   console.log('Posts Instagram/Facebook prêts');
   return { handleText, handleImage, handleBouton };
 }
