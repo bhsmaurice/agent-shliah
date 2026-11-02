@@ -3067,6 +3067,7 @@ async function envoyerRappelsHavruta() {
 
 repertoire.init({ app, pool, sendWhatsApp, adminPassword: ADMIN_PASSWORD, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE });
 require('./features/tsedaka/tsedaka.page').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, getNextCerfaNumero, sendWhatsAppDocument, envoyerEmail, marquerOrigineCerfa });
+try { require('./features/don-rabbi/don-rabbi.server').init({ app, pool }); } catch (e) { console.error('Don Rabbi init :', e.message); }
 const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, generateCerfaPDF, envoyerEmail });
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
 const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, sendWhatsAppImage, envoyerEmail, phoneNumberId: PHONE_NUMBER_ID, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
