@@ -83,7 +83,7 @@ html body [data-elementor-type="header"][data-elementor-type="header"][data-elem
 	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item{padding:13px 18px!important}
 }
 @media (min-width:1025px) and (max-width:1240px){
-	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item{font-size:12.5px!important;padding:12px 6px!important;letter-spacing:.02em!important}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item{font-size:12.5px!important;padding:12px 5px!important;letter-spacing:.02em!important}
 	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow{padding-left:5px!important}
 	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item{padding:12px 13px!important}
 }
