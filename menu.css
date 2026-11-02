@@ -1,0 +1,99 @@
+/* ==========================================================
+   Menu du site – style « grand et lisible »
+   Beth Habad S Maurice Plateau  (extension « Style du menu »)
+   ========================================================== */
+:root{--hm-navy:#14213d;--hm-gold:#b8913a;--hm-cream:#faf7f0}
+
+/* ---------- Ordinateur ---------- */
+@media (min-width:1025px){
+	/* Plus de place pour le menu : colonne du logo resserrée, menu aligné à droite */
+	html body .elementor-element.elementor-element-b298303{--content-width:min(100%,1440px)!important}
+	html body .elementor-element.elementor-element-4feb2e8{--width:150px!important;width:150px!important;flex:0 0 150px!important}
+	html body .elementor-element.elementor-element-4feb2e8 img{width:128px!important;max-width:128px!important;height:auto!important}
+	html body .elementor-element.elementor-element-dcf1ee4{--width:auto!important;width:auto!important;flex:1 1 0!important;min-width:0}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul{justify-content:flex-end!important;flex-wrap:nowrap!important}
+	/* « Accueil » masqué sur ordinateur : le logo ramène à l'accueil */
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.menu-item-home{display:none!important}
+}
+
+/* ---------- Liens principaux ---------- */
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item{
+	font-family:"DM Sans",system-ui,sans-serif!important;
+	font-size:15px!important;font-weight:500!important;
+	text-transform:uppercase!important;letter-spacing:.04em!important;
+	color:var(--hm-navy)!important;
+	padding:14px 11px!important;white-space:nowrap!important;
+	transition:color .2s ease!important;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item:hover,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item:focus,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item.highlighted,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item-active{color:var(--hm-gold)!important}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .elementor-item:before,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .elementor-item:after{background-color:var(--hm-gold)!important;height:2px!important}
+
+/* Chevron fin à la place du petit triangle */
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow{padding:0 0 0 8px!important;margin:0!important;display:inline-flex!important;align-items:center}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow svg,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow i{display:none!important}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow:before{
+	content:"";width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;
+	transform:translateY(-2px) rotate(45deg);transition:transform .2s ease;display:block;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li:hover > a .sub-arrow:before,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.highlighted .sub-arrow:before{transform:translateY(2px) rotate(-135deg)}
+
+/* ---------- Sous-menu déroulant ---------- */
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu{
+	min-width:310px!important;background:#fff!important;
+	border-top:3px solid var(--hm-gold)!important;
+	box-shadow:0 18px 40px rgba(20,33,61,.12)!important;
+	padding:6px 0!important;margin-top:0!important;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item{
+	display:flex!important;align-items:center;justify-content:space-between;gap:18px;
+	font-family:"DM Sans",system-ui,sans-serif!important;
+	font-size:14.5px!important;font-weight:500!important;
+	text-transform:uppercase!important;letter-spacing:.07em!important;
+	color:var(--hm-navy)!important;background:transparent!important;
+	padding:15px 28px!important;border:0!important;
+	transition:background .18s ease,color .18s ease!important;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item:after{content:"\2192";font-size:17px;line-height:1;color:var(--hm-gold);transition:transform .18s ease}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item:hover,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item:focus,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item.elementor-item-active{background:var(--hm-cream)!important;color:var(--hm-gold)!important}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main .sub-menu a.elementor-sub-item:hover:after{transform:translateX(4px)}
+
+/* ---------- Bouton « Faire un don » (élément de menu avec la classe hm-don) ---------- */
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don{margin-left:14px}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item{
+	background:var(--hm-gold)!important;color:#fff!important;
+	padding:15px 26px!important;border-radius:2px;font-weight:600!important;
+	transition:background .2s ease!important;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item:hover{background:var(--hm-navy)!important;color:#fff!important}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a:before,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a:after{display:none!important}
+
+/* ---------- Écrans de portable : on resserre ---------- */
+@media (min-width:1025px) and (max-width:1440px){
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item{font-size:14px!important;padding:13px 8px!important;letter-spacing:.03em!important}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don{margin-left:8px}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item{padding:13px 18px!important}
+}
+@media (min-width:1025px) and (max-width:1240px){
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a.elementor-item{font-size:12.5px!important;padding:12px 6px!important;letter-spacing:.02em!important}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li > a .sub-arrow{padding-left:5px!important}
+	html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--main > ul > li.hm-don > a.elementor-item{padding:12px 13px!important}
+}
+
+/* ---------- Menu mobile (hamburger) ---------- */
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--dropdown a{
+	font-family:"DM Sans",system-ui,sans-serif!important;text-transform:uppercase!important;
+	letter-spacing:.06em!important;font-size:15px!important;font-weight:500!important;
+	color:var(--hm-navy)!important;padding-top:15px!important;padding-bottom:15px!important;
+}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--dropdown a:hover,
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--dropdown a.elementor-item-active{background:var(--hm-cream)!important;color:var(--hm-gold)!important}
+html body [data-elementor-type="header"][data-elementor-type="header"][data-elementor-type="header"] .elementor-nav-menu--dropdown li.hm-don > a{background:var(--hm-gold)!important;color:#fff!important;justify-content:center}
