@@ -229,6 +229,12 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
       res.json({ start: START, previewTo: PREVIEW_TO, timezone: 'Europe/Paris', preparation: '10:00', preview: '12:00', sendAfterApproval: '21:30', kehilaConfigured: Boolean(process.env.KEHILA_API_KEY), editions: rows });
     } catch (_) { res.status(500).json({ error: 'Newsletter unavailable' }); }
   });
+  app.get('/admin/newsletter/kehila-check', adminAuth, async (_req,res) => {
+    try {
+      const checked = await kehila.inspect(process.env.KEHILA_API_KEY, process.env.KEHILA_NEWSLETTER_SOURCE_CAMPAIGN_ID || SOURCE_CAMPAIGN);
+      res.json({ connected: true, audienceVerified: true, audience: checked.label });
+    } catch (_) { res.status(502).json({ connected: false, error: 'Connexion ou audience Kehila non vérifiée' }); }
+  });
   app.post('/admin/newsletter/test', adminAuth, async (_req,res) => { try { res.json(await locked(testDelivery)); } catch (e) { res.status(500).json({ error: e.message }); } });
   return { handleButton, handleText, ready, tick };
 }
