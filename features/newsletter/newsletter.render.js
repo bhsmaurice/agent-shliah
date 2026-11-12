@@ -76,7 +76,7 @@ async function compose({ posts, photos, infos, shabbat, week, notes, anthropicKe
   const payload = await response.json();
   const raw = (payload.content || []).filter(c => c.type === 'text').map(c => c.text).join('').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
   const copy = JSON.parse(raw);
-  if (!copy.subject || !copy.intro || !Array.isArray(copy.posts) || !Array.isArray(copy.notices) || !Array.isArray(copy.missing) || copy.posts.length !== posts.length || copy.posts.some((p, i) => String(p.id) !== posts[i].id || typeof p.title !== 'string' || typeof p.caption !== 'string') || copy.notices.some(n => typeof n.title !== 'string' || typeof n.text !== 'string') || copy.missing.some(x => typeof x !== 'string')) throw new Error('Brouillon incomplet ou invalide');
+  if (typeof copy.subject !== 'string' || !copy.subject || typeof copy.intro !== 'string' || !copy.intro || !Array.isArray(copy.posts) || !Array.isArray(copy.notices) || !Array.isArray(copy.missing) || copy.posts.length !== posts.length || copy.posts.some((p, i) => String(p.id) !== posts[i].id || typeof p.title !== 'string' || typeof p.caption !== 'string') || copy.notices.some(n => typeof n.title !== 'string' || typeof n.text !== 'string') || copy.missing.some(x => typeof x !== 'string')) throw new Error('Brouillon incomplet ou invalide');
   if (!shabbat || shabbat.entree === 'N/A' || shabbat.sortie === 'N/A') copy.missing.push('Horaires de Chabbat à confirmer ou rubrique à retirer.');
   return copy;
 }

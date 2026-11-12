@@ -162,12 +162,13 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
   async function handleText(from, text) {
     if (!isAdmin(from) || String(from).replace(/\D/g,'') !== String(adminPhone).replace(/\D/g,'')) return false;
     await ready;
-    const pending = (await pool.query("SELECT * FROM newsletter_editions WHERE editing_phone=$1 AND status IN ('draft','preview') ORDER BY week DESC LIMIT 1", [from])).rows[0];
+    const pending = (await pool.query("SELECT * FROM newsletter_editions WHERE editing_phone=$1 AND status IN ('draft','preview') AND updated_at > NOW() - INTERVAL '30 minutes' ORDER BY week DESC LIMIT 1", [from])).rows[0];
     if (!pending && !/^newsletter(?:\s|$)/i.test(text.trim())) return false;
     try { await locked(async () => {
       const command = text.trim().replace(/^newsletter\s*/i, '').trim();
       if (/^test$/i.test(command)) { await testDelivery(); return; }
-      let row = pending || await edition();
+      let row = pending ? (await pool.query('SELECT * FROM newsletter_editions WHERE id=$1', [pending.id])).rows[0] : await edition();
+      if (pending && !['draft','preview'].includes(row.status)) throw new Error('Cette édition a déjà été validée.');
       if (pending && !/^annuler$/i.test(command)) {
         await update(row.id, { notes: row.notes + '\n' + text, editing_phone: null });
         await notify('Je prépare le nouvel aperçu avec tes corrections.'); await prepare(row.week); return;
@@ -215,6 +216,7 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
   timer.unref();
 
   function adminAuth(req, res, next) {
+    res.set('Cache-Control', 'no-store');
     const actual = req.headers['x-admin-password'];
     const hash = v => createHash('sha256').update(v).digest();
     if (!adminPassword || typeof actual !== 'string' || !timingSafeEqual(hash(actual), hash(adminPassword))) return res.status(401).json({ error: 'Unauthorized' });
