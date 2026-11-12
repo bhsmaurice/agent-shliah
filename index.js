@@ -1363,6 +1363,7 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id;
+      if (buttonId && buttonId.indexOf('nl_') === 0) { await newsletter.handleButton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('post_') === 0) { await posts.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('sms_') === 0) { await smsBot.handleBouton(from, buttonId); return; }
@@ -1442,6 +1443,7 @@ app.post('/webhook', async (req, res) => {
       } catch(e) { console.error('Dedup error:', e.message); }
 
       taches.vu(from);
+      if (await newsletter.handleText(from, text)) return;
       // POSTS INSTA/FACEBOOK — mot-clé « post » (admin)
       if (await posts.handleText(from, text)) return;
       // SMS — mot-clé « sms » (admin)
@@ -3072,6 +3074,7 @@ const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
 const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, sendWhatsAppImage, envoyerEmail, phoneNumberId: PHONE_NUMBER_ID, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
 require('./features/export/export.server').init({ app, pool, publicBaseUrl: PUBLIC_BASE_URL });
+const newsletter = require('./features/newsletter/newsletter.server').init({ app, pool, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE, adminPassword: ADMIN_PASSWORD, publicBaseUrl: PUBLIC_BASE_URL, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID, getShabbat: getHorairesChabbatCached });
 // MON CARNET — tâches personnelles de l'admin (WhatsApp + page admin) : voir features/taches/
 const taches = require('./features/taches/taches.bot').init({ app, pool, sendWhatsApp, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, adminPhone: ADMIN_PHONE, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
