@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { paris, sendAt, render, collect, compose } = require('../features/newsletter/newsletter.render');
+const { paris, sendAt, fetchShabbat, render, collect, compose } = require('../features/newsletter/newsletter.render');
 const { upcomingWeek, buttonId, parseButton, canApprove, init } = require('../features/newsletter/newsletter.server');
 const { audience, schedule } = require('../features/newsletter/newsletter.kehila');
 const sharp = require('sharp');
@@ -28,6 +28,13 @@ test('approval binds exact revision, accepted preview, audience and send deadlin
   assert.equal(Boolean(canApprove(row,3,new Date('2026-11-19T21:00:00Z'))),false);
   assert.deepEqual(parseButton(buttonId('approve',row)),{action:'approve',id:row.id,revision:3});
   assert.equal(parseButton('nl_approve_SQL_3'),null);
+});
+test('Shabbat lookup is tied to the edition date, checks Paris and rejects incomplete data', async()=>{
+  const pool={async query(_sql,args){assert.deepEqual(args,['2026-11-20']);return {rows:[]};}};
+  const payload={location:{tzid:'Europe/Paris',geonameid:2988507},items:[{category:'candles',date:'2026-11-20T16:46:00+01:00'},{category:'havdalah',date:'2026-11-21T17:56:00+01:00'},{category:'parashat',date:'2026-11-21',title:'Parashat Vayetzei'}]};
+  const fetcher=async url=>{assert.equal(url.searchParams.get('gd'),'20');return {ok:true,async json(){return payload;}};};
+  const data=await fetchShabbat('2026-11-19',pool,fetcher);assert.equal(data.entree,'16h46');assert.equal(data.sortie,'17h56');
+  payload.items.pop();payload.items.pop();await assert.rejects(fetchShabbat('2026-11-19',pool,fetcher),/complets/);
 });
 test('renderer includes every photo in order, escapes input and excludes export secrets', () => {
   const html = render(document,photos,'https://bot.example');

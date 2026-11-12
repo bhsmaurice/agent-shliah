@@ -1,6 +1,6 @@
 'use strict';
 const { randomUUID, timingSafeEqual, createHash } = require('node:crypto');
-const { paris, sendAt, collect, compose, render, escape } = require('./newsletter.render');
+const { paris, sendAt, fetchShabbat, collect, compose, render, escape } = require('./newsletter.render');
 const kehila = require('./newsletter.kehila');
 const START = '2026-11-19';
 const SOURCE_CAMPAIGN = '99bf6828-f735-4109-aab5-b198457e77b9'; // Last observed newsletter; read only.
@@ -101,7 +101,9 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
     if (['approved','programming','dispatching','scheduled','uncertain'].includes(row.status)) throw new Error('Cette version est déjà validée ou en programmation ; aucune modification automatique.');
     const { posts, photos } = await collect(pool);
     const infos = (await pool.query('SELECT titre,contenu,categorie,created_at FROM infos ORDER BY created_at DESC LIMIT 80')).rows;
-    const shabbat = await getShabbat();
+    let shabbat;
+    try { shabbat = await fetchShabbat(week, pool); }
+    catch (_) { shabbat = null; }
     const copy = await compose({ posts, photos, infos, shabbat, week, notes: row.notes, anthropicKey });
     let target;
     try { target = await kehila.inspect(process.env.KEHILA_API_KEY, process.env.KEHILA_NEWSLETTER_SOURCE_CAMPAIGN_ID || SOURCE_CAMPAIGN); }

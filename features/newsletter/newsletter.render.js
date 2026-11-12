@@ -16,6 +16,29 @@ function sendAt(week) {
   return new Date(`${week}T${String(21 - (hour - 12)).padStart(2, '0')}:30:00Z`);
 }
 
+async function fetchShabbat(week, pool, fetcher = fetch) {
+  const friday = new Date(week + 'T12:00:00Z');
+  friday.setUTCDate(friday.getUTCDate() + 1);
+  const day = friday.toISOString().slice(0,10);
+  const saturday = new Date(friday); saturday.setUTCDate(saturday.getUTCDate() + 1);
+  const endDay = saturday.toISOString().slice(0,10);
+  const local = (await pool.query('SELECT entree,sortie,paracha FROM shabbat_horaires WHERE date=$1', [day])).rows[0];
+  const validTime = s => typeof s === 'string' && /^(?:[01]?[0-9]|2[0-3])[h:][0-5][0-9]$/.test(s);
+  if (local && validTime(local.entree) && validTime(local.sortie) && local.paracha) return { ...local, date: day, source: 'Horaires enregistrés du Beth Habad' };
+  const url = new URL('https://www.hebcal.com/shabbat');
+  for (const [k,v] of Object.entries({cfg:'json',geonameid:'2988507',M:'on',b:'18',leyning:'off',gy:day.slice(0,4),gm:day.slice(5,7),gd:day.slice(8,10)})) url.searchParams.set(k,v);
+  const response = await fetcher(url, { signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error('Horaires de Chabbat indisponibles');
+  const payload = await response.json();
+  if (payload.location?.tzid !== 'Europe/Paris' || payload.location?.geonameid !== 2988507) throw new Error('Localisation des horaires incorrecte');
+  const candles = payload.items?.find(i => i.category === 'candles' && i.date.startsWith(day+'T'));
+  const end = payload.items?.find(i => i.category === 'havdalah' && i.date.startsWith(endDay+'T'));
+  const parasha = payload.items?.find(i => i.category === 'parashat' && i.date === endDay);
+  if (!candles || !end) throw new Error('Horaires complets à confirmer pour ce Chabbat/fête');
+  const fmt = raw => new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(raw)).replace(':','h');
+  return { entree:fmt(candles.date),sortie:fmt(end.date),paracha:(parasha?.title || 'Chabbat / fête').replace(/^Parashat /,''),date:day,source:'Hebcal · Paris · allumage 18 min, sortie 8,5°',sourceUrl:url.href };
+}
+
 function render(doc, photos, baseUrl, { hosted = {}, preview = false } = {}) {
   const base = new URL(baseUrl);
   if (base.protocol !== 'https:') throw new Error('PUBLIC_BASE_URL HTTPS requis');
@@ -34,7 +57,7 @@ function render(doc, photos, baseUrl, { hosted = {}, preview = false } = {}) {
     section(news.title, `<p style="line-height:1.7;margin:0">${paragraph(news.caption)}</p>${images}`);
   }
   for (const notice of doc.copy.notices) section(notice.title, `<p style="line-height:1.7;margin:0">${paragraph(notice.text)}</p>`);
-  if (doc.shabbat && doc.shabbat.entree !== 'N/A' && doc.shabbat.sortie !== 'N/A') section('Chabbat ' + doc.shabbat.paracha, `<p style="line-height:1.7">${escape(doc.shabbat.date)}<br>Allumage : ${escape(doc.shabbat.entree)} · Sortie : ${escape(doc.shabbat.sortie)}</p>`);
+  if (doc.shabbat && doc.shabbat.entree !== 'N/A' && doc.shabbat.sortie !== 'N/A') section('Chabbat ' + doc.shabbat.paracha, `<p style="line-height:1.7">${escape(doc.shabbat.date)}<br>Allumage : ${escape(doc.shabbat.entree)} · Sortie : ${escape(doc.shabbat.sortie)}</p><p style="font-size:11px;color:#66717b">${doc.shabbat.sourceUrl ? `<a href="${escape(doc.shabbat.sourceUrl)}" style="color:#66717b">${escape(doc.shabbat.source)}</a>` : escape(doc.shabbat.source)}</p>`);
   if (preview && doc.copy.missing.length) section('À confirmer avant validation', `<p>${paragraph(doc.copy.missing.join('\n'))}</p>`);
   const footer = preview ? 'APERÇU PRIVÉ — aucune diffusion aux abonnés' : '<a href="{{mailing_unsubscribe}}" style="color:#5c6570">Se désinscrire</a>';
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(doc.copy.subject)}</title></head><body style="margin:0;background:#f4f2ed;font-family:Arial,Helvetica,sans-serif;color:#303b43"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 10px"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff"><tr><td style="background:#23364a;color:#ffffff;padding:28px;text-align:center"><p style="margin:0 0 12px;color:#d7bd89">ב״ה · ${escape(doc.week)}</p><h1 style="font-size:26px;margin:0">Beth Habad S Maurice – Plateau</h1><p style="margin:12px 0 0">La vie de notre communauté</p></td></tr>${cells.join('')}<tr><td style="padding:25px;text-align:center;background:#eee8de;font-size:12px;line-height:1.7">Beth Habad S Maurice – Plateau<br>30 avenue du Maréchal de Lattre de Tassigny · 94410 S Maurice<br>bhsmaurice@gmail.com · 07 70 24 17 46<br>${footer}</td></tr></table></td></tr></table></body></html>`;
@@ -81,4 +104,4 @@ async function compose({ posts, photos, infos, shabbat, week, notes, anthropicKe
   return copy;
 }
 
-module.exports = { paris, sendAt, render, collect, compose, escape };
+module.exports = { paris, sendAt, fetchShabbat, render, collect, compose, escape };

@@ -4,6 +4,8 @@ Le bot Railway prépare la newsletter sans dépendre d'un ordinateur : premier s
 
 Les textes, affiches et toutes les photos des posts publiés depuis sept jours sont chargés directement dans PostgreSQL. Chaque photo est lue pour la rédaction ; l'ordre est conservé dans l'email. Les annonces/horaires viennent des infos publiques du bot et des corrections de l'administrateur. Une information incertaine bloque la validation. Aucun accès aux contacts, Cerfa, paiements ou infos privées du bot.
 
+Les horaires de Chabbat sont recherchés pour le vendredi/samedi de l'édition, d'abord dans shabbat_horaires à la date exacte, sinon dans l'API officielle Hebcal (Paris, allumage 18 minutes, sortie 8,5 degrés), avec crédit et lien de source dans l'email. Les anciennes constantes du bot ne sont pas réutilisées. Une date, localisation ou paire d'horaires incorrecte/incomplète bloque la validation. Les horaires d'offices restent distincts.
+
 La rédaction réutilise la clé Anthropic du bot. Modèle configurable par NEWSLETTER_AI_MODEL, par défaut claude-sonnet-5-5. Les photos envoyées au modèle sont redimensionnées pour la lecture ; les images de l'email conservent leur source complète. Sharp est déjà une dépendance du projet.
 
 ## Connexion Kehila
