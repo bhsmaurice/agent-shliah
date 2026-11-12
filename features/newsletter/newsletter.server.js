@@ -2,6 +2,7 @@
 const { randomUUID, timingSafeEqual, createHash } = require('node:crypto');
 const { paris, sendAt, fetchShabbat, collect, compose, render, escape } = require('./newsletter.render');
 const kehila = require('./newsletter.kehila');
+const { createWhatsApp } = require('./newsletter.whatsapp');
 const START = '2026-11-19';
 const SOURCE_CAMPAIGN = '99bf6828-f735-4109-aab5-b198457e77b9'; // Last observed newsletter; read only.
 const PREVIEW_TO = 'bhsmaurice@gmail.com';
@@ -59,28 +60,12 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
     await pool.query('INSERT INTO newsletter_editions (id,week) VALUES ($1,$2) ON CONFLICT (week) DO NOTHING', [randomUUID(), week]);
     return (await pool.query('SELECT * FROM newsletter_editions WHERE week=$1', [week])).rows[0];
   }
-  async function wa(body, buttons) {
-    const payload = buttons ? { type: 'interactive', interactive: { type: 'button', body: { text: body }, action: { buttons: buttons.map(b => ({ type: 'reply', reply: b })) } } } : { type: 'text', text: { body } };
-    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, { method: 'POST', headers: { Authorization: 'Bearer ' + whatsappToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to: adminPhone, ...payload }), signal: AbortSignal.timeout(15000) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.messages?.[0]?.id) {
-      if (data.error?.code === 131047) {
-        const templateResponse = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, { method: 'POST', headers: { Authorization: 'Bearer ' + whatsappToken, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
-          body: JSON.stringify({ messaging_product: 'whatsapp', to: adminPhone, type: 'template', template: { name: process.env.NEWSLETTER_WHATSAPP_TEMPLATE || 'shliah_newsletter_admin', language: { code: 'fr' }, components: [{ type: 'body', parameters: [{ type: 'text', text: body.slice(0,900) }] }] } }) });
-        const templateData = await templateResponse.json().catch(() => ({}));
-        if (templateResponse.ok && templateData.messages?.[0]?.id) return templateData.messages[0].id;
-      }
-      const error = new Error('WhatsApp : notification non confirmée (code ' + String(data.error?.code || response.status) + '). Écris « newsletter » au bot pour rouvrir la conversation.');
-      error.code = data.error?.code;
-      throw error;
-    }
-    return data.messages[0].id;
-  }
+  const whatsapp = createWhatsApp({ token: whatsappToken, phoneNumberId, adminPhone });
+  const wa = whatsapp.send;
   async function notify(body, buttons) {
     try { return await wa(body, buttons); }
     catch (e) {
-      // The existing bot has no approved newsletter template. Free-form messages
-      // can fail outside Meta's customer-service window: report the failure by email.
+      // Pending/rejected templates and immediate delivery failures fall back to email.
       await envoyerEmail({ to: PREVIEW_TO, subject: 'Shliah Bot — notification WhatsApp à consulter', html: `<p>${escape(body).replace(/\n/g,'<br>')}</p><p>${escape(e.message)}</p>`, idempotencyKey: 'nl-wa-fallback-' + createHash('sha256').update(body).digest('hex') });
       console.error('Newsletter : notification WhatsApp non confirmée');
       return null;
@@ -152,6 +137,7 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
     const action = parseButton(id);
     if (!action) return false;
     if (!isAdmin(from) || String(from).replace(/\D/g,'') !== String(adminPhone).replace(/\D/g,'')) return true;
+    whatsapp.markInteraction();
     try { await locked(async () => {
       const row = (await pool.query('SELECT * FROM newsletter_editions WHERE id=$1', [action.id])).rows[0];
       if (!row || row.revision !== action.revision || row.week < START) { await notify('Cet aperçu est ancien. Écris « newsletter » pour voir le statut.'); return; }
@@ -163,6 +149,7 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
   }
   async function handleText(from, text) {
     if (!isAdmin(from) || String(from).replace(/\D/g,'') !== String(adminPhone).replace(/\D/g,'')) return false;
+    whatsapp.markInteraction();
     await ready;
     const pending = (await pool.query("SELECT * FROM newsletter_editions WHERE editing_phone=$1 AND status IN ('draft','preview') AND updated_at > NOW() - INTERVAL '30 minutes' ORDER BY week DESC LIMIT 1", [from])).rows[0];
     if (!pending && !/^newsletter(?:\s|$)/i.test(text.trim())) return false;
@@ -234,6 +221,18 @@ function init({ app, pool, envoyerEmail, isAdmin, adminPhone, adminPassword, pub
       const checked = await kehila.inspect(process.env.KEHILA_API_KEY, process.env.KEHILA_NEWSLETTER_SOURCE_CAMPAIGN_ID || SOURCE_CAMPAIGN);
       res.json({ connected: true, audienceVerified: true, audience: checked.label });
     } catch (_) { res.status(502).json({ connected: false, error: 'Connexion ou audience Kehila non vérifiée' }); }
+  });
+  app.get('/admin/newsletter/whatsapp-check', adminAuth, async (_req,res) => {
+    try { res.json(await whatsapp.check()); }
+    catch (_) { res.status(502).json({ error: 'Vérification WhatsApp indisponible' }); }
+  });
+  app.post('/admin/newsletter/whatsapp-test', adminAuth, async (_req,res) => {
+    try {
+      const checked = await whatsapp.check();
+      if (!checked.approved || !checked.sameAccount) return res.status(409).json({ error: 'Modèle ou compte WhatsApp non validé', ...checked });
+      const id = await wa('Test technique du suivi de newsletter. La connexion WhatsApp est active. Aucune newsletter modifiée et aucun envoi aux abonnés.', null, { forceTemplate: true });
+      res.json({ whatsappAccepted: Boolean(id), deliveryConfirmed: false });
+    } catch (_) { res.status(502).json({ error: 'Test WhatsApp non accepté' }); }
   });
   app.post('/admin/newsletter/test', adminAuth, async (_req,res) => { try { res.json(await locked(testDelivery)); } catch (e) { res.status(500).json({ error: e.message }); } });
   return { handleButton, handleText, ready, tick };
