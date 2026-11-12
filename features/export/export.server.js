@@ -50,7 +50,9 @@ function init({ app, pool, publicBaseUrl }) {
     res.set('Cache-Control', 'no-store');
     res.set('Referrer-Policy', 'no-referrer');
     const expected = process.env.EXPORT_API_KEY;
-    const supplied = req.query.key;
+    const bearer = req.headers && req.headers.authorization;
+    const supplied = typeof bearer === 'string' && bearer.startsWith('Bearer ')
+      ? bearer.slice(7) : req.query.key;
     const hash = value => createHash('sha256').update(value).digest();
     if (!expected || typeof supplied !== 'string' || !timingSafeEqual(hash(expected), hash(supplied))) {
       return res.status(401).json({ erreur: 'Clé incorrecte ou absente' });
@@ -58,7 +60,7 @@ function init({ app, pool, publicBaseUrl }) {
     next();
   }
 
-  app.get('/api/export/posts', authenticate, async (req, res) => {
+  const postsHandler = async (req, res) => {
     const raw = req.query.days === undefined ? '7' : req.query.days;
     if (typeof raw !== 'string' || !/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
       return res.status(400).json({ erreur: 'days doit être un entier positif' });
@@ -93,9 +95,9 @@ function init({ app, pool, publicBaseUrl }) {
       console.error('Export posts: lecture impossible');
       res.status(500).json({ erreur: 'Export indisponible' });
     }
-  });
+  };
 
-  app.get('/api/export/media/:id', authenticate, async (req, res) => {
+  const mediaHandler = async (req, res) => {
     if (!/^[1-9][0-9]*$/.test(req.params.id) || BigInt(req.params.id) > 2147483647n) {
       return res.status(404).json({ erreur: 'Image introuvable' });
     }
@@ -110,7 +112,10 @@ function init({ app, pool, publicBaseUrl }) {
       console.error('Export media: lecture impossible');
       res.status(500).json({ erreur: 'Image indisponible' });
     }
-  });
+  };
+  app.get('/api/export/posts', authenticate, postsHandler);
+  app.get('/api/export/media/:id', authenticate, mediaHandler);
+  require('./export.mcp').init({ app, authenticate, postsHandler, mediaHandler, publicBaseUrl });
 }
 
 module.exports = { init };
