@@ -34,6 +34,10 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     CREATE TABLE IF NOT EXISTS story_reminders (id UUID PRIMARY KEY, days JSONB NOT NULL, time TEXT NOT NULL, message TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE);
     CREATE TABLE IF NOT EXISTS story_reminder_jobs (reminder_id UUID NOT NULL, date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'claimed', PRIMARY KEY(reminder_id,date));
     INSERT INTO story_settings(id) VALUES(1) ON CONFLICT DO NOTHING;
+    CREATE TABLE IF NOT EXISTS story_admin_activity (phone TEXT PRIMARY KEY, last_inbound TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS story_plans (id UUID PRIMARY KEY, owner TEXT NOT NULL, media_id UUID NOT NULL, days JSONB NOT NULL, time TEXT NOT NULL, mode TEXT NOT NULL, targets JSONB NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, revision INT NOT NULL DEFAULT 1);
+    CREATE TABLE IF NOT EXISTS story_plan_sessions (phone TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS story_plan_jobs (plan_id UUID NOT NULL, date TEXT NOT NULL, revision INT NOT NULL, status TEXT NOT NULL DEFAULT 'claimed', PRIMARY KEY(plan_id,date,revision));
     CREATE TABLE IF NOT EXISTS story_sessions (phone TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`).catch(e => { ready = null; throw e; });
   async function api(path, body, token) {
     const r = await fetcher(`https://graph.facebook.com/${version}/${path}`, { method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(30000) });
@@ -50,7 +54,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
   const url = id => `${publicBaseUrl.replace(/\/$/, '')}/stories/media/${id}`;
   function destination(row){return (row.targets||['instagram','facebook']).map(n=>n==='instagram'?'Instagram':'Facebook').join(' et ');}
   async function preview(row) {
-    await wa(row.owner, { type: 'video', video: { link: url(row.media_id), caption: 'Aperçu du statut avec son nigoun. À partager manuellement pour le statut WhatsApp.' } });
+    await wa(row.owner, { type: 'video', video: { link: url(row.media_id), caption: row.slot?.startsWith('plan:')?'Voici ton visuel programmé. Rien ne sera publié sans validation.':'Aperçu du statut avec son nigoun. À partager manuellement pour le statut WhatsApp.' } });
     if(!destination(row))return text(row.owner,'Prêt pour ton statut WhatsApp : partage le média manuellement depuis ton téléphone.');
     await wa(row.owner, { type: 'interactive', interactive: { type: 'button', body: { text: 'Publier cette version en story '+destination(row)+' ?' }, action: { buttons: ['approve', ...(row.clip_id ? ['change'] : []), 'cancel'].map(action => ({ type: 'reply', reply: { id: `st_${action}_${row.id}_${row.revision}`, title: { approve: '✅ Valider', change: '🎵 Autre nigoun', cancel: '❌ Annuler' }[action] } })) } } });
   }
@@ -60,6 +64,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
   }
   async function handleText(from, value) {
     if (!isAdmin(from)) return false;
+    if (await planner.handleText(from,value)) return true;
     if (!/^(statu|statut|statuts|stories)( annuler| nouveau)?$/i.test(value.trim())) return false;
     await ensureDB();
     if (/annuler$/i.test(value)) {
@@ -67,7 +72,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
       await text(from, 'Préparation du statut annulée.');
     } else {
       const reminder = !/nouveau$/i.test(value) && (await pool.query("SELECT * FROM story_drafts WHERE owner=$1 AND kind='reminder' AND created_at>NOW()-INTERVAL '12 hours' ORDER BY created_at DESC LIMIT 1",[from])).rows[0];
-      if (reminder) {
+      if (reminder && !(await pool.query("SELECT id FROM story_drafts WHERE owner=$1 AND status='preview' AND created_at>NOW()-INTERVAL '12 hours' LIMIT 1",[from])).rows.length) {
         await text(from, '🔔 Rappel : pense à ton statut Chavoua Tov et au minyan de dimanche à 9h00. Ce rappel ne programme aucune publication. Pour préparer un statut, écris « statu nouveau ».');
         return true;
       }
@@ -86,6 +91,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
   async function handleMedia(from, message) {
     if (!isAdmin(from)) return false;
     await ensureDB();
+    if (await planner.handleMedia(from,message)) return true;
     const session = await pool.query("DELETE FROM story_sessions WHERE phone=$1 AND created_at>NOW()-INTERVAL '1 hour' RETURNING phone", [from]);
     if (!session.rows.length) return false;
     try {
@@ -117,8 +123,9 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     const row = claimed.rows[0];
     if (!row) return text(from, 'Cet aperçu a expiré ou a déjà été traité.');
     try {
+      if(row.slot?.startsWith('plan:') && b.action!=='cancel'){const parts=row.slot.split(':');const active=(await pool.query('SELECT id FROM story_plans WHERE id=$1 AND owner=$2 AND enabled AND revision=$3',[parts[1],from,Number(parts[3])])).rows;if(!active.length)throw new Error('Cette programmation a été arrêtée ou modifiée.');}
       if (row.kind === 'reminder') throw new Error('Ce rappel ne permet aucune publication.');
-      if (row.slot && row.slot !== paris().date && b.action !== 'cancel') throw new Error('Cet aperçu du samedi a expiré. Prépare un nouveau statut.');
+      if (row.slot && (row.slot.startsWith('plan:') ? row.slot.split(':')[2] : row.slot) !== paris().date && b.action !== 'cancel') throw new Error('Cet aperçu du samedi a expiré. Prépare un nouveau statut.');
       if (b.action === 'cancel') { await pool.query("UPDATE story_drafts SET status='cancelled' WHERE id=$1", [row.id]); return text(from, 'Publication annulée.'); }
       if (b.action === 'change') {
         const clips = (await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id')).rows;
@@ -205,6 +212,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     running = true;
     try {
       await ensureDB();
+      await planner.tick(now).catch(()=>console.error('Stories : programmations indisponibles'));
       await reminderTick(now).catch(()=>console.error('Stories : rappel personnel non confirmé'));
       const p = paris(now);
       const settings = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
@@ -387,6 +395,20 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     if(!accepted)return res.status(409).json({error:'Modèle WhatsApp non accepté ; email de secours prévu.'});
     res.json({ok:true,message:'Notification acceptée par WhatsApp. Aucune story publiée.'});
   }));
+  async function addMusic(data,music_id){let mime='image/jpeg';
+      const track=licensedTracks.find(t=>t.id===music_id);
+      const clip=(await pool.query('SELECT m.data FROM story_clips c JOIN story_media m ON m.id=c.media_id WHERE c.id=$1 AND c.enabled',[music_id])).rows[0];
+      if(!track||!clip)throw new Error('Nigoun indisponible');
+      const fs=require('node:fs/promises'),path=require('node:path'),folder=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'shliah-manual-'));
+      try{
+        const sharp=require('sharp'),image=path.join(folder,'image.png'),audio=path.join(folder,'audio.mp4'),out=path.join(folder,'out.mp4');
+        const footer=Buffer.from('<svg width="1080" height="120"><rect width="1080" height="120" fill="white"/><g font-family="sans-serif" font-size="22" text-anchor="middle" fill="#52617a"><text x="540" y="30">'+helpers.escape(track.title+' — '+track.author)+'</text><text x="540" y="60">Extrait et fondus · Adaptation '+track.short+'</text><text x="540" y="92">'+track.license+'</text></g></svg>');
+        const base=await sharp(data).resize(1080,1800,{fit:'contain',background:'white'}).extend({bottom:120,top:0,left:0,right:0,background:'white'}).toBuffer();
+        await fs.writeFile(image,await sharp(base).composite([{input:footer,left:0,top:1800}]).png().toBuffer());await fs.writeFile(audio,clip.data);
+        await require('./render-clip').renderClip(image,audio,out);data=await fs.readFile(out);mime='video/mp4';
+      }finally{await fs.rm(folder,{recursive:true,force:true});}
+    return {data,mime};
+  }
   app.post('/admin/stories/manual',auth,wrap(async(req,res)=>{
     await ensureDB();
     let selected;try{selected=helpers.targets(req.body.targets);}catch(e){return res.status(400).json({error:e.message});}
@@ -402,17 +424,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
       else{if(data.subarray(4,8).toString()!=='ftyp')return res.status(400).json({error:'Utilise une vidéo MP4.'});mime='video/mp4';}
     }else return res.status(400).json({error:'Choisis image, vidéo ou texte.'});
     if(music_id&&type!=='video'){
-      const track=licensedTracks.find(t=>t.id===music_id);
-      const clip=(await pool.query('SELECT m.data FROM story_clips c JOIN story_media m ON m.id=c.media_id WHERE c.id=$1 AND c.enabled',[music_id])).rows[0];
-      if(!track||!clip)return res.status(400).json({error:'Nigoun indisponible'});
-      const fs=require('node:fs/promises'),path=require('node:path'),folder=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'shliah-manual-'));
-      try{
-        const sharp=require('sharp'),image=path.join(folder,'image.png'),audio=path.join(folder,'audio.mp4'),out=path.join(folder,'out.mp4');
-        const footer=Buffer.from('<svg width="1080" height="120"><rect width="1080" height="120" fill="white"/><g font-family="sans-serif" font-size="22" text-anchor="middle" fill="#52617a"><text x="540" y="30">'+helpers.escape(track.title+' — '+track.author)+'</text><text x="540" y="60">Extrait et fondus · Adaptation '+track.short+'</text><text x="540" y="92">'+track.license+'</text></g></svg>');
-        const base=await sharp(data).resize(1080,1800,{fit:'contain',background:'white'}).extend({bottom:120,top:0,left:0,right:0,background:'white'}).toBuffer();
-        await fs.writeFile(image,await sharp(base).composite([{input:footer,left:0,top:1800}]).png().toBuffer());await fs.writeFile(audio,clip.data);
-        await require('./render-clip').renderClip(image,audio,out);data=await fs.readFile(out);mime='video/mp4';
-      }finally{await fs.rm(folder,{recursive:true,force:true});}
+      ({data,mime}=await addMusic(data,music_id));
     }else if(type==='video'&&silent){
       const fs=require('node:fs/promises'),path=require('node:path'),folder=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'shliah-silent-'));
       try{const input=path.join(folder,'input.mp4'),out=path.join(folder,'out.mp4');await fs.writeFile(input,data);await require('node:util').promisify(require('node:child_process').execFile)(env.FFMPEG_PATH||require('ffmpeg-static'),['-nostdin','-y','-i',input,'-c:v','copy','-an','-movflags','+faststart',out],{timeout:60000,maxBuffer:1048576});data=await fs.readFile(out);}finally{await fs.rm(folder,{recursive:true,force:true});}
@@ -444,6 +456,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     let meta; try { const c = await getMeta(); meta = { connected: Boolean(c.pageToken), facebook: c.pageName, instagram: Boolean(c.igId) }; } catch (_) { meta = { connected: false }; }
     res.json({ enabled: settings?.enabled, mode:settings?.mode||'music',next_mode:settings?.next_mode||null, targets:settings?.targets||['instagram','facebook'], cover: Boolean(settings?.cover), coverUrl: settings?.cover ? url(settings.cover) : null, meta, clips: (await pool.query('SELECT id,title,media_id FROM story_clips WHERE enabled ORDER BY id')).rows.map(c=>({id:c.id,title:c.title,url:url(c.media_id)})) });
   }));
+  const planner = require('./stories.planner').init({pool,ensureDB,isAdmin,adminPhone,text,wa,paris,isHolyTime,downloadMedia,createDraft,preview:async row=>{const m=(await pool.query('SELECT mime FROM story_media WHERE id=$1',[row.media_id])).rows[0];return m.mime==='video/mp4'?preview(row):imagePreview(row);},addMusic,notifyPlan:async row=>{const active=(await pool.query("SELECT phone FROM story_admin_activity WHERE phone=$1 AND last_inbound>NOW()-INTERVAL '23 hours'",[row.owner])).rows.length;if(active){const media=(await pool.query('SELECT mime FROM story_media WHERE id=$1',[row.media_id])).rows[0];await text(row.owner,'🔔 Voici ton visuel programmé. Vérifie-le avant de valider.');return media.mime==='video/mp4'?preview(row):imagePreview(row);}try{await wa(adminPhone,{type:'template',template:{name:env.STORIES_PERSONAL_REMINDER_TEMPLATE||'shliah_rappel_personnel',language:{code:'fr'},components:[{type:'body',parameters:[{type:'text',text:'Un visuel programmé est prêt. Répondez « statu » pour voir l’aperçu et choisir de publier ou annuler'}]}]}});}catch(e){if(envoyerEmail)await envoyerEmail({to:'bhsmaurice@gmail.com',subject:'Visuel programmé à valider',html:'<p>Écrivez « statu » au bot WhatsApp pour voir le visuel et valider. Rien ne sera publié sans votre accord.</p>'});else throw e;}}});
   function start() { const timer = setInterval(() => tick().catch(() => console.error('Stories : préparation interrompue, consulter la configuration')), 60000); timer.unref(); tick().catch(() => {}); return timer; }
   return { ensureDB, start, tick, handleText, handleMedia, handleButton, reminderTick };
 }

@@ -83,6 +83,7 @@ test('partial failure is recorded, no automatic retry of accepted Facebook story
 test('Saturday worker blocks holy times and claims each week only once across instances',async()=>{
   let claimed=false,notify=0;
   const pool={async query(sql,args){
+    if(sql==='SELECT * FROM story_plans WHERE enabled'||sql==='SELECT * FROM story_reminders WHERE enabled')return {rows:[]};
     if(sql.startsWith('CREATE TABLE')) return {rows:[]};
     if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,cover:'cover'}]};
     if(sql.startsWith('SELECT * FROM story_clips'))return {rows:[{id:'one',media_id:'m1'},{id:'two',media_id:'m2'}]};
@@ -105,7 +106,7 @@ test('one-time choice overrides default and falls back after consumption',()=>{
 for (const mode of ['image','reminder']) test(mode+' schedule does not require music or call publishing endpoints',async()=>{
   let inserted,consumed=false;const calls=[];
   const pool={async query(sql,args=[]){
-    if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};
+    if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_plans WHERE enabled' || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};
     if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'music',next_mode:mode,cover:mode==='image'?'cover':null}]};
     if(sql.startsWith('INSERT INTO story_drafts')){inserted=args;return {rows:[{id:'draft'}]};}
     if(sql.startsWith('UPDATE story_settings SET next_mode=NULL')){consumed=true;return {rows:[]};}
@@ -121,7 +122,7 @@ for (const mode of ['image','reminder']) test(mode+' schedule does not require m
 });
 test('reminder override is not consumed if the weekly edition was already claimed',async()=>{
   let consumed=false;
-  const pool={async query(sql){if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'reminder',next_mode:'reminder'}]};if(sql.startsWith('INSERT INTO story_drafts'))return {rows:[]};if(sql.startsWith('UPDATE story_settings'))consumed=true;return {rows:[]};}};
+  const pool={async query(sql){if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_plans WHERE enabled' || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'reminder',next_mode:'reminder'}]};if(sql.startsWith('INSERT INTO story_drafts'))return {rows:[]};if(sql.startsWith('UPDATE story_settings'))consumed=true;return {rows:[]};}};
   const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,isHolyTime:async()=>null,fetcher:async()=>{throw Error('Must not notify twice');}});
   await f.tick(new Date('2026-11-14T19:30:00Z'));assert.equal(consumed,false);
 });
@@ -163,4 +164,9 @@ test('custom reminder delivers once, uses email fallback and never publishes a s
   }};
   const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,phoneNumberId:'phone',isHolyTime:async()=>null,env:{},fetcher:async(url)=>{assert.ok(url.endsWith('/phone/messages'));whatsapp++;return {ok:false,status:400,json:async()=>({error:{code:132001}})};},envoyerEmail:async data=>{emails++;assert.ok(data.html.includes('&lt;mon statut&gt;'));return {ok:true};}});
   await f.reminderTick(new Date('2026-11-14T19:30:00Z'));await f.reminderTick(new Date('2026-11-14T19:31:00Z'));assert.equal(emails,1);assert.equal(whatsapp,1);
+});
+test('an old approval cannot publish after its recurring plan was stopped or edited',async()=>{
+ const row={id:'12345678-1234-1234-1234-123456789012',owner:'admin',revision:1,status:'preview',kind:'story',slot:'plan:12345678-1234-1234-1234-123456789013:2026-11-14:1',results:{}};let external=0;
+ const f=init({app:{get(){},post(){}},pool:{async query(sql){if(sql.startsWith('UPDATE story_drafts SET status=\'busy\''))return {rows:[row]};return {rows:[]};}},isAdmin:p=>p==='admin',env:{},getMeta:async()=>{throw Error('Must never reach publishing');},fetcher:async()=>{external++;return {ok:true,json:async()=>({messages:[{id:'notice'}]})};}});
+ await f.handleButton('admin','st_approve_'+row.id+'_1');assert.equal(external,1);
 });
