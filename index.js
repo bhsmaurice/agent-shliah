@@ -1363,6 +1363,7 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       const buttonId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id;
+      if (buttonId && buttonId.indexOf('st_') === 0) { await stories.handleButton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('nl_') === 0) { await newsletter.handleButton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('post_') === 0) { await posts.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
@@ -1413,11 +1414,18 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       // POSTS INSTA/FACEBOOK — photos envoyées pendant un post en cours
+      if (await stories.handleMedia(from, message)) return;
       if (await posts.handleImage(from, message)) return;
       if (isAuthorizedAdminCerfa(from)) {
         const mediaId = message.image?.id;
         if (mediaId) await demarrerAjoutInfo(from, mediaId);
       }
+      return;
+    }
+
+    if (message && message.type === 'video') {
+      const inserted = await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING msg_id', [message.id]);
+      if (inserted.rows.length) await stories.handleMedia(message.from, message);
       return;
     }
 
@@ -1443,6 +1451,7 @@ app.post('/webhook', async (req, res) => {
       } catch(e) { console.error('Dedup error:', e.message); }
 
       taches.vu(from);
+      if (await stories.handleText(from, text)) return;
       if (await newsletter.handleText(from, text)) return;
       // POSTS INSTA/FACEBOOK — mot-clé « post » (admin)
       if (await posts.handleText(from, text)) return;
@@ -3074,6 +3083,7 @@ const lettresFeature = require('./features/lettres-sefer-torah/lettres.server').
 const lettresWhatsapp = require('./features/lettres-sefer-torah/lettres.whatsapp').init({ pool, sendWhatsApp, sendWhatsAppButtons, isAdmin: isAuthorizedAdminCerfa, ensureDB: lettresFeature.ensureDB, anthropicKey: ANTHROPIC_API_KEY, lienPaiement: lettresFeature.lienPaiement, envoyerLienPaiement: lettresFeature.envoyerLienPaiement, liensEnvoi: lettresFeature.liensEnvoi });
 const posts = require('./features/posts/posts.bot').init({ app, pool, sendWhatsApp, sendWhatsAppButtons, sendWhatsAppImage, envoyerEmail, phoneNumberId: PHONE_NUMBER_ID, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, publicBaseUrl: PUBLIC_BASE_URL });
 require('./features/export/export.server').init({ app, pool, publicBaseUrl: PUBLIC_BASE_URL });
+const stories = require('./features/stories/stories.server').init({ app, pool, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE, adminPassword: ADMIN_PASSWORD, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID, publicBaseUrl: PUBLIC_BASE_URL, downloadMedia: telechargerMediaWhatsApp, getMeta: () => posts.configMeta(true), isHolyTime: date => posts.verifierChabbat(date), envoyerEmail });
 const newsletter = require('./features/newsletter/newsletter.server').init({ app, pool, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE, adminPassword: ADMIN_PASSWORD, publicBaseUrl: PUBLIC_BASE_URL, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID, getShabbat: getHorairesChabbatCached });
 // MON CARNET — tâches personnelles de l'admin (WhatsApp + page admin) : voir features/taches/
 const taches = require('./features/taches/taches.bot').init({ app, pool, sendWhatsApp, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, adminPhone: ADMIN_PHONE, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID });
@@ -3093,6 +3103,7 @@ const smsBot = require('./features/sms/sms.bot').init({ sms: smsFeature, sendWha
 
 initDB().then(async () => {
   await lettresFeature.ensureDB();
+  try { await stories.ensureDB(); stories.start(); } catch (_) { console.error('Stories : démarrage différé'); }
   // Rappels Havruta: Envoyer chaque jour à 8h
   const scheduleRappelHavruta = () => {
     const now = new Date();

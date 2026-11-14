@@ -932,7 +932,7 @@ function init(options) {
   });
 
   console.log('Posts Instagram/Facebook prêts');
-  return { handleText, handleImage, handleBouton };
+  return { handleText, handleImage, handleBouton, configMeta, verifierChabbat };
 }
 
 module.exports = { init };
