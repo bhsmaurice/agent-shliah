@@ -80,3 +80,20 @@ test('partial failure is recorded, no automatic retry of accepted Facebook story
   assert.equal(row.results.facebook.status,'accepted');
   assert.equal(calls.filter(c=>c.url.endsWith('/ig/media')).length,1);
 });
+test('Saturday worker blocks holy times and claims each week only once across instances',async()=>{
+  let claimed=false,notify=0;
+  const pool={async query(sql,args){
+    if(sql.startsWith('CREATE TABLE')) return {rows:[]};
+    if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,cover:'cover'}]};
+    if(sql.startsWith('SELECT * FROM story_clips'))return {rows:[{id:'one',media_id:'m1'},{id:'two',media_id:'m2'}]};
+    if(sql.startsWith('SELECT clip_id'))return {rows:[]};
+    if(sql.startsWith('INSERT INTO story_drafts')){if(claimed)return {rows:[]};claimed=true;assert.equal(args[1],'2026-11-14');return {rows:[{id:'edition'}]};}
+    throw Error('Unexpected DB call '+sql);
+  }};
+  const options={app:{get(){},post(){}},pool,isAdmin:()=>true,adminPhone:'admin',phoneNumberId:'phone',env:{},fetcher:async()=>{notify++;return {ok:true,json:async()=>({messages:[{id:'accepted'}]})};}};
+  const blocked=init({...options,isHolyTime:async()=>new Date()});
+  await blocked.tick(new Date('2026-11-14T19:30:00Z'));assert.equal(claimed,false);
+  const a=init({...options,isHolyTime:async()=>null}), b=init({...options,isHolyTime:async()=>null});
+  await Promise.all([a.tick(new Date('2026-11-14T19:30:00Z')),b.tick(new Date('2026-11-14T19:30:00Z'))]);
+  assert.equal(notify,1);
+});

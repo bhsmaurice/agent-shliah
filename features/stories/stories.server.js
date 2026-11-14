@@ -97,11 +97,11 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     const row = claimed.rows[0];
     if (!row) return text(from, 'Cet aperçu a expiré ou a déjà été traité.');
     try {
+      if (row.slot && row.slot !== paris().date && b.action !== 'cancel') throw new Error('Cet aperçu du samedi a expiré. Prépare un nouveau statut.');
       if (b.action === 'cancel') { await pool.query("UPDATE story_drafts SET status='cancelled' WHERE id=$1", [row.id]); return text(from, 'Publication annulée.'); }
       if (b.action === 'change') {
         const clips = (await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id')).rows;
-        const last = (await pool.query("SELECT clip_id FROM story_drafts WHERE slot IS NOT NULL AND id<>$1 ORDER BY created_at DESC LIMIT 1", [row.id])).rows[0]?.clip_id;
-        const clip = choose(clips.filter(c => c.id !== last), row.clip_id);
+        const clip = choose(clips, row.clip_id);
         if (!clip) throw new Error('Il faut un autre nigoun autorisé dans la sélection.');
         const updated = await pool.query("UPDATE story_drafts SET status='preview',clip_id=$2,media_id=$3,revision=revision+1 WHERE id=$1 RETURNING *", [row.id, clip.id, clip.media_id]);
         return await preview(updated.rows[0]);
@@ -291,8 +291,9 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     const clip=(await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id LIMIT 1')).rows[0];
     if (!clip) return res.status(409).json({error:'Préparer les nigounim avant le test'});
     const row=await createDraft(adminPhone,clip.media_id,clip.id);
-    await wa(adminPhone,{type:'template',template:{name:env.STORIES_WHATSAPP_TEMPLATE||'shliah_stories_admin',language:{code:'fr'}}});
-    res.json({ok:true,message:'Aperçu créé. Répondez « statu » au bot. Aucune publication effectuée.',id:row.id});
+    let notificationAccepted = false;
+    try { await wa(adminPhone,{type:'template',template:{name:env.STORIES_WHATSAPP_TEMPLATE||'shliah_stories_admin',language:{code:'fr'}}}); notificationAccepted = true; } catch (_) {}
+    res.json({ok:true,message:'Aperçu créé. Répondez « statu » au bot. Aucune publication effectuée.' + (notificationAccepted ? '' : ' La notification automatique reste en attente de validation Meta.'),notificationAccepted,id:row.id});
   }));
   app.post('/admin/stories/notify-test', auth, wrap(async(_req,res)=>{
     await wa(adminPhone,{type:'template',template:{name:env.STORIES_WHATSAPP_TEMPLATE||'shliah_stories_admin',language:{code:'fr'}}});
@@ -302,7 +303,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     await ensureDB();
     const settings = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
     let meta; try { const c = await getMeta(); meta = { connected: Boolean(c.pageToken), facebook: c.pageName, instagram: Boolean(c.igId) }; } catch (_) { meta = { connected: false }; }
-    res.json({ enabled: settings?.enabled, cover: Boolean(settings?.cover), coverUrl: settings?.cover ? url(settings.cover) : null, meta, clips: (await pool.query('SELECT id,title FROM story_clips WHERE enabled ORDER BY id')).rows });
+    res.json({ enabled: settings?.enabled, cover: Boolean(settings?.cover), coverUrl: settings?.cover ? url(settings.cover) : null, meta, clips: (await pool.query('SELECT id,title,media_id FROM story_clips WHERE enabled ORDER BY id')).rows.map(c=>({id:c.id,title:c.title,url:url(c.media_id)})) });
   }));
   function start() { const timer = setInterval(() => tick().catch(() => console.error('Stories : préparation interrompue, consulter la configuration')), 60000); timer.unref(); tick().catch(() => {}); return timer; }
   return { ensureDB, start, tick, handleText, handleMedia, handleButton };
