@@ -29,11 +29,11 @@ test('unauthorized users and stale buttons cannot invoke external publication', 
   assert.equal(external, 1); // Only the WhatsApp “already processed” response.
 });
 
-function publicationHarness({ failInstagram = false } = {}) {
-  const row = { id:'12345678-1234-1234-1234-123456789012', owner:'admin', revision:1, status:'preview', media_id:'media', results:{} };
+function publicationHarness({ failInstagram = false, targets = ['instagram','facebook'] } = {}) {
+  const row = { id:'12345678-1234-1234-1234-123456789012', owner:'admin', revision:1, status:'preview', media_id:'media', results:{}, targets };
   const calls = [];
   const pool = { async query(sql,args=[]) {
-    if (sql.startsWith('CREATE TABLE')) return {rows:[]};
+    if (sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_reminders WHERE enabled') return {rows:[]};
     if (sql.startsWith("UPDATE story_drafts SET status='busy'")) {
       if (row.status !== 'preview' || args[2] !== row.revision || args[1] !== row.owner) return {rows:[]};
       row.status='busy'; return {rows:[row]};
@@ -105,7 +105,7 @@ test('one-time choice overrides default and falls back after consumption',()=>{
 for (const mode of ['image','reminder']) test(mode+' schedule does not require music or call publishing endpoints',async()=>{
   let inserted,consumed=false;const calls=[];
   const pool={async query(sql,args=[]){
-    if(sql.startsWith('CREATE TABLE'))return {rows:[]};
+    if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};
     if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'music',next_mode:mode,cover:mode==='image'?'cover':null}]};
     if(sql.startsWith('INSERT INTO story_drafts')){inserted=args;return {rows:[{id:'draft'}]};}
     if(sql.startsWith('UPDATE story_settings SET next_mode=NULL')){consumed=true;return {rows:[]};}
@@ -121,7 +121,46 @@ for (const mode of ['image','reminder']) test(mode+' schedule does not require m
 });
 test('reminder override is not consumed if the weekly edition was already claimed',async()=>{
   let consumed=false;
-  const pool={async query(sql){if(sql.startsWith('CREATE TABLE'))return {rows:[]};if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'reminder',next_mode:'reminder'}]};if(sql.startsWith('INSERT INTO story_drafts'))return {rows:[]};if(sql.startsWith('UPDATE story_settings'))consumed=true;return {rows:[]};}};
+  const pool={async query(sql){if(sql.startsWith('CREATE TABLE') || sql === 'SELECT * FROM story_reminders WHERE enabled')return {rows:[]};if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'reminder',next_mode:'reminder'}]};if(sql.startsWith('INSERT INTO story_drafts'))return {rows:[]};if(sql.startsWith('UPDATE story_settings'))consumed=true;return {rows:[]};}};
   const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,isHolyTime:async()=>null,fetcher:async()=>{throw Error('Must not notify twice');}});
   await f.tick(new Date('2026-11-14T19:30:00Z'));assert.equal(consumed,false);
+});
+const helpers=require('../features/stories/stories.helpers');
+test('Facebook-only approval never sends an Instagram request',async()=>{const {f,calls,row}=publicationHarness({targets:['facebook']});await f.handleButton('admin','st_approve_'+row.id+'_1');assert.equal(row.results.facebook.status,'accepted');assert.ok(!calls.some(c=>c.url.includes('/ig/')));});
+test('manual text escapes markup; reminders reject invalid times and days',()=>{
+  const svg=helpers.textSvg('<script>alert(1)</script> & bonjour');assert.ok(!svg.includes('<script>'));assert.ok(svg.includes('&lt;script&gt;'));assert.ok(svg.includes('&amp;'));
+  assert.throws(()=>helpers.targets(['unknown']));assert.deepEqual(helpers.targets(['facebook','facebook']),['facebook']);
+  assert.throws(()=>helpers.reminder({days:[7],time:'20:30',message:'Test'}));assert.throws(()=>helpers.reminder({days:[1],time:'24:00',message:'Test'}));
+  assert.deepEqual(helpers.reminder({days:[1,1,3],time:'20:30',message:' Test '}),{days:[1,3],time:'20:30',message:'Test'});
+});
+function routeHarness(){
+  const routes=new Map(),handoffs=new Set();
+  const app={get(path,...f){routes.set('GET '+path,f);},post(path,...f){routes.set('POST '+path,f);}};
+  const pool={async query(sql,args=[]){
+    if(sql.startsWith('INSERT INTO story_handoffs'))handoffs.add(args[0]);
+    if(sql.startsWith('DELETE FROM story_handoffs WHERE hash')){const found=handoffs.delete(args[0]);return {rows:found?[{hash:args[0]}]:[]};}
+    return {rows:[]};
+  }};
+  init({app,pool,isAdmin:()=>true,adminPassword:'test-password',publicBaseUrl:'https://bot.example'});
+  async function dispatch(method,path,{headers={},body={}}={}){const req={method,headers,body,get:n=>headers[n.toLowerCase()]};const result={code:200,headers:{},body:null};const res={status(n){result.code=n;return this;},sendStatus(n){result.code=n;return this;},set(k,v){result.headers[k]=v;return this;},json(d){result.body=d;return this;}};const handlers=routes.get(method+' '+path);assert.ok(handlers,'route '+path);let i=0;async function next(){if(handlers[i])return handlers[i++](req,res,next);}await next();return result;}
+  return {dispatch};
+}
+test('admin handoff redeems once, creates a secure cookie and blocks cross-origin writes',async()=>{
+  const {dispatch}=routeHarness();
+  assert.equal((await dispatch('POST','/admin/stories/session')).code,401);
+  const handoff=await dispatch('POST','/admin/stories/session',{headers:{'x-admin-password':'test-password'}});assert.match(handoff.body.token,/^[a-f0-9]{64}$/);
+  const session=await dispatch('POST','/admin/stories/session/redeem',{body:{token:handoff.body.token}});assert.equal(session.code,200);assert.match(session.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Lax/);
+  assert.equal((await dispatch('POST','/admin/stories/session/redeem',{body:{token:handoff.body.token}})).code,401);
+  const cookie=session.headers['Set-Cookie'].split(';')[0];
+  assert.equal((await dispatch('GET','/admin/stories/reminders',{headers:{cookie}})).code,200);
+  assert.equal((await dispatch('POST','/admin/stories/reminders',{headers:{cookie,origin:'https://evil.example'},body:{}})).code,403);
+  assert.equal((await dispatch('GET','/admin/stories/reminders',{headers:{cookie:cookie.slice(0,-1)+'x'}})).code,401);
+});
+test('custom reminder delivers once, uses email fallback and never publishes a story',async()=>{
+  let claimed=false,emails=0,whatsapp=0;const pool={async query(sql){
+    if(sql==='SELECT * FROM story_reminders WHERE enabled')return {rows:[{id:'r',days:[6],time:'20:30',message:'Préparer <mon statut>'}]};
+    if(sql.startsWith('INSERT INTO story_reminder_jobs')){if(claimed)return {rows:[]};claimed=true;return {rows:[{date:'2026-11-14'}]};}return {rows:[]};
+  }};
+  const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,phoneNumberId:'phone',isHolyTime:async()=>null,env:{},fetcher:async(url)=>{assert.ok(url.endsWith('/phone/messages'));whatsapp++;return {ok:false,status:400,json:async()=>({error:{code:132001}})};},envoyerEmail:async data=>{emails++;assert.ok(data.html.includes('&lt;mon statut&gt;'));return {ok:true};}});
+  await f.reminderTick(new Date('2026-11-14T19:30:00Z'));await f.reminderTick(new Date('2026-11-14T19:31:00Z'));assert.equal(emails,1);assert.equal(whatsapp,1);
 });

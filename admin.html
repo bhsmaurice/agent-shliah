@@ -4673,7 +4673,19 @@ document.addEventListener('click', function(e) {
     { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
     { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
     { tab: 'posts', label: 'Posts Insta / Facebook', ico: 'brand-instagram', group: 'Communauté', admin: true },
-    { tab: 'stories', label: 'Statuts et stories', ico: 'photo-video', group: 'Communauté', admin: true, ext: true, run: function () { window.open('https://agent-shliah-production.up.railway.app/admin/stories', '_blank', 'noopener'); } },
+    { tab: 'stories', label: 'Statuts et stories', ico: 'photo-video', group: 'Communauté', admin: true, ext: true, run: async function () {
+      var base = 'https://agent-shliah-production.up.railway.app', popup = window.open('about:blank', '_blank');
+      if (popup) { popup.opener = null; popup.document.title = 'Connexion aux statuts'; popup.document.body.textContent = 'Connexion à ton espace statuts…'; }
+      try {
+        var response = await fetch(base + '/admin/stories/session', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('railway_admin_pw') || '' }, body: '{}' });
+        var handoff = await response.json();
+        if (!response.ok || !handoff.token) throw new Error('Connexion automatique indisponible');
+        var destination = base + '/admin/stories#session=' + encodeURIComponent(handoff.token);
+        if (popup) popup.location.replace(destination); else window.location.assign(destination);
+      } catch (_) {
+        if (popup) popup.location.replace(base + '/admin/stories'); else window.location.assign(base + '/admin/stories');
+      }
+    } },
     { tab: 'prive', label: 'Privé', ico: 'lock', group: 'Communauté' },
     { tab: 'paiements', label: 'Paiements', ico: 'credit-card', group: 'Dons et reçus' },
     { tab: 'tsedaka-ext', label: 'Tsédaka', ico: 'heart-handshake', group: 'Dons et reçus', ext: true, run: TSEDAKA },
