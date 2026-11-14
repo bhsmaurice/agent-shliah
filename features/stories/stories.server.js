@@ -36,6 +36,8 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     INSERT INTO story_settings(id) VALUES(1) ON CONFLICT DO NOTHING;
     CREATE TABLE IF NOT EXISTS story_admin_activity (phone TEXT PRIMARY KEY, last_inbound TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS story_plans (id UUID PRIMARY KEY, owner TEXT NOT NULL, media_id UUID NOT NULL, days JSONB NOT NULL, time TEXT NOT NULL, mode TEXT NOT NULL, targets JSONB NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, revision INT NOT NULL DEFAULT 1);
+    ALTER TABLE story_plans ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT 'Mon visuel';
+    ALTER TABLE story_plans ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'whatsapp';
     CREATE TABLE IF NOT EXISTS story_plan_sessions (phone TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS story_plan_jobs (plan_id UUID NOT NULL, date TEXT NOT NULL, revision INT NOT NULL, status TEXT NOT NULL DEFAULT 'claimed', PRIMARY KEY(plan_id,date,revision));
     CREATE TABLE IF NOT EXISTS story_sessions (phone TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`).catch(e => { ready = null; throw e; });
@@ -439,6 +441,51 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     await handleButton(adminPhone,`st_${action}_${id}_${req.body.revision}`);
     const row=(await pool.query('SELECT status,results FROM story_drafts WHERE id=$1 AND owner=$2',[id,adminPhone])).rows[0];
     res.json({ok:true,...row});
+  }));
+  async function libraryMedia(owner){
+    return (await pool.query(`SELECT DISTINCT m.id,m.mime FROM story_media m WHERE
+      EXISTS(SELECT 1 FROM story_plans p WHERE p.owner=$1 AND p.media_id=m.id)
+      OR EXISTS(SELECT 1 FROM story_drafts d WHERE d.owner=$1 AND d.media_id=m.id)
+      OR EXISTS(SELECT 1 FROM story_plan_sessions s WHERE s.phone=$1 AND s.data->>'media_id'=m.id::text)`,[owner])).rows;
+  }
+  app.get('/admin/stories/plans',auth,wrap(async(_req,res)=>{
+    await ensureDB();res.set('Cache-Control','no-store');
+    const plans=(await pool.query('SELECT p.*,m.mime FROM story_plans p JOIN story_media m ON m.id=p.media_id WHERE p.owner=$1 ORDER BY p.id',[adminPhone])).rows;
+    res.json({plans:plans.map(p=>({...p,url:url(p.media_id)})),media:(await libraryMedia(adminPhone)).map(m=>({...m,url:url(m.id)}))});
+  }));
+  app.post('/admin/stories/plans',auth,wrap(async(req,res)=>{
+    await ensureDB();const {id,revision,mode,title,content,mime:inputMime,media_id}=req.body;
+    let checked,selected;try{checked=helpers.reminder({days:req.body.days,time:req.body.time,message:title||'Mon visuel'});selected=helpers.targets(req.body.targets);}catch(e){return res.status(400).json({error:e.message});}
+    if(!MODES.includes(mode))return res.status(400).json({error:'Choisis avec nigoun, sans musique ou rappel.'});
+    if(mode!=='reminder'&&!selected.length)return res.status(400).json({error:'Choisis Instagram ou Facebook, ou le mode rappel pour WhatsApp.'});
+    if(id&&(!/^[a-f0-9-]{36}$/.test(id)||!Number.isInteger(revision)))return res.status(400).json({error:'Programmation invalide.'});
+    if(id&&!(await pool.query('SELECT id FROM story_plans WHERE id=$1 AND owner=$2 AND revision=$3',[id,adminPhone,revision])).rows.length)return res.status(409).json({error:'Cette programmation a changé. Actualise la liste.'});
+    let media=media_id,mime;
+    if(content){
+      if(typeof content!=='string'||content.length>9500000||!['image/jpeg','image/png','image/webp','video/mp4'].includes(inputMime))return res.status(400).json({error:'Choisis une image ou un MP4 de moins de 7 Mo.'});
+      let data=Buffer.from(content,'base64');mime=inputMime;
+      if(mime==='video/mp4'){if(data.subarray(4,8).toString()!=='ftyp')return res.status(400).json({error:'Vidéo MP4 requise.'});}
+      else{data=await require('sharp')(data).rotate().jpeg().toBuffer();mime='image/jpeg';}
+      media=randomUUID();await pool.query('INSERT INTO story_media(id,data,mime) VALUES($1,$2,$3)',[media,data,mime]);
+    }else{
+      const owned=(await libraryMedia(adminPhone)).find(m=>m.id===media);if(!owned)return res.status(400).json({error:'Ajoute un visuel ou choisis une image déjà reçue.'});mime=owned.mime;
+    }
+    if(mode==='music'&&mime==='video/mp4')return res.status(400).json({error:'Pour ajouter un nigoun, utilise une image. Une vidéo conserve son son.'});
+    if(mode==='music'&&!(await pool.query("SELECT id FROM story_clips WHERE enabled AND id::text IN ('a13c774a-cbe9-4f17-b826-cd77ce599001','a13c774a-cbe9-4f17-b826-cd77ce599002')")).rows.length)return res.status(409).json({error:'Aucun nigoun prêt. Choisis sans musique.'});
+    const planId=id||randomUUID();
+    if(id){
+      const updated=await pool.query('UPDATE story_plans SET title=$4,media_id=$5,days=$6,time=$7,mode=$8,targets=$9,revision=revision+1 WHERE id=$1 AND owner=$2 AND revision=$3 RETURNING id',[id,adminPhone,revision,checked.message,media,JSON.stringify(checked.days),checked.time,mode,JSON.stringify(selected)]);
+      if(!updated.rows.length)return res.status(409).json({error:'La programmation a changé. Actualise la liste.'});
+      await pool.query("UPDATE story_drafts SET status='cancelled' WHERE owner=$1 AND slot LIKE $2 AND status='preview'",[adminPhone,'plan:'+id+':%']);
+    }else await pool.query("INSERT INTO story_plans(id,owner,title,origin,media_id,days,time,mode,targets) VALUES($1,$2,$3,'page',$4,$5,$6,$7,$8)",[planId,adminPhone,checked.message,media,JSON.stringify(checked.days),checked.time,mode,JSON.stringify(selected)]);
+    res.json({ok:true,id:planId,message:'Programmation enregistrée. Chaque publication attendra ta validation sur WhatsApp.'});
+  }));
+  app.post('/admin/stories/plans/:id/toggle',auth,wrap(async(req,res)=>{
+    await ensureDB();if(typeof req.body.enabled!=='boolean'||!Number.isInteger(req.body.revision))return res.status(400).json({error:'Choix invalide.'});
+    const result=await pool.query('UPDATE story_plans SET enabled=$3,revision=revision+1 WHERE id=$1 AND owner=$2 AND revision=$4 RETURNING id',[req.params.id,adminPhone,req.body.enabled,req.body.revision]);
+    if(!result.rows.length)return res.status(409).json({error:'La programmation a changé. Actualise la liste.'});
+    await pool.query("UPDATE story_drafts SET status='cancelled' WHERE owner=$1 AND slot LIKE $2 AND status='preview'",[adminPhone,'plan:'+req.params.id+':%']);
+    res.json({ok:true});
   }));
   app.get('/admin/stories/reminders',auth,wrap(async(_req,res)=>{await ensureDB();res.json({reminders:(await pool.query('SELECT * FROM story_reminders ORDER BY time,id')).rows});}));
   app.post('/admin/stories/reminders',auth,wrap(async(req,res)=>{
