@@ -9,6 +9,8 @@ function due(now, sunset) {
   const p = paris(now);
   return new Date(p.date + 'T12:00:00Z').getUTCDay() === 6 && p.minute >= 1230 && p.minute <= 1260 && Number.isFinite(sunset) && p.minute > sunset;
 }
+const MODES = ['music', 'image', 'reminder'];
+function effectiveMode(settings) { return settings.next_mode || settings.mode || 'music'; }
 function choose(clips, previous) { return clips.find(c => c.id !== previous) || null; }
 function parseButton(value) {
   const m = /^st_(approve|change|cancel)_([a-f0-9-]{36})_(\d+)$/.exec(value || '');
@@ -21,6 +23,10 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     CREATE TABLE IF NOT EXISTS story_media (id UUID PRIMARY KEY, data BYTEA NOT NULL, mime TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS story_drafts (id UUID PRIMARY KEY, slot TEXT UNIQUE, clip_id UUID, media_id UUID NOT NULL, owner TEXT NOT NULL, revision INT NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT 'preview', results JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS story_settings (id INT PRIMARY KEY DEFAULT 1, enabled BOOLEAN NOT NULL DEFAULT FALSE, cover UUID);
+    ALTER TABLE story_settings ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'music';
+    ALTER TABLE story_settings ADD COLUMN IF NOT EXISTS next_mode TEXT;
+    ALTER TABLE story_drafts ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'story';
+    ALTER TABLE story_drafts ALTER COLUMN media_id DROP NOT NULL;
     INSERT INTO story_settings(id) VALUES(1) ON CONFLICT DO NOTHING;
     CREATE TABLE IF NOT EXISTS story_sessions (phone TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`).catch(e => { ready = null; throw e; });
   async function api(path, body, token) {
@@ -40,18 +46,23 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     await wa(row.owner, { type: 'video', video: { link: url(row.media_id), caption: 'Aperçu du statut avec son nigoun. À partager manuellement pour le statut WhatsApp.' } });
     await wa(row.owner, { type: 'interactive', interactive: { type: 'button', body: { text: 'Publier cette version en story Instagram et Facebook ?' }, action: { buttons: ['approve', ...(row.clip_id ? ['change'] : []), 'cancel'].map(action => ({ type: 'reply', reply: { id: `st_${action}_${row.id}_${row.revision}`, title: { approve: '✅ Valider', change: '🎵 Autre nigoun', cancel: '❌ Annuler' }[action] } })) } } });
   }
-  async function createDraft(owner, media, clip = null, slot = null) {
-    const r = await pool.query('INSERT INTO story_drafts(id,slot,clip_id,media_id,owner) VALUES($1,$2,$3,$4,$5) ON CONFLICT(slot) DO NOTHING RETURNING *', [randomUUID(), slot, clip, media, owner]);
+  async function createDraft(owner, media, clip = null, slot = null, kind = 'story') {
+    const r = await pool.query('INSERT INTO story_drafts(id,slot,clip_id,media_id,owner,kind,status) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(slot) DO NOTHING RETURNING *', [randomUUID(), slot, clip, media, owner, kind, kind === 'reminder' ? 'reminder' : 'preview']);
     return r.rows[0];
   }
   async function handleText(from, value) {
     if (!isAdmin(from)) return false;
-    if (!/^(statu|statut|statuts|stories)( annuler)?$/i.test(value.trim())) return false;
+    if (!/^(statu|statut|statuts|stories)( annuler| nouveau)?$/i.test(value.trim())) return false;
     await ensureDB();
     if (/annuler$/i.test(value)) {
       await pool.query('DELETE FROM story_sessions WHERE phone=$1', [from]);
       await text(from, 'Préparation du statut annulée.');
     } else {
+      const reminder = !/nouveau$/i.test(value) && (await pool.query("SELECT * FROM story_drafts WHERE owner=$1 AND kind='reminder' AND created_at>NOW()-INTERVAL '12 hours' ORDER BY created_at DESC LIMIT 1",[from])).rows[0];
+      if (reminder) {
+        await text(from, '🔔 Rappel : pense à ton statut Chavoua Tov et au minyan de dimanche à 9h00. Ce rappel ne programme aucune publication. Pour préparer un statut, écris « statu nouveau ».');
+        return true;
+      }
       const pending = await pool.query("SELECT * FROM story_drafts WHERE owner=$1 AND status='preview' AND created_at>NOW()-INTERVAL '12 hours' ORDER BY created_at DESC LIMIT 1", [from]);
       if (pending.rows[0]) {
         const mime = (await pool.query('SELECT mime FROM story_media WHERE id=$1', [pending.rows[0].media_id])).rows[0]?.mime;
@@ -97,6 +108,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     const row = claimed.rows[0];
     if (!row) return text(from, 'Cet aperçu a expiré ou a déjà été traité.');
     try {
+      if (row.kind === 'reminder') throw new Error('Ce rappel ne permet aucune publication.');
       if (row.slot && row.slot !== paris().date && b.action !== 'cancel') throw new Error('Cet aperçu du samedi a expiré. Prépare un nouveau statut.');
       if (b.action === 'cancel') { await pool.query("UPDATE story_drafts SET status='cancelled' WHERE id=$1", [row.id]); return text(from, 'Publication annulée.'); }
       if (b.action === 'change') {
@@ -155,6 +167,27 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
       await text(from, e.message);
     }
   }
+  async function selectMedia(mode, settings) {
+    if (mode === 'reminder') return {media:null,clip:null};
+    if (!settings.cover) throw new Error('Visuel du samedi manquant');
+    if (mode === 'image') return {media:settings.cover,clip:null};
+    const clips = (await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id')).rows;
+    const previous = (await pool.query("SELECT clip_id FROM story_drafts WHERE slot IS NOT NULL AND clip_id IS NOT NULL ORDER BY created_at DESC LIMIT 1")).rows[0]?.clip_id;
+    const clip = choose(clips, previous);
+    if (!clip || clips.length < 2) throw new Error('Deux nigounim sont nécessaires pour la rotation');
+    return {media:clip.media_id,clip:clip.id};
+  }
+  async function notify(mode) {
+    const reminder = mode === 'reminder';
+    const name = reminder ? (env.STORIES_REMINDER_TEMPLATE || 'shliah_stories_rappel') : (env.STORIES_WHATSAPP_TEMPLATE || 'shliah_stories_admin');
+    try {
+      await wa(adminPhone,{type:'template',template:{name,language:{code:'fr'}}});
+      return true;
+    } catch (_) {
+      if (envoyerEmail) await envoyerEmail({to:'bhsmaurice@gmail.com',subject:reminder?'Rappel — statut du samedi soir':'Story Chavoua Tov à valider',html:reminder?'<p>Rappel demandé : pensez à votre statut Chavoua Tov et au minyan de dimanche à 9h00. Aucune publication programmée par ce rappel.</p>':'<p>Votre story est prête. Écrivez « statu » au bot pour consulter l’aperçu et valider. La notification WhatsApp n’a pas été acceptée.</p>'});
+      return false;
+    }
+  }
   let running = false;
   async function tick(now = new Date()) {
     if (running) return;
@@ -163,25 +196,15 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
       await ensureDB();
       const p = paris(now);
       const settings = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
-      if (!settings?.enabled || !settings.cover) return;
+      if (!settings?.enabled) return;
       if (new Date(p.date + 'T12:00:00Z').getUTCDay() !== 6 || p.minute < 1230 || p.minute > 1260) return;
       if (!isHolyTime || await isHolyTime(now)) return;
-      const clips = (await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id')).rows;
-      const previous = (await pool.query('SELECT clip_id FROM story_drafts WHERE slot IS NOT NULL ORDER BY created_at DESC LIMIT 1')).rows[0]?.clip_id;
-      const clip = choose(clips, previous);
-      if (!clip || clips.length < 2) {
-        console.error('Stories : deux clips de nigounim autorisés sont nécessaires');
-        return;
-      }
-      const row = await createDraft(adminPhone, clip.media_id, clip.id, p.date);
+      const mode = effectiveMode(settings);
+      const selected = await selectMedia(mode, settings);
+      const row = await createDraft(adminPhone, selected.media, selected.clip, p.date, mode === 'reminder' ? 'reminder' : 'story');
       if (!row) return;
-      // Proactive WhatsApp notifications require a pre-approved template outside the 24h window.
-      try {
-        await wa(adminPhone, { type: 'template', template: { name: env.STORIES_WHATSAPP_TEMPLATE || 'shliah_stories_admin', language: { code: 'fr' } } });
-      } catch (e) {
-        if (envoyerEmail) await envoyerEmail({ to: 'bhsmaurice@gmail.com', subject: 'Story Chavoua Tov à valider', html: '<p>Votre story est prête. Écrivez « statu » au bot pour consulter l’aperçu et valider. La notification WhatsApp n’a pas été acceptée.</p>' });
-        console.error('Stories : notification WhatsApp non acceptée');
-      }
+      if (settings.next_mode) await pool.query('UPDATE story_settings SET next_mode=NULL WHERE id=1 AND next_mode=$1',[settings.next_mode]);
+      await notify(mode);
       // User replies “statu” to receive the video and approval buttons inside the messaging window.
     } finally { running = false; }
   }
@@ -275,37 +298,47 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
   }));
   app.post('/admin/stories/settings', auth, wrap(async(req,res)=>{
     await ensureDB();
-    if (typeof req.body.enabled !== 'boolean') return res.status(400).json({error:'Choix invalide'});
-    if (req.body.enabled) {
-      const count = (await pool.query('SELECT COUNT(*)::int AS n FROM story_clips WHERE enabled')).rows[0].n;
-      const settings = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
-      if (count < 2 || !settings.cover) return res.status(409).json({error:'Il manque le visuel ou deux clips avec des nigounim autorisés.'});
-      const cfg = await getMeta();
-      if (!cfg.pageToken || !cfg.igId) return res.status(409).json({error:'Connexion Instagram/Facebook incomplète'});
+    const current = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
+    const {enabled=current.enabled,mode=current.mode||'music',next_mode=current.next_mode||null} = req.body;
+    if (typeof enabled !== 'boolean' || !MODES.includes(mode) || (next_mode !== null && !MODES.includes(next_mode))) return res.status(400).json({error:'Choix invalide'});
+    if (enabled) {
+      const settings={...current,mode,next_mode};
+      const modes=new Set([mode,next_mode].filter(Boolean));
+      if ([...modes].some(m=>m!=='reminder') && !settings.cover) return res.status(409).json({error:'Il manque le visuel du samedi.'});
+      if (modes.has('music')) {
+        const count=(await pool.query('SELECT COUNT(*)::int AS n FROM story_clips WHERE enabled')).rows[0].n;
+        if(count<2)return res.status(409).json({error:'Il manque deux clips de nigounim.'});
+      }
+      if ([...modes].some(m=>m!=='reminder')) {
+        const cfg=await getMeta();
+        if(!cfg.pageToken||!cfg.igId)return res.status(409).json({error:'Connexion Instagram/Facebook incomplète'});
+      }
     }
-    await pool.query('UPDATE story_settings SET enabled=$1 WHERE id=1',[req.body.enabled]);
-    res.json({ok:true,message:req.body.enabled?'Aperçus hebdomadaires activés. Aucune publication sans validation.':'Aperçus en pause.'});
+    await pool.query('UPDATE story_settings SET enabled=$1,mode=$2,next_mode=$3 WHERE id=1',[enabled,mode,next_mode]);
+    res.json({ok:true,message:enabled?'Préférences enregistrées. Aucune publication sans validation.':'Rendez-vous du samedi en pause.'});
   }));
   app.post('/admin/stories/preview-test', auth, wrap(async(_req,res)=>{
     await ensureDB();
-    const clip=(await pool.query('SELECT * FROM story_clips WHERE enabled ORDER BY id LIMIT 1')).rows[0];
-    if (!clip) return res.status(409).json({error:'Préparer les nigounim avant le test'});
-    const row=await createDraft(adminPhone,clip.media_id,clip.id);
-    let notificationAccepted = false;
-    try { await wa(adminPhone,{type:'template',template:{name:env.STORIES_WHATSAPP_TEMPLATE||'shliah_stories_admin',language:{code:'fr'}}}); notificationAccepted = true; } catch (_) {}
-    res.json({ok:true,message:'Aperçu créé. Répondez « statu » au bot. Aucune publication effectuée.' + (notificationAccepted ? '' : ' La notification automatique reste en attente de validation Meta.'),notificationAccepted,id:row.id});
+    const settings=(await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
+    const mode=effectiveMode(settings),selected=await selectMedia(mode,settings);
+    const row=await createDraft(adminPhone,selected.media,selected.clip,null,mode==='reminder'?'reminder':'story');
+    const notificationAccepted=await notify(mode);
+    res.json({ok:true,message:mode==='reminder'?'Rappel de test créé. Aucune publication ni aperçu à valider.':'Aperçu créé. Répondez « statu » au bot. Aucune publication effectuée.',notificationAccepted,id:row.id});
   }));
   app.post('/admin/stories/notify-test', auth, wrap(async(_req,res)=>{
-    await wa(adminPhone,{type:'template',template:{name:env.STORIES_WHATSAPP_TEMPLATE||'shliah_stories_admin',language:{code:'fr'}}});
+    await ensureDB();
+    const settings=(await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
+    const accepted=await notify(effectiveMode(settings));
+    if(!accepted)return res.status(409).json({error:'Modèle WhatsApp non accepté ; email de secours prévu.'});
     res.json({ok:true,message:'Notification acceptée par WhatsApp. Aucune story publiée.'});
   }));
   app.get('/admin/stories/status', auth, wrap(async (req, res) => {
     await ensureDB();
     const settings = (await pool.query('SELECT * FROM story_settings WHERE id=1')).rows[0];
     let meta; try { const c = await getMeta(); meta = { connected: Boolean(c.pageToken), facebook: c.pageName, instagram: Boolean(c.igId) }; } catch (_) { meta = { connected: false }; }
-    res.json({ enabled: settings?.enabled, cover: Boolean(settings?.cover), coverUrl: settings?.cover ? url(settings.cover) : null, meta, clips: (await pool.query('SELECT id,title,media_id FROM story_clips WHERE enabled ORDER BY id')).rows.map(c=>({id:c.id,title:c.title,url:url(c.media_id)})) });
+    res.json({ enabled: settings?.enabled, mode:settings?.mode||'music',next_mode:settings?.next_mode||null, cover: Boolean(settings?.cover), coverUrl: settings?.cover ? url(settings.cover) : null, meta, clips: (await pool.query('SELECT id,title,media_id FROM story_clips WHERE enabled ORDER BY id')).rows.map(c=>({id:c.id,title:c.title,url:url(c.media_id)})) });
   }));
   function start() { const timer = setInterval(() => tick().catch(() => console.error('Stories : préparation interrompue, consulter la configuration')), 60000); timer.unref(); tick().catch(() => {}); return timer; }
   return { ensureDB, start, tick, handleText, handleMedia, handleButton };
 }
-module.exports = { init, paris, due, choose, parseButton };
+module.exports = { init, paris, due, choose, parseButton, effectiveMode };

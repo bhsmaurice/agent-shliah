@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { due, paris, choose, parseButton, init } = require('../features/stories/stories.server');
+const { due, paris, choose, parseButton, init, effectiveMode } = require('../features/stories/stories.server');
 test('Paris schedule respects winter, summer, Saturday and Shabbat end', () => {
   assert.equal(due(new Date('2026-11-14T19:30:00Z'), 1080), true);
   assert.equal(due(new Date('2026-11-14T19:29:00Z'), 1080), false);
@@ -96,4 +96,32 @@ test('Saturday worker blocks holy times and claims each week only once across in
   const a=init({...options,isHolyTime:async()=>null}), b=init({...options,isHolyTime:async()=>null});
   await Promise.all([a.tick(new Date('2026-11-14T19:30:00Z')),b.tick(new Date('2026-11-14T19:30:00Z'))]);
   assert.equal(notify,1);
+});
+test('one-time choice overrides default and falls back after consumption',()=>{
+  assert.equal(effectiveMode({mode:'music',next_mode:'reminder'}),'reminder');
+  assert.equal(effectiveMode({mode:'image',next_mode:null}),'image');
+  assert.equal(effectiveMode({mode:'reminder'}),'reminder');
+});
+for (const mode of ['image','reminder']) test(mode+' schedule does not require music or call publishing endpoints',async()=>{
+  let inserted,consumed=false;const calls=[];
+  const pool={async query(sql,args=[]){
+    if(sql.startsWith('CREATE TABLE'))return {rows:[]};
+    if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'music',next_mode:mode,cover:mode==='image'?'cover':null}]};
+    if(sql.startsWith('INSERT INTO story_drafts')){inserted=args;return {rows:[{id:'draft'}]};}
+    if(sql.startsWith('UPDATE story_settings SET next_mode=NULL')){consumed=true;return {rows:[]};}
+    throw Error('Unexpected query for '+mode+': '+sql);
+  }};
+  const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,adminPhone:'admin',phoneNumberId:'phone',isHolyTime:async()=>null,env:{},fetcher:async(url,opts)=>{calls.push({url,body:JSON.parse(opts.body)});return {ok:true,json:async()=>({messages:[{id:'wa'}]})};}});
+  await f.tick(new Date('2026-11-14T19:30:00Z'));
+  assert.equal(consumed,true);assert.equal(inserted[5],mode==='reminder'?'reminder':'story');
+  assert.equal(inserted[6],mode==='reminder'?'reminder':'preview');
+  assert.equal(inserted[3],mode==='image'?'cover':null);
+  assert.equal(calls.length,1);assert.ok(calls[0].url.endsWith('/phone/messages'));
+  assert.equal(calls[0].body.template.name,mode==='reminder'?'shliah_stories_rappel':'shliah_stories_admin');
+});
+test('reminder override is not consumed if the weekly edition was already claimed',async()=>{
+  let consumed=false;
+  const pool={async query(sql){if(sql.startsWith('CREATE TABLE'))return {rows:[]};if(sql==='SELECT * FROM story_settings WHERE id=1')return {rows:[{enabled:true,mode:'reminder',next_mode:'reminder'}]};if(sql.startsWith('INSERT INTO story_drafts'))return {rows:[]};if(sql.startsWith('UPDATE story_settings'))consumed=true;return {rows:[]};}};
+  const f=init({app:{get(){},post(){}},pool,isAdmin:()=>true,isHolyTime:async()=>null,fetcher:async()=>{throw Error('Must not notify twice');}});
+  await f.tick(new Date('2026-11-14T19:30:00Z'));assert.equal(consumed,false);
 });

@@ -4673,6 +4673,7 @@ document.addEventListener('click', function(e) {
     { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
     { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
     { tab: 'posts', label: 'Posts Insta / Facebook', ico: 'brand-instagram', group: 'Communauté', admin: true },
+    { tab: 'stories', label: 'Statuts et stories', ico: 'photo-video', group: 'Communauté', admin: true, ext: true, run: function () { window.open('https://agent-shliah-production.up.railway.app/admin/stories', '_blank', 'noopener'); } },
     { tab: 'prive', label: 'Privé', ico: 'lock', group: 'Communauté' },
     { tab: 'paiements', label: 'Paiements', ico: 'credit-card', group: 'Dons et reçus' },
     { tab: 'tsedaka-ext', label: 'Tsédaka', ico: 'heart-handshake', group: 'Dons et reçus', ext: true, run: TSEDAKA },
@@ -4682,7 +4683,7 @@ document.addEventListener('click', function(e) {
     { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
-  var MOTS = { carnet: 'tâches taches todo à faire rappel liste organiser', posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var MOTS = { stories: 'statut story stories instagram facebook whatsapp nigoun musique rappel samedi', carnet: 'tâches taches todo à faire rappel liste organiser', posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
   var GRP = { '': 'home', 'Bot': 'bot', 'Communauté': 'com', 'Dons et reçus': 'don', 'Outils': 'out' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }

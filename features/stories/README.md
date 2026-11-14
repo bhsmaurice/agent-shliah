@@ -32,3 +32,9 @@ Les médias sont publics via une URL UUID aléatoire pour être lus par Meta. N�
 ## Limites
 
 Les textes seuls ou exemples ne déclenchent pas encore la création d’un nouveau design. Pas de sélection dans le catalogue musical des applications. Pas de publication automatique en statut WhatsApp : partager le clip reçu depuis le téléphone. Si la sortie de Chabbat est après 21h, le rendez-vous est omis cette semaine. Aucune relance de publication en cas de réponse Meta ambiguë, contrôle humain requis.
+
+## Modes et rappels
+
+L’entrée « Statuts et stories » est accessible sous Communauté dans le panneau admin principal. Elle ouvre la page du module sans transférer de mot de passe dans l’URL.
+
+Réglage habituel (`mode`) et exception pour le prochain samedi seulement (`next_mode`) : `music` = clip avec nigoun ; `image` = visuel sans musique ; `reminder` = notification seule sans contenu à publier. L’exception est consommée uniquement lorsque l’édition hebdomadaire est effectivement créée. Une édition rappel porte `kind=reminder`, `status=reminder`, aucun média et aucun bouton de validation ; le chemin de publication n’accepte jamais cet état. Elle n’exige ni connexion Instagram/Facebook ni clips. Le modèle WhatsApp français sans paramètre est `shliah_stories_rappel` (ou `STORIES_REMINDER_TEMPLATE`), avec email de secours s’il est refusé. La réponse « statu » après un rappel explique le rappel ; « statu nouveau » démarre un envoi manuel. Les réglages existants conservent leur mode musical par défaut.
