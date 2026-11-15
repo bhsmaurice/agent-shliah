@@ -4673,6 +4673,7 @@ document.addEventListener('click', function(e) {
     { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
     { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
     { tab: 'posts', label: 'Posts Insta / Facebook', ico: 'brand-instagram', group: 'Communauté', admin: true },
+    { tab: 'community', label: 'Ma communauté', ico: 'heart-handshake', group: 'Communauté', admin: true, ext: true, run: function () { var base = getUrl() || 'https://agent-shliah-production.up.railway.app'; window.open(base + '/admin/community#access=' + encodeURIComponent(getAdminPw()), '_blank', 'noopener'); } },
     { tab: 'stories', label: 'Statuts et stories', ico: 'photo-video', group: 'Communauté', admin: true, ext: true, run: async function () {
       var base = 'https://agent-shliah-production.up.railway.app', popup = window.open('about:blank', '_blank');
       if (popup) { popup.opener = null; popup.document.title = 'Connexion aux statuts'; popup.document.body.textContent = 'Connexion à ton espace statuts…'; }
