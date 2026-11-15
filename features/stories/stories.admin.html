@@ -17,6 +17,39 @@ input:focus,select:focus,textarea:focus{outline:2px solid #b8c8f0;outline-offset
 #weeklyCard,#plans .card{border-radius:16px;box-shadow:none}
 .row label.pill:has(input:checked){background:var(--teal-bg);border-color:#b6e3dd;color:#007f75}
 .step{background:var(--purple-bg);color:#5c4bd9}input[type=checkbox],input[type=radio]{accent-color:var(--teal)}
+
+/* Compact overview: all scheduled statuses and personal reminders share one grid. */
+main{max-width:1180px}
+#unifiedSchedules{padding:20px}#unifiedSchedules>p{font-size:14px;margin:8px 0 16px}
+#unifiedSchedules> .row h2{font-size:22px;margin:0}
+#unifiedSchedules> .row button{font-size:14px;padding:9px 12px}
+#scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;align-items:start}
+#plans,#reminders{display:contents}
+#scheduleGrid .card,#scheduleGrid .reminder-item{margin:0;padding:14px;border:1px solid var(--line);border-radius:13px;background:white;min-width:0}
+#scheduleGrid h3{font-size:15px;line-height:1.35;margin:0 0 8px;overflow-wrap:anywhere}
+#scheduleGrid p{font-size:13px;line-height:1.4;margin:0 0 6px;overflow-wrap:anywhere}
+#scheduleGrid .small,#scheduleGrid .status{font-size:12px}
+#scheduleGrid .status{padding:4px 7px;white-space:nowrap}
+#scheduleGrid button,#scheduleGrid summary.button{font-size:13px;padding:8px 11px;border-radius:8px;min-height:36px}
+#scheduleGrid .row{gap:8px}
+#weeklyCard> .row:first-child{align-items:start;flex-wrap:nowrap}
+#weeklyCard> .row:first-child h3{flex:1}
+#weeklyThumb,#plans .card>img,#plans .card>video{width:64px!important;max-width:64px!important;height:96px!important;max-height:96px!important;object-fit:contain;border-radius:6px}
+#weeklyCard> .row:nth-child(2){align-items:start;flex-wrap:nowrap}
+#weeklyCard> .row:nth-child(2)>div{flex:1;min-width:0}
+#weeklyDetails{margin-top:10px}
+#weeklyDetails[open]{border-top:1px solid var(--line);padding-top:10px}
+#weeklyDetails[open]>h3{margin-top:16px}
+#weeklyCard:has(details[open]){grid-column:1/-1}
+#plans .card{display:grid;grid-template-columns:64px minmax(0,1fr);column-gap:12px;row-gap:4px}
+#plans .card>h3{grid-column:1/-1}
+#plans .card>img,#plans .card>video{grid-column:1;grid-row:2/span 2}
+#plans .card>p{grid-column:2}
+#plans .card> .row{grid-column:1/-1;margin-top:6px}
+#reminders .reminder-item{display:flex;flex-direction:column;gap:10px;font-size:14px}
+#reminders .reminder-item>div:before{content:'🔔 ';font-size:16px}
+#reminders .reminder-item button{align-self:start}
+@media(max-width:650px){#unifiedSchedules{padding:14px}#scheduleGrid{grid-template-columns:1fr}#unifiedSchedules> .row{gap:10px}#unifiedSchedules> .row h2{font-size:20px}.tabs{margin:14px 0}.tabs button{padding:13px}main{padding-left:12px;padding-right:12px}}
 </style>
 <header><small>BETH HABAD S MAURICE PLATEAU</small><h1>Mes statuts et mes rappels</h1><span class="muted">Choisir, préparer, vérifier. Tu gardes la main sur chaque publication.</span></header>
 <main>
@@ -32,10 +65,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid #b8c8f0;outline-offset
 <section id="review" hidden><h2>Mon aperçu</h2><p class="muted">Rien n’est encore publié. Vérifie le contenu et les réseaux choisis.</p><div id="manualPreview" class="preview"></div><p id="targetSummary"></p><div class="row"><button id="publish">Valider et publier</button><button id="cancelDraft" class="secondary">Annuler ce brouillon</button><a id="download" class="button secondary" target="_blank" rel="noopener">Ouvrir le fichier pour WhatsApp</a></div><p id="publishResult" class="small"></p></section>
 </div>
 <div id="schedulePanel" hidden>
-<section id="unifiedSchedules"><div class="row" style="justify-content:space-between"><h2>Tous mes statuts programmés</h2><div class="row"><button id="newPlan">+ Ajouter un statut</button><button class="secondary" id="refreshPlans">Actualiser</button></div></div><p class="muted">Tes programmations du samedi et celles créées sur WhatsApp, réunies au même endroit. Chaque publication attend ta validation.</p><div class="card" id="weeklyCard"><div class="row" style="justify-content:space-between"><h3>Chavoua Tov · Minyan du dimanche</h3><span id="weeklyState" class="status">Chargement…</span></div><div class="row"><img id="weeklyThumb" alt="Visuel du samedi soir" style="width:110px;max-height:190px;object-fit:contain;border-radius:8px" hidden><div><p>Chaque samedi · 20h30–21h, après Chabbat</p><p id="weeklySummary" class="small muted"></p><button id="quickToggleWeekly" class="secondary">Mettre en pause</button></div></div><details id="weeklyDetails"><summary class="button secondary">Modifier</summary><h3>Habituellement, je veux…</h3><div id="weeklyChoices" class="choices three"><button class="choice" data-mode="music"><b>Un visuel avec nigoun</b><small>Le nigoun change chaque semaine</small></button><button class="choice" data-mode="image"><b>Un visuel sans musique</b><small>Ton affiche, tout simplement</small></button><button class="choice" data-mode="reminder"><b>Un rappel uniquement</b><small>Aucune préparation ni publication</small></button></div>
+<section id="unifiedSchedules"><div class="row" style="justify-content:space-between"><h2>Tous mes statuts programmés</h2><div class="row"><button id="newPlan">+ Ajouter un statut</button><button class="secondary" id="refreshPlans">Actualiser</button></div></div><p class="muted">Statuts et rappels au même endroit. Toute publication attend ta validation.</p><div id="scheduleGrid"><div class="card" id="weeklyCard"><div class="row" style="justify-content:space-between"><h3>Chavoua Tov · Minyan du dimanche</h3><span id="weeklyState" class="status">Chargement…</span></div><div class="row"><img id="weeklyThumb" alt="Visuel du samedi soir" style="width:110px;max-height:190px;object-fit:contain;border-radius:8px" hidden><div><p>Chaque samedi · 20h30–21h, après Chabbat</p><p id="weeklySummary" class="small muted"></p><button id="quickToggleWeekly" class="secondary">Mettre en pause</button></div></div><details id="weeklyDetails"><summary class="button secondary">Modifier</summary><h3>Habituellement, je veux…</h3><div id="weeklyChoices" class="choices three"><button class="choice" data-mode="music"><b>Un visuel avec nigoun</b><small>Le nigoun change chaque semaine</small></button><button class="choice" data-mode="image"><b>Un visuel sans musique</b><small>Ton affiche, tout simplement</small></button><button class="choice" data-mode="reminder"><b>Un rappel uniquement</b><small>Aucune préparation ni publication</small></button></div>
 <label>Pour le prochain samedi seulement<select id="nextMode"><option value="">Comme d’habitude</option><option value="music">Un visuel avec nigoun</option><option value="image">Un visuel sans musique</option><option value="reminder">Un rappel uniquement</option></select></label><p class="small muted">Ce choix est utilisé une seule fois ; ensuite, ton réglage habituel reprend.</p><div id="weeklyTargets"><h3>Les réseaux du samedi</h3><div class="row"><label class="pill"><input id="weeklyIg" type="checkbox" checked>Instagram</label><label class="pill"><input id="weeklyFb" type="checkbox" checked>Facebook</label><span class="small muted">+ fichier prêt pour ton statut WhatsApp</span></div></div><div class="row"><button id="saveWeekly">Enregistrer mes choix</button><button id="toggleWeekly" class="secondary">Mettre en pause</button></div><div class="notice">Avec ou sans musique, tu dois valider avant toute publication. En mode rappel, rien n’est publié.</div>
 </details></div>
-<div id="plans"></div></section><section id="planEditor" hidden><h2>Programmer un visuel</h2><p class="muted">Ajoute ton image ici ou retrouve un visuel envoyé au bot sur WhatsApp. Tu recevras une demande avant chaque publication.</p>
+<div id="plans"></div><div id="reminders"></div></div></section><section id="planEditor" hidden><h2>Programmer un visuel</h2><p class="muted">Ajoute ton image ici ou retrouve un visuel envoyé au bot sur WhatsApp. Tu recevras une demande avant chaque publication.</p>
 <label>Nom du visuel<input id="planTitle" maxlength="600" placeholder="Ex. Cours de Tanya du lundi"></label>
 <label>Ajouter une image ou une vidéo<input id="planFile" type="file" accept="image/jpeg,image/png,image/webp,video/mp4"></label>
 <label>Ou choisir un visuel déjà reçu<select id="planMedia"><option value="">Choisir…</option></select></label><div id="planPreview" class="preview" hidden></div>
@@ -45,7 +78,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid #b8c8f0;outline-offset
 <div class="notice">Enregistrer ne publie rien. À chaque échéance, tu devras valider sur WhatsApp. Le statut WhatsApp se partage manuellement.</div>
 <div class="row"><button id="savePlan">Enregistrer ma programmation</button><button id="resetPlan" class="secondary" hidden>Quitter la modification</button></div>
 </section>
-<section><h2>Mes autres rappels</h2><p class="muted">Un rappel personnel aux jours et à l’heure que tu choisis. Aucune publication automatique.</p><label>De quoi veux-tu te souvenir ?<input id="reminderMessage" maxlength="600" placeholder="Ex. Préparer le statut pour le cours des femmes."></label><h3>Chaque semaine, le…</h3><div class="row" id="days"><label class="pill"><input type="checkbox" value="1">Lun.</label><label class="pill"><input type="checkbox" value="2">Mar.</label><label class="pill"><input type="checkbox" value="3">Mer.</label><label class="pill"><input type="checkbox" value="4">Jeu.</label><label class="pill"><input type="checkbox" value="5">Ven.</label><label class="pill"><input type="checkbox" value="6">Sam.</label><label class="pill"><input type="checkbox" value="0">Dim.</label></div><label>À quelle heure ?<input id="reminderTime" type="time" value="20:30"></label><button id="addReminder">Ajouter mon rappel</button><div id="reminders"></div><p class="small muted">Les rappels respectent Chabbat et Yom Tov. WhatsApp dépend de l’approbation des modèles de notification par Meta ; un email sert de secours.</p></section>
+<section><h2>Ajouter un rappel sans visuel</h2><p class="muted">Un rappel personnel aux jours et à l’heure que tu choisis. Aucune publication automatique.</p><label>De quoi veux-tu te souvenir ?<input id="reminderMessage" maxlength="600" placeholder="Ex. Préparer le statut pour le cours des femmes."></label><h3>Chaque semaine, le…</h3><div class="row" id="days"><label class="pill"><input type="checkbox" value="1">Lun.</label><label class="pill"><input type="checkbox" value="2">Mar.</label><label class="pill"><input type="checkbox" value="3">Mer.</label><label class="pill"><input type="checkbox" value="4">Jeu.</label><label class="pill"><input type="checkbox" value="5">Ven.</label><label class="pill"><input type="checkbox" value="6">Sam.</label><label class="pill"><input type="checkbox" value="0">Dim.</label></div><label>À quelle heure ?<input id="reminderTime" type="time" value="20:30"></label><button id="addReminder">Ajouter mon rappel</button><p class="small muted">Les rappels respectent Chabbat et Yom Tov. WhatsApp dépend de l’approbation des modèles de notification par Meta ; un email sert de secours.</p></section>
 </div>
 <details class="card"><summary>Mon visuel et mes nigounim enregistrés</summary><div id="coverPreview" class="preview"></div><div id="clips"></div><details><summary>Changer le visuel ou ajouter un clip</summary><label>Lien de l’image<input id="coverUrl" type="url"></label><button id="cover">Enregistrer ce visuel</button><button id="prepare" class="secondary">Préparer les nigounim du modèle</button><label>Titre du clip<input id="title"></label><label>Lien MP4<input id="clipUrl" type="url"></label><label>Autorisation d’utiliser cet enregistrement<input id="rights"></label><button id="clip">Ajouter le clip</button></details></details>
 <div id="feedback" role="status" aria-live="polite"></div>
