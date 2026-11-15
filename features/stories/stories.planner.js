@@ -9,8 +9,58 @@ function schedule(value){
   return {days,time:m[1].padStart(2,'0')+':'+(m[2]||'00')};
 }
 const summary=d=>`${d.days.map(i=>DAYS[i]).join(', ')} à ${d.time} (heure de Paris)\n${{music:'Avec nigoun',image:'Sans musique',reminder:'Rappel uniquement'}[d.mode]}\n${d.targets.length?d.targets.join(' et '):'Partage WhatsApp manuel'}`;
-function init({pool,ensureDB,isAdmin,adminPhone,text,paris,isHolyTime,downloadMedia,createDraft,preview,addMusic,notifyPlan}){
+function options(value){
+  const v=clean(value),out={};
+  if(/\brappel(?: uniquement| seul)?\b/.test(v))out.mode='reminder';
+  else if(/sans (?:musique|nigoun)|\bvideo\b/.test(v))out.mode='image';
+  else if(/\bnigoun\b|avec musique/.test(v))out.mode='music';
+  if(/whatsapp(?: uniquement| seul)?/.test(v))out.targets=[];
+  else if(/les deux/.test(v)||(/instagram/.test(v)&&/facebook/.test(v)))out.targets=['instagram','facebook'];
+  else if(/instagram/.test(v))out.targets=['instagram'];
+  else if(/facebook/.test(v))out.targets=['facebook'];
+  if(out.mode==='reminder')out.targets=[];
+  return out;
+}
+function init({pool,ensureDB,isAdmin,adminPhone,text,wa,paris,isHolyTime,downloadMedia,createDraft,preview,addMusic,notifyPlan}){
   const save=(phone,data)=>pool.query('INSERT INTO story_plan_sessions(phone,data) VALUES($1,$2) ON CONFLICT(phone) DO UPDATE SET data=$2,created_at=NOW()',[phone,JSON.stringify(data)]);
+  async function ask(phone,d,body,choices){
+    d={...d,token:randomUUID().slice(0,8)};await save(phone,d);
+    if(wa){try{await wa(phone,{type:'interactive',interactive:{type:'button',body:{text:body},action:{buttons:choices.map(([action,title])=>({type:'reply',reply:{id:`st_plan_${d.token}_${action}`,title}}))}}});return true;}catch(_){}}
+    await text(phone,body+'\n'+choices.map(([,title])=>title).join(' · '));return true;
+  }
+  async function review(phone,d){
+    if(d.mode==='reminder')d.targets=[];
+    return ask(phone,{...d,step:'confirm'},'Voici la programmation :\n'+summary(d)+'\n\nChaque semaine, tu recevras ton visuel. Aucune publication sans ta validation.',[['confirm','✅ Confirmer'],['options','⚙️ Modifier'],['cancel','❌ Annuler']]);
+  }
+  async function modeChoice(phone,d){
+    return ask(phone,{...d,step:'mode'},'Pour ce visuel, choisis :',d.mime==='video/mp4'?[['image','Garder la vidéo'],['reminder','🔔 Rappel seul']]:[['music','🎵 Avec nigoun'],['image','Sans musique'],['reminder','🔔 Rappel seul']]);
+  }
+  async function changeOptions(phone,d){
+    d={...d,step:'options',token:randomUUID().slice(0,8)};await save(phone,d);
+    const rows=[['music','Avec nigoun'],['image','Sans nigoun ajouté'],['reminder','Rappel seul'],['both','Instagram + Facebook'],['ig','Instagram uniquement'],['fb','Facebook uniquement'],['manual','WhatsApp manuel'],['date','Changer jour / heure'],['back','Revenir au résumé']].filter(([a])=>d.mime!=='video/mp4'||a!=='music').map(([a,title])=>({id:`st_plan_${d.token}_${a}`,title}));
+    if(wa){try{await wa(phone,{type:'interactive',interactive:{type:'list',body:{text:'Que veux-tu changer ?'},action:{button:'Choisir une option',sections:[{title:'Ma programmation',rows}]}}});return true;}catch(_){}}
+    await text(phone,'Écris par exemple « lundi 15h avec nigoun Instagram », ou « rappel seul ».');return true;
+  }
+  async function handleButton(phone,value){
+    if(!/^st_plan_/.test(value||''))return false;
+    if(!isAdmin(phone))return true;
+    await ensureDB();
+    const match=/^st_plan_([a-f0-9]{8})_(confirm|options|cancel|music|image|reminder|both|ig|fb|manual|date|back)$/.exec(value);
+    const row=(await pool.query("SELECT data FROM story_plan_sessions WHERE phone=$1 AND created_at>NOW()-INTERVAL '1 hour'",[phone])).rows[0];
+    if(!match||!row||row.data.token!==match[1]){await text(phone,'Ce bouton a expiré. Utilise le dernier message du bot.');return true;}
+    const d=row.data,a=match[2];
+    await pool.query('INSERT INTO story_admin_activity(phone) VALUES($1) ON CONFLICT(phone) DO UPDATE SET last_inbound=NOW()',[phone]);
+    if(a==='cancel'){await pool.query('DELETE FROM story_plan_sessions WHERE phone=$1 AND data=$2::jsonb',[phone,JSON.stringify(d)]);await text(phone,'Préparation annulée.');return true;}
+    if(a==='confirm'&&d.step==='confirm')return advance(phone,'confirmer',d);
+    if(a==='options'&&d.step==='confirm')return changeOptions(phone,d);
+    if(d.step==='options'){
+      if(a==='date'){await save(phone,{...d,step:'schedule'});await text(phone,'Indique le jour et l’heure, par exemple « lundi 15h ».');return true;}
+      if(a==='back')return review(phone,d);
+      if(['both','ig','fb','manual'].includes(a))return review(phone,{...d,targets:{both:['instagram','facebook'],ig:['instagram'],fb:['facebook'],manual:[]}[a],mode:a==='manual'?'reminder':d.mode==='reminder'?'image':d.mode});
+    }
+    if(['mode','options'].includes(d.step)&&['music','image','reminder'].includes(a))return advance(phone,{music:'nigoun',image:'sans musique',reminder:'rappel'}[a],{...d,step:'mode'});
+    await text(phone,'Ce bouton ne correspond plus au choix en cours.');return true;
+  }
   async function handleText(phone,value){
     if(!isAdmin(phone))return false;
     await ensureDB();
@@ -34,29 +84,31 @@ function init({pool,ensureDB,isAdmin,adminPhone,text,paris,isHolyTime,downloadMe
       }
       const stored=(await pool.query('SELECT mime FROM story_media WHERE id=$1',[plan.media_id])).rows[0];await save(phone,{...plan,mime:stored.mime,step:'schedule'});await text(phone,'Indique les nouveaux jours et l’heure, par exemple « lundi à 15h ». Le visuel sera conservé. Pour le remplacer, crée une nouvelle programmation.');return true;
     }
-    await save(phone,{step:'media',...(schedule(value)||{})});
-    await text(phone,'Envoie le visuel ou la vidéo à programmer. Tu choisiras ensuite les jours, l’heure et les réseaux. Pour quitter : statut annuler.');return true;
+    await save(phone,{step:'media',...(schedule(value)||{}),...options(value)});
+    await text(phone,'Envoie ton visuel. Tu peux écrire en légende « lundi 15h avec nigoun », ou choisir ensuite avec les boutons.');return true;
   }
   async function invalidate(id,owner){await pool.query("UPDATE story_drafts SET status='cancelled' WHERE owner=$1 AND slot LIKE $2 AND status='preview'",[owner,'plan:'+id+':%']);}
   async function advance(phone,v,d){
     if(d.step==='media'){await text(phone,'Envoie une image ou une vidéo, ou écris « statut annuler ».');return true;}
     if(d.step==='schedule'){
       const parsed=schedule(v);if(!parsed){await text(phone,'Indique le jour et l’heure de notification, par exemple « tous les lundis à 15h ».');return true;}
-      d={...d,...parsed,step:'mode'};await save(phone,d);await text(phone,d.mime==='video/mp4'?'Choisis « vidéo » pour garder son son, ou « rappel » pour un partage manuel.':'Choisis « nigoun », « sans musique » ou « rappel uniquement ».');return true;
+      d={...d,...parsed,...options(v)};if(d.mode)return advance(phone,{music:'nigoun',image:'sans musique',reminder:'rappel'}[d.mode],{...d,step:'mode'});return modeChoice(phone,d);
     }
     if(d.step==='mode'){
       const mode=/^(rappel|rappel uniquement)$/.test(v)?'reminder':/^(sans musique|sans|video)$/.test(v)?'image':/^(nigoun|avec nigoun|musique)$/.test(v)&&d.mime!=='video/mp4'?'music':null;
       if(!mode){await text(phone,'Réponds « nigoun », « sans musique » ou « rappel ». Pour une vidéo, écris « vidéo » ou « rappel ».');return true;}
       if(mode==='music'&&!(await pool.query('SELECT id FROM story_clips WHERE enabled ORDER BY id')).rows.length){await text(phone,'Aucun nigoun disponible. Choisis sans musique ou rappel.');return true;}
-      d={...d,mode,step:'targets'};await save(phone,d);await text(phone,'Choisis « Instagram », « Facebook », « les deux » ou « WhatsApp uniquement » (partage manuel).');return true;
+      return review(phone,{...d,mode,targets:mode==='reminder'?[]:(d.targets||['instagram','facebook'])});
     }
     if(d.step==='targets'){
+      if(d.mode==='reminder')return review(phone,{...d,targets:[]});
       const targets=v==='instagram'?['instagram']:v==='facebook'?['facebook']:v==='les deux'?['instagram','facebook']:/^whatsapp(?: uniquement)?$/.test(v)?[]:null;
       if(!targets){await text(phone,'Réponds Instagram, Facebook, les deux ou WhatsApp uniquement.');return true;}
-      d={...d,targets,step:'confirm'};await save(phone,d);await text(phone,'Voici la programmation :\n'+summary(d)+'\n\nÀ chaque échéance, tu recevras une demande avant publication. Sans validation, rien ne part.\nÉcris « confirmer » pour enregistrer ou « statut annuler ».');return true;
+      return review(phone,{...d,targets:d.mode==='reminder'?[]:targets});
     }
+    if(d.step==='options'){const picked=options(v),date=schedule(v);if(!Object.keys(picked).length&&!date)return changeOptions(phone,d);return review(phone,{...d,...picked,...(date||{})});}
     if(d.step==='confirm'){
-      if(v!=='confirmer'){await text(phone,'Écris « confirmer » pour enregistrer, ou « statut annuler ».');return true;}
+      if(v!=='confirmer'){const picked=options(v),date=schedule(v);if(Object.keys(picked).length||date)return review(phone,{...d,...picked,...(date||{})});return review(phone,d);}
       const claim=(await pool.query("DELETE FROM story_plan_sessions WHERE phone=$1 AND data=$2::jsonb AND created_at>NOW()-INTERVAL '1 hour' RETURNING data",[phone,JSON.stringify(d)])).rows[0];if(!claim)return true;
       const id=d.id||randomUUID();
       if(d.id){await pool.query('UPDATE story_plans SET days=$3,time=$4,mode=$5,targets=$6,revision=revision+1 WHERE id=$1 AND owner=$2 AND enabled',[id,phone,JSON.stringify(d.days),d.time,d.mode,JSON.stringify(d.targets)]);await invalidate(id,phone);}
@@ -67,7 +119,10 @@ function init({pool,ensureDB,isAdmin,adminPhone,text,paris,isHolyTime,downloadMe
   }
   async function handleMedia(phone,message){
     if(!isAdmin(phone))return false;
-    const row=(await pool.query("SELECT data FROM story_plan_sessions WHERE phone=$1 AND created_at>NOW()-INTERVAL '1 hour'",[phone])).rows[0];if(!row)return false;
+    let row=(await pool.query("SELECT data FROM story_plan_sessions WHERE phone=$1 AND created_at>NOW()-INTERVAL '1 hour'",[phone])).rows[0];
+    const caption=(message.image||message.video)?.caption||'';
+    if(!row&&/^(?:statut? programmer|programme(?:r)? (?:ce |un |le |mon )?(?:visuel|statut))\b/.test(clean(caption))){await ensureDB();row={data:{step:'media'}};}
+    if(!row)return false;
     if(row.data.step!=='media'){await text(phone,'Une programmation est en cours. Termine les choix ou écris « statut annuler ».');return true;}
     const media=message.image||message.video;if(!media)return false;
     try{
@@ -75,9 +130,9 @@ function init({pool,ensureDB,isAdmin,adminPhone,text,paris,isHolyTime,downloadMe
       if(!['image/jpeg','image/png','video/mp4'].includes(mime)||data.length>20*1024*1024)throw new Error('Envoie une image ou un MP4 de moins de 20 Mo.');
       if(mime!=='video/mp4'){data=await require('sharp')(data).rotate().jpeg().toBuffer();mime='image/jpeg';}
       const id=randomUUID();await pool.query('INSERT INTO story_media(id,data,mime) VALUES($1,$2,$3)',[id,data,mime]);
-      const d={...row.data,media_id:id,mime,step:'schedule'};await save(phone,d);
+      const d={...row.data,...(schedule(caption)||{}),...options(caption),media_id:id,mime,step:'schedule'};await save(phone,d);
       if(d.days)return advance(phone,d.days.map(i=>DAYS[i]).join(' ')+' '+d.time,d);
-      await text(phone,'Visuel reçu. Quels jours et à quelle heure veux-tu recevoir la demande ? Exemple : tous les lundis à 15h.');
+      await text(phone,'Visuel reçu. Écris par exemple « lundi 15h avec nigoun », ou « dimanche 10h rappel seul ».');
     }catch(e){await text(phone,'Visuel non enregistré : '+e.message);}
     return true;
   }
@@ -106,6 +161,6 @@ function init({pool,ensureDB,isAdmin,adminPhone,text,paris,isHolyTime,downloadMe
       }catch(e){await pool.query("UPDATE story_plan_jobs SET status='failed' WHERE plan_id=$1 AND date=$2 AND revision=$3",[plan.id,p.date,plan.revision]);console.error('Stories : échéance non confirmée');}
     }
   }
-  return {handleText,handleMedia,tick};
+  return {handleText,handleMedia,handleButton,tick};
 }
-module.exports={init,schedule,summary};
+module.exports={init,schedule,summary,options};

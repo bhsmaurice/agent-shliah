@@ -53,3 +53,9 @@ Le menu principal utilise l’authentification admin existante pour obtenir un c
 - Chaque échéance crée un aperçu à valider, jamais une publication directe. Hors fenêtre WhatsApp, le modèle `shliah_rappel_personnel` invite à répondre `statu` pour ouvrir l'aperçu. Il doit être approuvé par Meta ; sinon email de secours. Dans les 23h suivant un message administrateur, l'aperçu peut être envoyé directement.
 - Les occurrences sont uniques par programmation/date/révision, avec une fenêtre de rattrapage de 15 minutes et exclusion Chabbat/Yom Tov. Aucun rattrapage tardif ni nouvel essai automatique après résultat incertain. Modifier/arrêter invalide les aperçus précédents. Les autres utilisateurs ne peuvent ni accéder au dialogue ni valider.
 - Les images avec musique utilisent les enregistrements licenciés et leur attribution, composés avec le visuel propre à cette programmation. Les vidéos gardent leur son. « Rappel uniquement » ne propose aucun réseau de publication ; le média est destiné au partage manuel.
+
+### Choix rapides
+
+Le dialogue WhatsApp utilise des boutons pour le son et la confirmation. Une phrase comme « lundi 15h avec nigoun Instagram » (dans le message ou la légende du visuel) remplit les choix en une fois. Les réseaux par défaut Instagram/Facebook figurent explicitement au récapitulatif et restent modifiables ; le rappel seul saute le choix des réseaux. Les boutons portent un jeton de session renouvelé : un ancien bouton ne peut ni enregistrer une autre préparation, ni publier. La publication garde sa validation distincte à chaque échéance.
+
+Sur la page, « Tous mes statuts programmés » réunit le samedi et les programmations personnelles. Les réglages du samedi se déplient avec « Modifier » ; un bouton « Ajouter un statut » ouvre le formulaire commun.

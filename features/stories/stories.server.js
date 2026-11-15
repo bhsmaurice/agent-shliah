@@ -116,6 +116,7 @@ function init({ app, pool, isAdmin, adminPhone, adminPassword, whatsappToken, ph
     await wa(row.owner, { type: 'interactive', interactive: { type: 'button', body: { text: 'Publier cette image en story '+destination(row)+' ?' }, action: { buttons: ['approve', 'cancel'].map(action => ({ type: 'reply', reply: { id: `st_${action}_${row.id}_${row.revision}`, title: action === 'approve' ? '✅ Valider' : '❌ Annuler' } })) } } });
   }
   async function handleButton(from, value) {
+    if(await planner.handleButton(from,value))return;
     const b = parseButton(value);
     if (!b || !isAdmin(from)) return;
     if (b.action === 'approve' && isHolyTime && await isHolyTime(new Date())) return text(from, 'Publication reportée : Chabbat ou Yom Tov. Reviens après la sortie.');

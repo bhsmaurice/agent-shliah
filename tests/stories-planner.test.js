@@ -30,7 +30,7 @@ test('only admin creates a persistent plan; confirmation never publishes; weekly
  await h.bot.handleMedia('admin',{video:{id:'source'}});
  assert.equal(h.session.step,'mode');
  await h.bot.handleText('admin','vidéo');await h.bot.handleText('admin','les deux');
- assert.equal(h.plans.length,0);assert.match(h.texts.at(-1),/confirmer/);
+ assert.equal(h.plans.length,0);assert.match(h.texts.at(-1),/confirmer/i);
  await h.bot.handleText('admin','confirmer');assert.equal(h.plans.length,1);assert.equal(h.drafts.length,0);
  const second=init(h.options);
  await Promise.all([h.bot.tick(new Date('2026-11-16T14:00:00Z')),second.tick(new Date('2026-11-16T14:00:00Z'))]);
@@ -45,4 +45,31 @@ test('reminder and manual WhatsApp occurrences have no publishing targets; holy 
 });
 test('normal visitor questions and admin questions outside setup are not intercepted',async()=>{
  const h=harness();assert.equal(await h.bot.handleText('visitor','horaires'),false);assert.equal(await h.bot.handleText('admin','horaires'),false);
+});
+test('quick buttons skip network question for reminders; stale and visitor buttons cannot confirm',async()=>{
+ const h=harness(),messages=[];const bot=init({...h.options,wa:async(phone,body)=>messages.push(body)});
+ await bot.handleText('admin','statut programmer');await bot.handleMedia('admin',{video:{id:'source'}});
+ await bot.handleText('admin','dimanche 10h');
+ const first=messages.at(-1).interactive;assert.equal(first.type,'button');assert.equal(h.session.step,'mode');
+ const reminder=first.action.buttons.find(b=>b.reply.id.endsWith('_reminder')).reply.id;
+ await bot.handleButton('visitor',reminder);assert.equal(h.session.step,'mode');
+ await bot.handleButton('admin',reminder);assert.equal(h.session.step,'confirm');assert.deepEqual(h.session.targets,[]);
+ const confirm=messages.at(-1).interactive.action.buttons.find(b=>b.reply.id.endsWith('_confirm')).reply.id;
+ await bot.handleButton('admin',reminder);assert.equal(h.plans.length,0);assert.match(h.texts.at(-1),/expiré/);
+ await bot.handleButton('admin',confirm);assert.equal(h.plans.length,1);assert.deepEqual(h.plans[0].targets,[]);assert.equal(h.drafts.length,0);
+ await bot.handleButton('admin',confirm);assert.equal(h.plans.length,1);
+});
+test('one sentence with schedule and reminder goes directly to confirmation',async()=>{
+ const h=harness(),messages=[];const bot=init({...h.options,wa:async(phone,body)=>messages.push(body)});
+ await bot.handleText('admin','statut programmer');await bot.handleMedia('admin',{video:{id:'source',caption:'dimanche 10h rappel seul'}});
+ assert.equal(h.session.step,'confirm');assert.equal(h.session.time,'10:00');assert.equal(h.session.mode,'reminder');assert.deepEqual(h.session.targets,[]);assert.equal(messages.length,1);assert.equal(h.plans.length,0);
+});
+test('quick options change targets without changing the schedule or publishing',async()=>{
+ const h=harness(),messages=[];const bot=init({...h.options,wa:async(phone,body)=>messages.push(body)});
+ await bot.handleText('admin','programme ce visuel lundi 15h sans musique Instagram');await bot.handleMedia('admin',{video:{id:'source'}});
+ assert.equal(h.session.step,'confirm');assert.deepEqual(h.session.targets,['instagram']);
+ const modify=messages.at(-1).interactive.action.buttons.find(b=>b.reply.id.endsWith('_options')).reply.id;
+ await bot.handleButton('admin',modify);assert.equal(messages.at(-1).interactive.type,'list');
+ const fb=messages.at(-1).interactive.action.sections[0].rows.find(b=>b.id.endsWith('_fb')).id;
+ await bot.handleButton('admin',fb);assert.deepEqual(h.session.targets,['facebook']);assert.equal(h.session.time,'15:00');assert.equal(h.plans.length,0);
 });
