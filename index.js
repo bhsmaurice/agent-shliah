@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 app.post('/lettres-sefer-torah/stripe-webhook', express.raw({ type: 'application/json', limit: '1mb' }), (req, res) => lettresFeature.webhook(req, res));
 app.use(express.json({ limit: '10mb' }));
+app.use(require('./features/retour-admin/retour-admin').middleware); // bouton « ← Retour à l'admin » sur les pages admin
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
