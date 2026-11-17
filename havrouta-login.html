@@ -137,8 +137,8 @@
       e.preventDefault();
       const pin = document.getElementById('pin').value;
       
-      // Vérifier le PIN (habad2024 c'est l'ADMIN_PASSWORD dans index.js)
-      if (pin === 'habad2024') {
+      // Le mot de passe est vérifié par le serveur (aucun mot de passe écrit ici)
+      if (pin) {
         // Sauvegarder le PIN en session storage (pas localStorage pour la sécurité)
         sessionStorage.setItem('havrouta_pin', pin);
         // Rediriger vers le dashboard

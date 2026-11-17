@@ -134,7 +134,7 @@ function init({ app, pool }) {
     if (don.rows[0] && don.rows[0].cerfa_numero) return res.json({ ok: true, deja: true });
     const r = await fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/tsedaka/cerfa', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({ prenom, nom, adresse, tel: email || tel, montant: String(pi.amount / 100), phone: tel, email: email || pi.metadata.email || '' }),
+      body: JSON.stringify({ paymentIntentId: pi.id, prenom, nom, adresse, tel: email || tel, montant: String(pi.amount / 100), phone: tel, email: email || pi.metadata.email || '' }),
     });
     if (!r.ok) throw problem('Le reçu n’a pas pu être demandé. Réessayez.', 502);
     res.json({ ok: true });

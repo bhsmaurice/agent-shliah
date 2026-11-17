@@ -12,11 +12,11 @@
 //   GET  /api/admin/pin/reset?password=MOT_DE_PASSE_RAILWAY     -> remet le PIN admin par défaut
 //
 // PIN par défaut (première installation ou remise à zéro) :
-//   variable Railway ADMIN_PIN, sinon 194561.
+//   variable Railway ADMIN_PIN, sinon un code aléatoire (affiché dans les logs Railway).
 // ============================================================
 const crypto = require('crypto');
 
-const DEFAULT_ADMIN_PIN = process.env.ADMIN_PIN || '194561';
+const DEFAULT_ADMIN_PIN = process.env.ADMIN_PIN || String(require('node:crypto').randomInt(100000, 1000000));
 
 // Anti-essais en rafale
 const MAX_ESSAIS_IP = 5;              // 5 erreurs -> blocage
@@ -38,7 +38,7 @@ function memePin(pin, row) {
 }
 
 function ipDe(req) {
-  return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?').split(',')[0].trim();
+  return String(req.ip || req.socket.remoteAddress || '?'); // vraie IP (trust proxy), non falsifiable
 }
 
 function init({ app, pool, adminPassword, sendWhatsApp, adminPhone }) {

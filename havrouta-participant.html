@@ -195,7 +195,7 @@
       }
       
       try {
-        const res = await fetch(`${BASE_URL}/api/havrouta/${HAVROUTA_ID}`);
+        const res = await fetch(`${BASE_URL}/api/havrouta/${HAVROUTA_ID}?password=${encodeURIComponent(sessionStorage.getItem('havrouta_pin') || '')}`);
         const result = await res.json();
         
         if (!result.ok) {

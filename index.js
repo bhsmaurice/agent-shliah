@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 app.post('/lettres-sefer-torah/stripe-webhook', express.raw({ type: 'application/json', limit: '1mb' }), (req, res) => lettresFeature.webhook(req, res));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(require('./features/retour-admin/retour-admin').middleware); // bouton « ← Retour à l'admin » sur les pages admin
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -116,8 +116,9 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "shliah_beth_habad";
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "habad2024";
+const ADMIN_PASSWORD = require('./features/securite/securite').motDePasseAdmin();
 const ADMIN_PHONE = process.env.ADMIN_PHONE || "33770241746"; // Format: 33XXXXXXXXX
+require('./features/securite/securite').init({ app, adminPassword: ADMIN_PASSWORD, alerter: msg => sendWhatsApp(ADMIN_PHONE, msg) });
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // plus utilisé pour l'envoi (conservé pour compat)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_TO_EMAIL = process.env.RESEND_TO_EMAIL || 'bhsmaurice@gmail.com';
@@ -2534,12 +2535,21 @@ app.post('/tsedaka/cerfa', async (req, res) => {
   res.sendStatus(200); // Répondre immédiatement
   
   try {
-    const { prenom, nom, adresse, tel, montant, phone, email } = req.body;    
+    const { prenom, nom, adresse, tel, phone, email, paymentIntentId } = req.body;
+    let { montant } = req.body;
     // Validation
     if (!prenom || !nom || !adresse || !tel || !montant || !phone) {
       console.error('Tsedaka Cerfa: données manquantes', { prenom, nom, adresse, tel, montant, phone });
       return;
     }
+    // SÉCURITÉ : un Cerfa uniquement pour un paiement Stripe vérifié, jamais deux fois pour le même paiement
+    const paiement = await reserverPaiementPourCerfa({ paymentIntentId, montant, phone });
+    if (!paiement) {
+      console.warn('🚫 Tsedaka Cerfa refusé : aucun paiement Stripe vérifié', { prenom, nom, montant, phone });
+      if (Date.now() - (global.__alerteCerfa || 0) > 10 * 60 * 1000) { global.__alerteCerfa = Date.now(); sendWhatsApp(ADMIN_PHONE, `⚠️ Demande de Cerfa Tsédaka refusée : aucun paiement Stripe trouvé.\n${prenom} ${nom} — ${montant}€ — ${phone}\nSi la personne a vraiment payé, fais son Cerfa à la main depuis la page Tsédaka.`).catch(() => {}); }
+      return;
+    }
+    montant = String(paiement.montant);
     
     // Normaliser le numéro de téléphone (enlever le +, garder 33XXXXXXXXX)
     let phoneFormatted = phone.replace(/\D/g, ''); // Enlever tout ce qui n'est pas un chiffre
@@ -2578,7 +2588,9 @@ app.post('/tsedaka/cerfa', async (req, res) => {
     
     // Enregistrer le don dans tsedaka_dons (pour suivi dans /tsedaka) AVEC son numéro de Cerfa
     try {
-      const lie = await pool.query(
+      const lie = paiement.donId
+        ? await pool.query("UPDATE tsedaka_dons SET cerfa_numero = $1, phone = $2, statut = 'complet', email = COALESCE(email, $3) WHERE id = $4", [numero, phoneFormatted, email || tel, paiement.donId])
+        : await pool.query(
         `UPDATE tsedaka_dons SET cerfa_numero = $1, phone = $2, statut = 'complet', email = COALESCE(email, $4)
          WHERE id = (SELECT id FROM tsedaka_dons
                      WHERE cerfa_numero IS NULL AND montant = $3 AND COALESCE(statut, '') <> 'doublon'
@@ -2589,8 +2601,8 @@ app.post('/tsedaka/cerfa', async (req, res) => {
       );
       if (!lie.rowCount) {
         await pool.query(
-          'INSERT INTO tsedaka_dons (phone, montant, statut, email, cerfa_numero) VALUES ($1, $2, $3, $4, $5)',
-          [phoneFormatted, parseFloat(montant), 'complet', email || tel, numero]
+          'INSERT INTO tsedaka_dons (phone, montant, statut, email, cerfa_numero, stripe_payment_intent_id, paiement_verifie) VALUES ($1, $2, $3, $4, $5, $6, true)',
+          [phoneFormatted, parseFloat(montant), 'complet', email || tel, numero, paiement.stripeId]
         );
       }
     } catch (e) { console.error('Tsedaka don/cerfa lien:', e.message); }
@@ -2617,6 +2629,7 @@ app.post('/tsedaka/cerfa', async (req, res) => {
     console.log(`✅ Cerfa Tsedaka généré: ${numero} pour ${prenom}`);
   } catch (e) {
     console.error('❌ Tsedaka Cerfa error:', e.message);
+    pool.query("UPDATE tsedaka_dons SET cerfa_numero = NULL WHERE cerfa_numero = 'reserve' AND created_at > NOW() - INTERVAL '1 day'").catch(() => {});
   }
 });
 
@@ -2667,6 +2680,7 @@ app.get('/api/admin/theme', async (req, res) => {
 // POST /api/admin/theme/update - Changer les couleurs
 app.post('/api/admin/theme/update', async (req, res) => {
   try {
+    if (!require('./features/securite/securite').memeTexte((req.body && req.body.password) || req.get('x-admin-password') || '', ADMIN_PASSWORD)) return res.status(401).json({ error: 'Unauthorized' });
     const { colors } = req.body;
     if (!colors || typeof colors !== 'object') {
       return res.status(400).json({ error: 'Invalid colors object' });
@@ -2730,6 +2744,63 @@ async function stripeGetPaymentMethod(paymentIntentId) {
   }
 }
 
+// SÉCURITÉ — vérifie chez Stripe qu'un paiement est réellement encaissé (pi_… ou cs_…)
+async function stripePaiementVerifie(id) {
+  id = String(id || '');
+  if (!STRIPE_SECRET_KEY || !/^(pi|cs)_[A-Za-z0-9_]{8,}$/.test(id)) return null;
+  try {
+    const chemin = id.startsWith('cs_') ? 'checkout/sessions/' : 'payment_intents/';
+    const r = await fetch('https://api.stripe.com/v1/' + chemin + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + STRIPE_SECRET_KEY } });
+    const d = await r.json();
+    if (d.error) { console.error('Stripe vérif :', d.error.message); return null; }
+    const md = d.metadata || {};
+    if (md.lettres_order_id) return null; // paiement des Lettres Séfer Torah : a son propre Cerfa
+    const paye = id.startsWith('cs_') ? d.payment_status === 'paid' : d.status === 'succeeded';
+    const cents = id.startsWith('cs_') ? d.amount_total : d.amount;
+    if (!paye || !(cents > 0)) return null;
+    return { montant: cents / 100 };
+  } catch (e) { console.error('Stripe vérif :', e.message); return null; }
+}
+let _colonneVerif = null;
+function colonneVerifPrete() {
+  if (!_colonneVerif) _colonneVerif = pool.query('ALTER TABLE tsedaka_dons ADD COLUMN IF NOT EXISTS paiement_verifie BOOLEAN DEFAULT FALSE')
+    .catch(e => { _colonneVerif = null; console.error('paiement_verifie :', e.message); });
+  return _colonneVerif;
+}
+
+// SÉCURITÉ — trouve et réserve le paiement vérifié qui correspond à une demande de Cerfa
+async function reserverPaiementPourCerfa({ paymentIntentId, montant, phone }) {
+  await colonneVerifPrete();
+  const tel = String(phone || '').replace(/\D/g, '').replace(/^0/, '33');
+  const id = String(paymentIntentId || '');
+  if (id) {
+    const v = await stripePaiementVerifie(id);
+    if (!v) return null;
+    const ex = await pool.query('SELECT id, cerfa_numero FROM tsedaka_dons WHERE stripe_payment_intent_id = $1 ORDER BY id LIMIT 1', [id]);
+    if (ex.rows[0]) {
+      const r = await pool.query("UPDATE tsedaka_dons SET cerfa_numero = 'reserve', paiement_verifie = true, montant = $2 WHERE id = $1 AND cerfa_numero IS NULL RETURNING id", [ex.rows[0].id, v.montant]);
+      return r.rows[0] ? { donId: r.rows[0].id, montant: v.montant, stripeId: id } : null; // Cerfa déjà fait pour ce paiement
+    }
+    const c = await pool.query("INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut, cerfa_numero, paiement_verifie) VALUES ($1,$2,'en_attente','reserve',true) RETURNING id", [id, v.montant]);
+    return { donId: c.rows[0].id, montant: v.montant, stripeId: id };
+  }
+  // Sans identifiant : un paiement Stripe vérifié, même montant, récent, sans Cerfa (on attend un peu s'il arrive juste après)
+  const m = parseFloat(montant);
+  if (!(m > 0)) return null;
+  for (let essai = 0; essai < 4; essai++) {
+    const r = await pool.query(
+      `UPDATE tsedaka_dons SET cerfa_numero = 'reserve'
+       WHERE id = (SELECT id FROM tsedaka_dons
+                   WHERE paiement_verifie = true AND cerfa_numero IS NULL AND montant = $1
+                     AND COALESCE(statut, '') <> 'doublon' AND created_at > NOW() - INTERVAL '3 hours'
+                   ORDER BY (phone = $2) DESC NULLS LAST, created_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED)
+       AND cerfa_numero IS NULL RETURNING id, montant, stripe_payment_intent_id`, [m, tel]);
+    if (r.rows[0]) return { donId: r.rows[0].id, montant: Number(r.rows[0].montant), stripeId: r.rows[0].stripe_payment_intent_id };
+    await new Promise(ok => setTimeout(ok, 5000));
+  }
+  return null;
+}
+
 // Un paiement Stripe déjà présent ? (même identifiant, ou ligne créée par le formulaire Cerfa il y a moins de 30 min)
 async function paiementDejaEnregistre(paymentIntentId, montant) {
   try {
@@ -2750,14 +2821,19 @@ async function paiementDejaEnregistre(paymentIntentId, montant) {
 app.post('/tsedaka/enregistrer-paiement', async (req, res) => {
   res.sendStatus(200);
   try {
-    const { paymentIntentId, montant, email } = req.body;
-    if (!paymentIntentId || !montant) return;
+    const { paymentIntentId, email } = req.body;
+    if (!paymentIntentId) return;
+    // SÉCURITÉ : le paiement et son montant viennent de Stripe, pas du navigateur
+    await colonneVerifPrete();
+    const verif = await stripePaiementVerifie(paymentIntentId);
+    if (!verif) { console.warn('🚫 Paiement Tsedaka non vérifié chez Stripe :', paymentIntentId); return; }
+    const montant = verif.montant;
     
     // Déjà enregistré, ou ligne déjà créée par le formulaire Cerfa : on complète au lieu de doubler
     if (await paiementDejaEnregistre(paymentIntentId, montant)) return;
     // Enregistrer le paiement avec statut "en_attente" (formulaire pas encore rempli)
     await pool.query(
-      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, email, statut) VALUES ($1,$2,$3,$4)',
+      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, email, statut, paiement_verifie) VALUES ($1,$2,$3,$4,true)',
       [paymentIntentId, montant, email || null, 'en_attente']
     );
     console.log('Paiement Tsedaka enregistré (en attente):', paymentIntentId, montant + '€');
@@ -2770,16 +2846,18 @@ app.post('/tsedaka/enregistrer-paiement', async (req, res) => {
 app.get('/tsedaka/log-paiement', async (req, res) => {
   res.sendStatus(200);
   try {
-    const { id, montant } = req.query;
-    if (!id || !montant) return;
-    
-    const montantNum = parseFloat(montant);
-    if (isNaN(montantNum) || montantNum <= 0) return;
+    const { id } = req.query;
+    if (!id) return;
+    // SÉCURITÉ : le paiement et son montant viennent de Stripe
+    await colonneVerifPrete();
+    const verif = await stripePaiementVerifie(String(id));
+    if (!verif) { console.warn('🚫 Paiement Tsedaka non vérifié chez Stripe :', id); return; }
+    const montantNum = verif.montant;
     
     if (await paiementDejaEnregistre(String(id), montantNum)) return;
     // Enregistrer le paiement avec statut "en_attente"
     await pool.query(
-      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut) VALUES ($1,$2,$3)',
+      'INSERT INTO tsedaka_dons (stripe_payment_intent_id, montant, statut, paiement_verifie) VALUES ($1,$2,$3,true)',
       [String(id), montantNum, 'en_attente']
     );
     console.log('✅ Paiement Tsedaka log-paiement:', id, montantNum + '€');
@@ -2799,8 +2877,18 @@ app.post('/tsedaka/abonner', async (req, res) => {
     let phoneFormatted = String(phone).replace(/\D/g, '');
     if (phoneFormatted.startsWith('0')) phoneFormatted = '33' + phoneFormatted.slice(1);
 
+    // SÉCURITÉ : garder la carte ou modifier une fiche existante seulement avec un vrai paiement Stripe
+    const paiementOk = payment_intent_id ? !!(await stripePaiementVerifie(payment_intent_id)) : false;
+    if (!paiementOk) {
+      if (garder_carte || !rappel_quotidien) return;
+      await pool.query(`INSERT INTO tsedaka_abonnes (phone, prenom, nom, adresse, rappel_quotidien) VALUES ($1,$2,$3,$4,true)
+        ON CONFLICT (phone) DO UPDATE SET rappel_quotidien = true`, [phoneFormatted, prenom || null, nom || null, adresse || null]);
+      console.log('Tsedaka rappel enregistré (sans paiement) :', phoneFormatted);
+      return;
+    }
+
     let pmId = null;
-    let custId = customer_id || null;
+    let custId = null;
     if (garder_carte) {
       const info = await stripeGetPaymentMethod(payment_intent_id);
       if (info) {
@@ -2978,6 +3066,7 @@ app.get('/api/havrouta/list', async (req, res) => {
 // Voir une paire (participant)
 app.get('/api/havrouta/:id', async (req, res) => {
   try {
+    if (((req.query && req.query.password) || req.get('x-admin-password')) !== ADMIN_PASSWORD) return res.json({ ok: false, error: 'Unauthorized' });
     const { id } = req.params;
     const result = await pool.query('SELECT * FROM havrouta WHERE id = $1', [id]);
     
@@ -3017,6 +3106,7 @@ app.post('/api/havrouta/create', async (req, res) => {
 // Créer une séance (admin + participant)
 app.post('/api/havrouta/seance', async (req, res) => {
   try {
+    if (((req.body && req.body.password) || (req.query && req.query.password) || req.get('x-admin-password')) !== ADMIN_PASSWORD) return res.json({ ok: false, error: 'Unauthorized' });
     const { havrouta_id, date, heure_debut, heure_fin, sujet, torah_details, notes } = req.body;
     
     const result = await pool.query(
