@@ -49,7 +49,7 @@ function init({ app, adminPassword, alerter }) {
   });
 
   // ─── 2. Anti-devinette du mot de passe admin ───
-  const echecs = new Map();   // ip -> { liste: [dates], bloqueJusqua }
+  const echecs = new Map();   // ip -> { liste: [{ t: date, h: empreinte }], bloqueJusqua }
   let derniereAlerte = 0;
   app.use((req, res, next) => {
     if (!ZONE_ADMIN.test(req.path)) return next();
@@ -63,8 +63,11 @@ function init({ app, adminPassword, alerter }) {
     }
     if (memeTexte(donne, adminPassword)) { echecs.delete(ip); return next(); }
 
-    e.liste = e.liste.filter(t => now - t < FENETRE_MS);
-    e.liste.push(now);
+    // Un même mauvais mot de passe répété (page restée ouverte avec l'ancien) ne compte qu'une fois :
+    // seuls les essais DIFFÉRENTS comptent, comme un pirate qui devine.
+    const empreinte = crypto.createHash('sha256').update(String(donne)).digest('hex').slice(0, 16);
+    e.liste = e.liste.filter(x => now - x.t < FENETRE_MS && x.h !== empreinte);
+    e.liste.push({ t: now, h: empreinte });
     if (e.liste.length >= MAX_ECHECS) {
       e.bloqueJusqua = now + BLOCAGE_MS; e.liste = [];
       console.warn('🚫 [SÉCURITÉ] Appareil bloqué 30 min (mots de passe faux) :', ip);
