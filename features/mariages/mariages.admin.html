@@ -56,12 +56,25 @@
   #print-sheet { display: none; }
   @media print {
     @page { margin: 14mm; }
+    @page marriage-blank { size: A4 portrait; margin: 11mm 13mm; }
     main { display: none; }
     #print-sheet { display: block; font-size: 11pt; }
     #print-sheet h1 { font-size: 22pt; }
     #print-sheet h2 { margin: 14px 0 5px; break-after: avoid; }
     #print-sheet p { white-space: pre-wrap; overflow-wrap: anywhere; }
     #print-sheet [lang="he"] { font-size: 16pt; }
+    #print-sheet.blank-print { font-size: 9.5pt; line-height: 1.22; }
+    .paper-page { page: marriage-blank; break-after: page; }
+    .paper-page:last-child { break-after: auto; }
+    .paper-page > header { border-bottom: 1px solid #252841; padding-bottom: 2mm; }
+    #print-sheet .paper-page h1 { font-size: 16pt; margin: 0; }
+    #print-sheet .paper-page h2 { font-size: 11pt; margin: 3mm 0 1mm; }
+    .paper-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm 7mm; }
+    .paper-field { min-width: 0; break-inside: avoid; }
+    .paper-line { display: block; height: 5mm; border-bottom: 1px solid #666; }
+    .paper-equipment { display: grid; grid-template-columns: 1fr auto; gap: 1mm 7mm; align-items: end; }
+    .paper-check { white-space: nowrap; padding-bottom: 0.6mm; }
+    .paper-box { display: inline-block; width: 3.4mm; height: 3.4mm; border: 1px solid #222; vertical-align: middle; margin-right: 1.5mm; }
   }
 </style>
 </head>
@@ -90,6 +103,7 @@
         <div class="toolbar">
           <button class="primary" id="save">Enregistrer le dossier</button>
           <button type="button" id="pdf">Imprimer / Enregistrer en PDF</button>
+          <button type="button" id="blank-pdf">Imprimer le formulaire vierge</button>
         </div>
       </form>
     </section>
@@ -133,7 +147,7 @@ function feedback(message = '') {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ['save', 'logout', 'refresh', 'new-form', 'new-list', 'pdf']) get(id).disabled = value;
+  for (const id of ['save', 'logout', 'refresh', 'new-form', 'new-list', 'pdf', 'blank-pdf']) get(id).disabled = value;
   for (const fieldset of get('fields').children) fieldset.disabled = value;
 }
 
@@ -411,9 +425,58 @@ form.onsubmit = async event => {
   }
 };
 
+function printBlank() {
+  const sheet = get('print-sheet');
+  sheet.replaceChildren();
+  sheet.classList.add('blank-print');
+  const starts = ['Rendez-vous', 'Cortège et organisation', 'Matériel de la ‘houppa'];
+  const headings = ['Premier rendez-vous', 'Déroulé de la ‘houppa', 'Matériel, documents et suivi'];
+  let page;
+  for (const [title, fields] of schema) {
+    const pageIndex = starts.indexOf(title);
+    if (pageIndex !== -1 || !page) {
+      page = create('div');
+      page.className = 'paper-page';
+      const header = create('header');
+      header.append(create('h1', headings[pageIndex] || 'Mariages'), create('span', 'Beth Habad S Maurice'));
+      page.append(header);
+      sheet.append(page);
+    }
+    const section = create('section');
+    section.append(create('h2', title));
+    const equipment = fields.some(([key]) => key === 'cupsOwner');
+    const grid = create('div');
+    grid.className = equipment ? 'paper-equipment' : 'paper-columns';
+    for (const [key, label, type] of fields) {
+      const field = create('div');
+      field.className = 'paper-field';
+      if (type === 'checkbox') {
+        field.className = 'paper-check';
+        const box = create('span');
+        box.className = 'paper-box';
+        field.append(box, 'Prêt');
+      } else {
+        field.append(create('span', label));
+        const line = create('span');
+        line.className = 'paper-line';
+        field.append(line);
+        if (equipment && !key.endsWith('Owner')) field.classList.add('full');
+        if (['memorialNames', 'processionOrder', 'notes'].includes(key)) field.append(line.cloneNode());
+      }
+      grid.append(field);
+    }
+    section.append(grid);
+    page.append(section);
+  }
+  window.print();
+}
+
+get('blank-pdf').onclick = printBlank;
+
 get('pdf').onclick = () => {
   const answers = Object.fromEntries(new FormData(form));
   const print = get('print-sheet');
+  print.classList.remove('blank-print');
   print.replaceChildren(create('p', 'Beth Habad S Maurice · Dossier de mariage'), create('h1', couple(answers) || 'Premier rendez-vous'));
   for (const [title, fields] of schema) {
     const section = create('section');
@@ -433,7 +496,10 @@ get('pdf').onclick = () => {
   }
   window.print();
 };
-window.addEventListener('afterprint', () => get('print-sheet').replaceChildren());
+window.addEventListener('afterprint', () => {
+  get('print-sheet').classList.remove('blank-print');
+  get('print-sheet').replaceChildren();
+});
 
 get('form-tab').onclick = () => { if (!busy) showTab('form'); };
 get('list-tab').onclick = () => { if (!busy) { renderList(); showTab('list'); } };
