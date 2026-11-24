@@ -29,7 +29,12 @@
     ["weddingPlace", "Lieu et adresse"],
     ["witnessOne", "Nom et prénom du premier témoin"],
     ["witnessTwo", "Nom et prénom du second témoin"],
-    ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"]
+    ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"],
+    ["witnessOnePhone", "Témoin 1 : téléphone", "tel"],
+    ["witnessTwoPhone", "Témoin 2 : téléphone", "tel"],
+    ["witnessOneRelation", "Témoin 1 : lien de parenté éventuel"],
+    ["witnessTwoRelation", "Témoin 2 : lien de parenté éventuel"],
+    ["witnessChecks", "Témoins : lien entre eux et points à vérifier", "textarea"]
   ]],
   ["Déroulé et personnes à appeler sous la ‘houppa", [
     ["arrivalTime", "Heure d’arrivée des mariés", "time"],
@@ -55,7 +60,11 @@
     ["chuppahBlessing", "Birkat ha‘houppa (si prévue) — qui la récite et à quel moment ?", "textarea"],
     ["announcementLead", "Qui appelle les personnes et vérifie la prononciation des noms ?"],
     ["ceremonyCoordinator", "Référent sur place et téléphone"],
-    ["yichudPlan", "Salle de yi’houd et personnes à prévenir", "textarea"]
+    ["yichudPlan", "Salle de yi’houd et personnes à prévenir", "textarea"],
+    ["musicType", "Musique : orchestre, DJ ou autre"],
+    ["musicContact", "Prestataire, nom et téléphone"],
+    ["musicTracks", "Morceaux souhaités et moments de diffusion", "textarea"],
+    ["musicSetup", "Heure d’installation, balance et consignes techniques", "textarea"]
   ]],
   ["Matériel de la ‘houppa", [
     ["cupsOwner", "Coupes pour les bénédictions — qui l’apporte ?"],
