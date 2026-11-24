@@ -3145,7 +3145,7 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='mariages'){
     const frame = document.getElementById('mariages-frame');
     if(currentUser==='admin' && !frame.hasAttribute('src')){
-      frame.src = './features/mariages/mariages.admin.html';
+      frame.src = './features/mariages/mariages.admin.html?v=connexion-admin';
     }
   }
   else if(name==='demandes')chargerDemandes();
