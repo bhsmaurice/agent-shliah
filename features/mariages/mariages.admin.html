@@ -25,6 +25,8 @@
   legend { padding: 0 8px; font-weight: 700; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
   label { display: grid; gap: 5px; align-content: start; font-weight: 550; }
+  label.check { display: flex; align-items: center; align-self: end; min-height: 44px; margin-bottom: 1px; }
+  label.check input { width: 20px; height: 20px; accent-color: var(--accent); }
   .full { grid-column: 1 / -1; }
   input, select, textarea { min-width: 0; width: 100%; color: var(--ink); padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
   input[dir="rtl"] { font-size: 1.18em; }
@@ -138,6 +140,12 @@ function buildFields(documentStatuses) {
         control = create('select');
         if (type === 'document') control.add(new Option('À renseigner', ''));
         for (const value of type === 'document' ? documentStatuses : type) control.add(new Option(value));
+      } else if (type === 'checkbox') {
+        control = create('input');
+        control.type = 'checkbox';
+        control.value = 'Oui';
+        label.className = 'check';
+        label.prepend(control);
       } else if (type === 'textarea') {
         label.className = 'full';
         control = create('textarea');
@@ -150,7 +158,7 @@ function buildFields(documentStatuses) {
         if (type === 'hebrew') control.dir = 'rtl';
       }
       control.name = key;
-      label.append(control);
+      if (type !== 'checkbox') label.append(control);
       grid.append(label);
     }
     fieldset.append(create('legend', title), grid);
@@ -173,7 +181,11 @@ function showTab(name) {
 function openDossier(dossier) {
   current = dossier || { id: crypto.randomUUID(), revision: 0, answers: initial };
   for (const [, fields] of schema) {
-    for (const [key] of fields) form.elements.namedItem(key).value = current.answers[key] ?? initial[key] ?? '';
+    for (const [key, , type] of fields) {
+      const control = form.elements.namedItem(key);
+      if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
+      else control.value = current.answers[key] ?? initial[key] ?? '';
+    }
   }
   get('form-title').textContent = couple(current.answers) || 'Nouveau dossier';
   get('new-form').hidden = !current.revision;
@@ -306,9 +318,9 @@ get('pdf').onclick = () => {
     const section = create('section');
     section.append(create('h2', title));
     for (const [key, label, type] of fields) {
-      if (!answers[key]) continue;
+      if (!answers[key] && type !== 'checkbox') continue;
       const line = create('p');
-      const answer = create('bdi', type === 'date' ? displayDate(answers[key]) : answers[key]);
+      const answer = create('bdi', type === 'date' ? displayDate(answers[key]) : answers[key] || 'À préparer');
       if (type === 'hebrew') {
         answer.dir = 'rtl';
         answer.lang = 'he';
