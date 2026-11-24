@@ -89,7 +89,9 @@
 const get = id => document.getElementById(id);
 const form = get('dossier-form');
 const login = get('login');
-const endpoint = '/admin/mariages';
+const endpoint = location.origin === 'https://bhsmaurice.github.io'
+  ? 'https://agent-shliah-production.up.railway.app/admin/mariages'
+  : '/admin/mariages';
 let password = '';
 let schema = [];
 let dossiers = [];
