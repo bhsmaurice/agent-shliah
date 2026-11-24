@@ -22,6 +22,12 @@
   button:disabled { opacity: .6; cursor: default; }
   :focus-visible { outline: 3px solid #896dde; outline-offset: 2px; }
   fieldset, .dossier, #login { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
+  .couple-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .couple-fields fieldset { min-width: 0; border-color: var(--person-border); background: var(--person-bg); }
+  .person-groom { --person-border: #9dbdd8; --person-bg: #f1f7fc; --person-ink: #214e73; }
+  .person-bride { --person-border: #d9abc7; --person-bg: #fcf3f9; --person-ink: #78385f; }
+  .couple-fields legend { font-size: 1.2rem; color: var(--person-ink); }
+  @media (max-width: 720px) { .couple-fields { grid-template-columns: 1fr; gap: 0; } }
   legend { padding: 0 8px; font-weight: 700; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
   label { display: grid; gap: 5px; align-content: start; font-weight: 550; }
@@ -128,8 +134,26 @@ async function request(path, options = {}) {
   return data;
 }
 
+function arrangeSections(sections) {
+  const people = [
+    { key: 'groom', title: '‘Hatan — Futur marié', name: 'groomName', escorts: 'groomEscorts' },
+    { key: 'bride', title: 'Kallah — Future mariée', name: 'brideName', escorts: 'brideEscorts' }
+  ];
+  const allFields = sections.flatMap(([, fields]) => fields);
+  return sections.map(([title, fields]) => {
+    const person = people.find(item => fields.some(([key]) => key === item.name));
+    if (person) {
+      const escortField = allFields.find(([key]) => key === person.escorts);
+      return [person.title, escortField ? [...fields, escortField] : fields, person.key];
+    }
+    return [title, fields.filter(([key]) => !people.some(item => item.escorts === key))];
+  });
+}
+
 function buildFields(documentStatuses) {
-  for (const [title, fields] of schema) {
+  const coupleFields = create('div');
+  coupleFields.className = 'couple-fields';
+  for (const [title, fields, person] of schema) {
     const fieldset = create('fieldset');
     const grid = create('div');
     grid.className = 'fields';
@@ -162,7 +186,13 @@ function buildFields(documentStatuses) {
       grid.append(label);
     }
     fieldset.append(create('legend', title), grid);
-    get('fields').append(fieldset);
+    if (person) {
+      if (!coupleFields.isConnected) get('fields').append(coupleFields);
+      fieldset.classList.add('person-' + person);
+      coupleFields.append(fieldset);
+    } else {
+      get('fields').append(fieldset);
+    }
   }
 }
 
@@ -241,7 +271,7 @@ async function connect(adminPassword, automatic = false) {
     const data = await request('/dossiers');
     if (!schema.length) {
       const configuration = await request('/schema');
-      schema = configuration.schema;
+      schema = arrangeSections(configuration.schema);
       buildFields(configuration.documentStatuses);
     }
     dossiers = data.dossiers;
