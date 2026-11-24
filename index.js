@@ -780,7 +780,7 @@ async function collecterMessagesCerfa(from, text, messageId) {
         [from, messageId]
       );
       await sendWhatsApp(from, opened.rows.length
-        ? '🧾 Envoie les informations en autant de messages que tu veux. Écris « Terminé » pour voir le récapitulatif ou « Annuler » pour arrêter.'
+        ? '🧾 Envoie les informations en autant de messages que tu veux. Écris « Terminé », « Terminer », « Fini » ou « Fin » pour voir le récapitulatif. Écris « Annuler » pour arrêter.'
         : 'Tu as déjà un CERFA en cours. Continue à envoyer les infos, ou écris « Terminé » ou « Annuler ».');
       return true;
     }
@@ -797,7 +797,7 @@ async function collecterMessagesCerfa(from, text, messageId) {
       await sendWhatsApp(from, 'Saisie CERFA annulée.');
       return true;
     }
-    if (/^termin[eé][!.]?$/i.test(message)) {
+    if (/^(?:termin[eé]r?|fini|fin)[!.]?$/i.test(message)) {
       if (!collection.body.trim()) {
         await sendWhatsApp(from, 'Envoie d’abord les informations du don.');
         return true;
