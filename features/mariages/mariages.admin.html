@@ -30,7 +30,11 @@
   @media (max-width: 720px) { .couple-fields { grid-template-columns: 1fr; gap: 0; } }
   legend { padding: 0 8px; font-weight: 700; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
-  #fields > fieldset { padding: 20px; }
+  #fields > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
+  #fields > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
+  #fields > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
+  .section-links a { padding: 5px 9px; border: 1px solid #ded9ea; border-radius: 9px; background: #faf7ff; text-decoration: none; }
+  .section-links a:hover { background: #ede7fa; }
   .section-links { justify-content: flex-start; gap: 6px 14px; padding: 12px 0 18px; }
   .section-links a { color: var(--accent); font-size: .9rem; text-underline-offset: 3px; }
   #fields fieldset { scroll-margin-top: 12px; }
@@ -169,6 +173,7 @@ function arrangeSections(sections) {
   const allFields = sections.flatMap(([, fields]) => fields);
   const ceremonyGroups = [
     ['Cortège et organisation', ['arrivalTime', 'processionTime', 'processionOrder', 'ceremonyCoordinator', 'yichudPlan']],
+    ['Musique et sonorisation', ['musicType', 'musicContact', 'musicTracks', 'musicSetup']],
     ['Proches et hommages', ['grandmothers', 'grandfathers', 'otherHonorees', 'memorialNames', 'announcementLead']],
     ['Rôles sous la ‘houppa', ['tallitHolders', 'ketubahReader', 'firstBlessings', 'chuppahBlessing']],
     ['Chéva Berakhot', ['sheva1', 'sheva2', 'sheva3', 'sheva4', 'sheva5', 'sheva6', 'sheva7', 'shevaOrder']]
