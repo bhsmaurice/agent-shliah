@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mariages · Shliah Bot</title>
+<style>
+  :root { color-scheme: light; --ink: #252841; --muted: #575d76; --accent: #5138a0; --line: #ded9ea; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: #fff; color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 1024px; margin: auto; padding: 30px clamp(16px, 5vw, 48px) 64px; }
+  header, .toolbar, .dossier, nav { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+  h1 { margin: 2px 0 10px; font-size: clamp(2rem, 5vw, 3rem); }
+  h2 { font-size: 1.35rem; margin: 0 0 14px; }
+  p { margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  nav { justify-content: flex-start; padding: 12px 0 20px; }
+  button, input, textarea, select { font: inherit; }
+  button { cursor: pointer; padding: 9px 14px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--accent); font-weight: 640; }
+  button.primary, button[aria-selected="true"] { background: var(--accent); color: white; border-color: var(--accent); }
+  button:disabled { opacity: .6; cursor: default; }
+  :focus-visible { outline: 3px solid #896dde; outline-offset: 2px; }
+  fieldset, .dossier, #login { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
+  legend { padding: 0 8px; font-weight: 700; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
+  label { display: grid; gap: 5px; align-content: start; font-weight: 550; }
+  .full { grid-column: 1 / -1; }
+  input, select, textarea { min-width: 0; width: 100%; color: var(--ink); padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  input[dir="rtl"] { font-size: 1.18em; }
+  #login { max-width: 440px; }
+  #list-panel .toolbar { align-items: end; margin-bottom: 18px; }
+  #list-panel label { min-width: min(100%, 240px); }
+  #feedback:empty { display: none; }
+  #feedback { padding: 8px 12px; background: #f3effa; border-radius: 8px; }
+  #print-sheet { display: none; }
+  @media print {
+    @page { margin: 14mm; }
+    main { display: none; }
+    #print-sheet { display: block; font-size: 11pt; }
+    #print-sheet h1 { font-size: 22pt; }
+    #print-sheet h2 { margin: 14px 0 5px; break-after: avoid; }
+    #print-sheet p { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #print-sheet [lang="he"] { font-size: 16pt; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="muted">Shliah Bot · Beth Habad S Maurice</p><h1>Mariages</h1></div>
+    <button id="logout" type="button" hidden>Se déconnecter</button>
+  </header>
+  <p id="feedback" role="status" aria-live="polite"></p>
+  <form id="login">
+    <label>Mot de passe administrateur <input id="password" type="password" autocomplete="current-password" required></label>
+    <p></p><button class="primary">Se connecter</button>
+  </form>
+  <div id="workspace" hidden>
+    <nav aria-label="Mariages" role="tablist">
+      <button id="form-tab" type="button" role="tab" aria-controls="form-panel" aria-selected="true">Premier rendez-vous</button>
+      <button id="list-tab" type="button" role="tab" aria-controls="list-panel" aria-selected="false" tabindex="-1">Mariages à venir</button>
+    </nav>
+    <section id="form-panel" role="tabpanel" aria-labelledby="form-tab">
+      <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
+      <form id="dossier-form">
+        <p class="muted">Renseigne au moins un nom pour enregistrer le dossier. Tu peux compléter les autres informations plus tard.</p>
+        <div id="fields"></div>
+        <div class="toolbar">
+          <button class="primary" id="save">Enregistrer le dossier</button>
+          <button type="button" id="pdf">Imprimer / Enregistrer en PDF</button>
+        </div>
+      </form>
+    </section>
+    <section id="list-panel" role="tabpanel" aria-labelledby="list-tab" hidden>
+      <div class="toolbar">
+        <label>Rechercher un couple <input id="search" type="search" placeholder="Nom, prénom ou lieu"></label>
+        <label>Afficher <select id="filter"><option value="upcoming">Mariages à venir</option><option value="all">Tous les dossiers</option></select></label>
+        <button type="button" id="refresh">Actualiser</button>
+        <button type="button" id="new-list" class="primary">Nouveau dossier</button>
+      </div>
+      <div id="dossiers"></div>
+    </section>
+  </div>
+</main>
+<article id="print-sheet" aria-label="Dossier de mariage"></article>
+<script>
+'use strict';
+const get = id => document.getElementById(id);
+const form = get('dossier-form');
+const login = get('login');
+const endpoint = '/admin/mariages';
+let password = '';
+let schema = [];
+let dossiers = [];
+let current;
+let dirty = false;
+let busy = false;
+const initial = { status: 'À compléter' };
+
+function create(tag, content) {
+  const element = document.createElement(tag);
+  if (content) element.textContent = content;
+  return element;
+}
+
+function feedback(message = '') {
+  get('feedback').textContent = message;
+}
+
+function setBusy(value) {
+  busy = value;
+  for (const id of ['save', 'logout', 'refresh', 'new-form', 'new-list', 'pdf']) get(id).disabled = value;
+  for (const fieldset of get('fields').children) fieldset.disabled = value;
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(endpoint + path, {
+    ...options,
+    headers: { 'X-Admin-Password': password, ...(options.headers || {}) }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Le serveur est indisponible.');
+  return data;
+}
+
+function buildFields(documentStatuses) {
+  for (const [title, fields] of schema) {
+    const fieldset = create('fieldset');
+    const grid = create('div');
+    grid.className = 'fields';
+    for (const [key, title, type] of fields) {
+      const label = create('label', title);
+      let control;
+      if (Array.isArray(type) || type === 'document') {
+        control = create('select');
+        if (type === 'document') control.add(new Option('À renseigner', ''));
+        for (const value of type === 'document' ? documentStatuses : type) control.add(new Option(value));
+      } else if (type === 'textarea') {
+        label.className = 'full';
+        control = create('textarea');
+        control.rows = 3;
+        control.maxLength = 4000;
+      } else {
+        control = create('input');
+        control.type = type === 'hebrew' ? 'text' : type || 'text';
+        control.maxLength = 240;
+        if (type === 'hebrew') control.dir = 'rtl';
+      }
+      control.name = key;
+      label.append(control);
+      grid.append(label);
+    }
+    fieldset.append(create('legend', title), grid);
+    get('fields').append(fieldset);
+  }
+}
+
+function couple(answers) {
+  return [answers.groomName, answers.brideName].filter(Boolean).join(' et ');
+}
+
+function showTab(name) {
+  for (const tab of ['form', 'list']) {
+    get(tab + '-tab').setAttribute('aria-selected', String(tab === name));
+    get(tab + '-tab').tabIndex = tab === name ? 0 : -1;
+    get(tab + '-panel').hidden = tab !== name;
+  }
+}
+
+function openDossier(dossier) {
+  current = dossier || { id: crypto.randomUUID(), revision: 0, answers: initial };
+  for (const [, fields] of schema) {
+    for (const [key] of fields) form.elements.namedItem(key).value = current.answers[key] ?? initial[key] ?? '';
+  }
+  get('form-title').textContent = couple(current.answers) || 'Nouveau dossier';
+  get('new-form').hidden = !current.revision;
+  dirty = false;
+  showTab('form');
+  feedback();
+}
+
+function switchDossier(dossier) {
+  if (busy || (dirty && !window.confirm('Abandonner les modifications non enregistrées ?'))) return;
+  openDossier(dossier);
+  get('form-tab').focus();
+}
+
+const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeZone: 'UTC' });
+function displayDate(value) {
+  return dateFormat.format(new Date(value + 'T12:00:00Z'));
+}
+
+function renderList() {
+  const list = get('dossiers');
+  const search = get('search').value.trim().toLocaleLowerCase('fr');
+  const today = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const part = key => today.find(item => item.type === key).value;
+  const todayDate = [part('year'), part('month'), part('day')].join('-');
+  list.replaceChildren();
+  for (const dossier of dossiers) {
+    const data = dossier.answers;
+    const upcoming = !['Célébré', 'Annulé'].includes(data.status) && (!data.weddingDate || data.weddingDate >= todayDate);
+    if (get('filter').value === 'upcoming' && !upcoming) continue;
+    if (![couple(data), data.groomHebrew, data.brideHebrew, data.weddingPlace].join(' ').toLocaleLowerCase('fr').includes(search)) continue;
+    const row = create('article');
+    row.className = 'dossier';
+    const info = create('div');
+    info.append(create('strong', couple(data)));
+    info.append(create('div', [data.weddingDate ? displayDate(data.weddingDate) : 'Date à fixer', data.weddingTime, data.weddingPlace, data.status].filter(Boolean).join(' · ')));
+    if (data.nextMeeting) info.append(create('div', 'Prochain rendez-vous le ' + displayDate(data.nextMeeting)));
+    const open = create('button', 'Ouvrir le dossier');
+    open.type = 'button';
+    open.onclick = () => switchDossier(dossier);
+    row.append(info, open);
+    list.append(row);
+  }
+  if (!list.children.length) list.append(create('p', search ? 'Aucun couple ne correspond à la recherche.' : 'Aucun dossier à afficher.'));
+}
+
+login.onsubmit = async event => {
+  event.preventDefault();
+  const submit = login.querySelector('button');
+  submit.disabled = true;
+  password = get('password').value;
+  try {
+    const data = await request('/dossiers');
+    if (!schema.length) {
+      const configuration = await request('/schema');
+      schema = configuration.schema;
+      buildFields(configuration.documentStatuses);
+    }
+    dossiers = data.dossiers;
+    openDossier();
+    renderList();
+    login.reset();
+    login.hidden = true;
+    get('logout').hidden = false;
+    get('workspace').hidden = false;
+    get('form-tab').focus();
+  } catch (error) {
+    password = '';
+    feedback(error.message);
+  } finally {
+    submit.disabled = false;
+  }
+};
+
+get('logout').onclick = () => {
+  if (dirty && !window.confirm('Abandonner les modifications non enregistrées ?')) return;
+  password = '';
+  dossiers = [];
+  current = undefined;
+  dirty = false;
+  form.reset();
+  get('search').value = '';
+  get('dossiers').replaceChildren();
+  get('print-sheet').replaceChildren();
+  get('workspace').hidden = true;
+  get('logout').hidden = true;
+  login.hidden = false;
+  feedback();
+  get('password').focus();
+};
+
+form.oninput = () => { dirty = true; };
+window.addEventListener('beforeunload', event => {
+  if (dirty) event.preventDefault();
+});
+
+form.onsubmit = async event => {
+  event.preventDefault();
+  if (busy) return;
+  const answers = Object.fromEntries(new FormData(form));
+  if (!couple({ groomName: answers.groomName.trim(), brideName: answers.brideName.trim() })) {
+    feedback('Renseigne au moins un des deux noms.');
+    form.elements.groomName.focus();
+    return;
+  }
+  setBusy(true);
+  try {
+    const { dossier } = await request('/dossiers/' + current.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision: current.revision, answers })
+    });
+    dossiers = [...dossiers.filter(item => item.id !== dossier.id), dossier];
+    dossiers.sort((a, b) => (a.answers.weddingDate || '9999').localeCompare(b.answers.weddingDate || '9999'));
+    openDossier(dossier);
+    renderList();
+    feedback('Dossier enregistré.');
+  } catch (error) {
+    feedback(error.message);
+  } finally {
+    setBusy(false);
+  }
+};
+
+get('pdf').onclick = () => {
+  const answers = Object.fromEntries(new FormData(form));
+  const print = get('print-sheet');
+  print.replaceChildren(create('p', 'Beth Habad S Maurice · Dossier de mariage'), create('h1', couple(answers) || 'Premier rendez-vous'));
+  for (const [title, fields] of schema) {
+    const section = create('section');
+    section.append(create('h2', title));
+    for (const [key, label, type] of fields) {
+      if (!answers[key]) continue;
+      const line = create('p');
+      const answer = create('bdi', type === 'date' ? displayDate(answers[key]) : answers[key]);
+      if (type === 'hebrew') {
+        answer.dir = 'rtl';
+        answer.lang = 'he';
+      }
+      line.append(create('strong', label + ' — '), answer);
+      section.append(line);
+    }
+    if (section.children.length > 1) print.append(section);
+  }
+  window.print();
+};
+window.addEventListener('afterprint', () => get('print-sheet').replaceChildren());
+
+get('form-tab').onclick = () => { if (!busy) showTab('form'); };
+get('list-tab').onclick = () => { if (!busy) { renderList(); showTab('list'); } };
+for (const tab of ['form', 'list']) {
+  get(tab + '-tab').onkeydown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || busy) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 'form' : event.key === 'End' ? 'list' : tab === 'form' ? 'list' : 'form';
+    get(next + '-tab').click();
+    get(next + '-tab').focus();
+  };
+}
+get('search').oninput = renderList;
+get('filter').onchange = renderList;
+get('new-form').onclick = () => switchDossier();
+get('new-list').onclick = () => switchDossier();
+get('refresh').onclick = async () => {
+  setBusy(true);
+  try {
+    dossiers = (await request('/dossiers')).dossiers;
+    renderList();
+    feedback();
+  } catch (error) {
+    feedback(error.message);
+  } finally {
+    setBusy(false);
+  }
+};
+</script>
+</body>
+</html>
