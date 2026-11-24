@@ -1573,40 +1573,20 @@ async function envoyerEmailDemande(type, phone, texteLibre) {
   });
   if (!r.ok) console.error('Email error:', r.error);
 }
-async function envoyerBackupCerfa({ numero, nom, prenom, adresse, montant, mode, dateVersement, email }, pdfBuffer) {
-  const r = await envoyerEmail({
-    subject: `🧾 Sauvegarde Cerfa ${numero}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:500px;"><h2 style="color:#1a3a6b;">🧾 Sauvegarde automatique — Cerfa ${numero}</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Donateur</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${prenom || ''} ${nom || ''}</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Adresse</td><td style="padding:8px;border-bottom:1px solid #eee;">${adresse || ''}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Montant</td><td style="padding:8px;border-bottom:1px solid #eee;"><strong>${montant} €</strong></td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;color:#666;">Mode</td><td style="padding:8px;border-bottom:1px solid #eee;">${mode || ''}</td></tr><tr><td style="padding:8px;color:#666;">Date du don</td><td style="padding:8px;">${dateVersement || ''}</td></tr></table><p style="color:#999;font-size:12px;margin-top:16px;">Ce mail est généré automatiquement à chaque Cerfa créé, pour garder une copie de secours indépendante.</p></div>`,
-    attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
-  });
-  if (!r.ok) console.error('Backup Cerfa email error:', r.error);
+const cerfaEmail = require('./features/cerfa/cerfa-email').init({
+  app, pool, publicBaseUrl: PUBLIC_BASE_URL, sendEmail: envoyerEmail
+});
+
+async function envoyerBackupCerfa(data, pdfBuffer) {
+  const result = await cerfaEmail.send(data, pdfBuffer, true);
+  if (result && !result.ok) console.error('Backup Cerfa email error:', result.error);
 }
-function modeAffichageDonateur(mode) {
-  if (!mode) return 'votre don';
-  const m = mode.toLowerCase();
-  if (m.includes('espèce')) return 'espèces';
-  if (m.includes('chèque')) return 'chèque';
-  if (m === 'virement' || m === 'prélèvement') return m;
-  if (m.includes('carte') || m.includes('virement') || m.includes('prélèvement')) return 'carte bancaire';
-  return mode;
+
+async function envoyerCerfaDonateur(data, pdfBuffer) {
+  const result = await cerfaEmail.send(data, pdfBuffer);
+  if (result && !result.ok) console.error('Email donateur error:', result.error);
 }
-async function envoyerCerfaDonateur({ numero, nom, prenom, montant, mode, email }, pdfBuffer) {
-  if (!email) return;
-  const montantAffiche = Number(montant).toLocaleString('fr-FR');
-  const r = await envoyerEmail({
-    to: email,
-    subject: `Votre reçu fiscal — ${ASSOCIATION.nom}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:500px;line-height:1.5;">
-      <p>Bonjour ${prenom || ''} ${nom || ''},</p>
-      <p>Votre don de ${montantAffiche} € par ${modeAffichageDonateur(mode)} en faveur de l'association ${ASSOCIATION.nom} est confirmé.</p>
-      <p>Nous vous remercions chaleureusement pour votre soutien et vous souhaitons le meilleur dans tous les domaines !</p>
-      <p>Vous trouverez ci-joint votre reçu fiscal.</p>
-      <p>Si vous rencontrez des difficultés pour consulter votre reçu, n'hésitez pas à nous contacter directement.</p>
-    </div>`,
-    attachments: [{ filename: `Cerfa_${numero}.pdf`, content: pdfBuffer }],
-  });
-  if (!r.ok) console.error('Email donateur error:', r.error);
-}
+
 function getSignature() { const now = new Date(); return now.getDay() === 5 ? "Chabbat Chalom !" : "Kol Touv !"; }
 async function envoyerRelancePaiement(p) {
   let prenom = null;
