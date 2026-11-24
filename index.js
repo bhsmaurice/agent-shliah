@@ -79,6 +79,11 @@ async function initDB() {
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
   )`);
   await pool.query('CREATE INDEX IF NOT EXISTS cerfa_whatsapp_drafts_expiry ON cerfa_whatsapp_drafts (expires_at)');
+  await pool.query(`CREATE TABLE IF NOT EXISTS cerfa_whatsapp_collection (
+    sender TEXT PRIMARY KEY, opening_message TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
+    last_message TEXT, finishing BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
+  )`);
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS email TEXT').catch(()=>{});
   await pool.query('ALTER TABLE cerfa_receipts ADD COLUMN IF NOT EXISTS phone TEXT').catch(()=>{});
   await pool.query(`CREATE TABLE IF NOT EXISTS paiements (id SERIAL PRIMARY KEY, phone TEXT NOT NULL, montant NUMERIC(10,2) NOT NULL, description TEXT, lien_paiement TEXT, statut TEXT DEFAULT 'en_attente', nb_relances INTEGER DEFAULT 0, derniere_relance TIMESTAMP, delai_relance_jours INTEGER DEFAULT 3, max_relances INTEGER DEFAULT 3, created_at TIMESTAMP DEFAULT NOW())`);
@@ -298,7 +303,7 @@ function parseAdminCerfaPaymentMode(line) {
 
 const cerfaLabels = {
   montant: 'Montant', nom: 'Nom', prenom: 'Prénom', societe: 'Société',
-  adresse: 'Adresse', email: 'E-mail', siret: 'SIRET', siren: 'SIREN',
+  adresse: 'Adresse', email: 'E-mail', siret: 'SIRET', siren: 'SIREN', contact: 'Contact',
   mode: 'Mode de paiement', dateDon: 'Date du don'
 };
 
@@ -308,7 +313,7 @@ function parseAdminCerfaMessage(rawText) {
   const aliases = {
     montant: 'montant', nom: 'nom', prenom: 'prenom', societe: 'societe', entreprise: 'societe',
     'raison sociale': 'societe', adresse: 'adresse', email: 'email', 'e-mail': 'email', mail: 'email',
-    siret: 'siret', siren: 'siren', mode: 'mode', paiement: 'mode',
+    siret: 'siret', siren: 'siren', gerant: 'contact', contact: 'contact', mode: 'mode', paiement: 'mode',
     'mode de paiement': 'mode', 'mode de versement': 'mode', date: 'dateDon', 'date du don': 'dateDon'
   };
   const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -343,6 +348,7 @@ function parseAdminCerfaMessage(rawText) {
     set(key, value);
   }
   const lines = rawText.replace(/^admin\s+cerfa(?:[ \t]+compl[eé]ter)?\b[ \t:]*/i, '').split(/\r?\n/);
+  let pendingCity;
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
@@ -350,7 +356,14 @@ function parseAdminCerfaMessage(rawText) {
     const key = labeled && aliases[normalize(labeled[1].trim())];
     if (typeof key === 'string') {
       if (labeled[2].trim()) parseValue(key, labeled[2].trim());
-    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) parseValue('email', line);
+    } else if (/^\d{5}\s+[^\d]/.test(line)) {
+      if (pendingCity && pendingCity !== line) throw new Error('Plusieurs villes sont indiquées. Écris une seule ligne « Adresse : ».');
+      pendingCity = line;
+    } else if (/\bcerfa\b/i.test(line)) {
+      const amounts = [...line.matchAll(/(\d+(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d{1,2})?)\s*(?:€|euros?\b)/gi)];
+      for (const [, amount] of amounts) parseValue('montant', amount);
+    } else if (/^(?:bonjour|bonsoir|salut|shalom|chalom|merci|(?:ça|ca) va)(?:[\s!?.,]|$)/i.test(line)) continue;
+    else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) parseValue('email', line);
     else if (/^(?:siret|siren)\s+\d/i.test(line)) parseValue(line.slice(0, 5).toLowerCase(), line.slice(5).trim());
     else if (/^\d{14}$/.test(line.replace(/\s/g, ''))) parseValue('siret', line);
     else if (/^(?:\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}-\d{2}-\d{2})$/.test(line)) parseValue('dateDon', line);
@@ -360,9 +373,18 @@ function parseAdminCerfaMessage(rawText) {
     else if (/\b(?:SASU?|SARL|EURL|SCI|SNC|société|association)\b/i.test(line)) parseValue('societe', line);
     else unknown.push(line);
   }
-  if (unknown.length > 1 || (unknown.length && data.nom)) throw new Error('Certaines lignes sont ambiguës. Utilise « Nom : », « Prénom : », « Société : » et « Adresse : ».');
-  if (unknown.length) {
-    const identity = unknown[0].replace(/^(mr|mme|m\.|mlle)\s+/i, '');
+  if (pendingCity) {
+    if (!data.adresse) parseValue('adresse', pendingCity);
+    else if (!/\b\d{5}\s+/.test(data.adresse)) {
+      const street = data.adresse;
+      delete data.adresse;
+      parseValue('adresse', street + ', ' + pendingCity);
+    }
+  }
+  const remaining = [...new Set(unknown)].filter(line => !data.societe || normalize(line) !== normalize(data.societe));
+  if (remaining.length > 1 || (remaining.length && data.nom)) throw new Error('Certaines lignes sont ambiguës. Utilise « Nom : », « Prénom : », « Société : » et « Adresse : ».');
+  if (remaining.length) {
+    const identity = remaining[0].replace(/^(mr|mme|m\.|mlle)\s+/i, '');
     if ((data.siret || data.siren) && !data.societe && !data.prenom) {
       parseValue('societe', identity);
     } else if (!data.prenom && identity === identity.toUpperCase()) {
@@ -727,10 +749,98 @@ async function choisirModeCerfa(from, id, mode) {
   }
 }
 
+async function creerBrouillonCerfa(from, data, messageId) {
+  data.dateDon ||= new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+  await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE expires_at<=NOW()');
+  const id = require('node:crypto').randomUUID();
+  const inserted = await pool.query(
+    'INSERT INTO cerfa_whatsapp_drafts (id, message_id, sender, data) VALUES ($1,$2,$3,$4) ON CONFLICT (message_id) DO NOTHING RETURNING id',
+    [id, messageId || id, from, data]
+  );
+  if (!inserted.rows.length) return;
+  try {
+    await envoyerRecapCerfa(from, id, data);
+  } catch (error) {
+    await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE id=$1 AND sender=$2', [id, from]).catch(() => {});
+    throw error;
+  }
+}
+
+async function collecterMessagesCerfa(from, text, messageId) {
+  if (!isAuthorizedAdminCerfa(from)) return false;
+  const message = text.trim();
+  const start = /^admin[ \t]+cerfa[ \t:]*$/i.test(message);
+  if (!start && isAdminCerfaTrigger(message)) return false;
+  try {
+    if (start) {
+      await pool.query('DELETE FROM cerfa_whatsapp_collection WHERE expires_at<=NOW()');
+      const opened = await pool.query(
+        `INSERT INTO cerfa_whatsapp_collection (sender, opening_message) VALUES ($1,$2)
+         ON CONFLICT (sender) DO NOTHING RETURNING sender`,
+        [from, messageId]
+      );
+      await sendWhatsApp(from, opened.rows.length
+        ? '🧾 Envoie les informations en autant de messages que tu veux. Écris « Terminé » pour voir le récapitulatif ou « Annuler » pour arrêter.'
+        : 'Tu as déjà un CERFA en cours. Continue à envoyer les infos, ou écris « Terminé » ou « Annuler ».');
+      return true;
+    }
+    const { rows: [collection] } = await pool.query(
+      'SELECT * FROM cerfa_whatsapp_collection WHERE sender=$1 AND expires_at>NOW()', [from]
+    );
+    if (!collection) return false;
+    if (collection.finishing) {
+      await sendWhatsApp(from, 'Je prépare déjà le récapitulatif.');
+      return true;
+    }
+    if (/^annuler$/i.test(message)) {
+      await pool.query('DELETE FROM cerfa_whatsapp_collection WHERE sender=$1 AND opening_message=$2 AND NOT finishing', [from, collection.opening_message]);
+      await sendWhatsApp(from, 'Saisie CERFA annulée.');
+      return true;
+    }
+    if (/^termin[eé][!.]?$/i.test(message)) {
+      if (!collection.body.trim()) {
+        await sendWhatsApp(from, 'Envoie d’abord les informations du don.');
+        return true;
+      }
+      const data = parseAdminCerfaMessage(collection.body);
+      const claimed = await pool.query(
+        `UPDATE cerfa_whatsapp_collection SET finishing=TRUE
+         WHERE sender=$1 AND opening_message=$2 AND body=$3 AND NOT finishing RETURNING sender`,
+        [from, collection.opening_message, collection.body]
+      );
+      if (!claimed.rows.length) {
+        await sendWhatsApp(from, 'La saisie a changé. Écris « Terminé » après ton dernier message.');
+        return true;
+      }
+      try {
+        await creerBrouillonCerfa(from, data, collection.opening_message + ':cerfa-collection');
+      } catch (error) {
+        await pool.query('UPDATE cerfa_whatsapp_collection SET finishing=FALSE WHERE sender=$1 AND opening_message=$2', [from, collection.opening_message]);
+        throw error;
+      }
+      await pool.query('DELETE FROM cerfa_whatsapp_collection WHERE sender=$1 AND opening_message=$2', [from, collection.opening_message]);
+      return true;
+    }
+    const appended = await pool.query(
+      `UPDATE cerfa_whatsapp_collection SET body=concat_ws(E'\\n', NULLIF(body,''), $3::text), last_message=$4
+       WHERE sender=$1 AND opening_message=$2 AND NOT finishing AND last_message IS DISTINCT FROM $4
+       AND length(body)+length($3::text)<=6000 RETURNING sender`,
+      [from, collection.opening_message, message, messageId]
+    );
+    if (!appended.rows.length && collection.last_message !== messageId) {
+      await sendWhatsApp(from, 'Ce message n’a pas été ajouté. Vérifie que la saisie est ouverte et que le texte ne dépasse pas 6 000 caractères.');
+    }
+    return true;
+  } catch (error) {
+    await sendWhatsApp(from, `CERFA : ${error.message}
+Tu peux envoyer des précisions, puis écrire « Terminé ». Pour recommencer, écris « Annuler », puis « Admin CERFA ».`);
+    return true;
+  }
+}
+
 async function handleAdminCerfaCommand(from, text, messageId, mediaId) {
   if (!isAdminCerfaTrigger(text)) return false;
   if (!isAuthorizedAdminCerfa(from)) return true;
-  let draftId;
   try {
     const supplement = /^admin\s+cerfa[ \t]+compl[eé]ter\b/i.test(text);
     const details = parseAdminCerfaMessage(text);
@@ -742,20 +852,9 @@ async function handleAdminCerfaCommand(from, text, messageId, mediaId) {
     if (supplement && !previous) throw new Error('Aucun brouillon à compléter. Recommence avec « Admin CERFA ».');
     if (previous && !cerfaMissing(previous.data).length) throw new Error('Annule d’abord le brouillon complet si tu souhaites le corriger, puis renvoie « Admin CERFA » avec les informations corrigées.');
     const data = { ...previous?.data, ...photo, ...details };
-    data.dateDon ||= new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
-    await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE expires_at<=NOW()');
-    const id = require('node:crypto').randomUUID();
-    const inserted = await pool.query(
-      'INSERT INTO cerfa_whatsapp_drafts (id, message_id, sender, data) VALUES ($1,$2,$3,$4) ON CONFLICT (message_id) DO NOTHING RETURNING id',
-      [id, messageId || id, from, data]
-    );
-    if (!inserted.rows.length) return true;
-    draftId = id;
-    await envoyerRecapCerfa(from, id, data);
-    draftId = null;
+    await creerBrouillonCerfa(from, data, messageId);
     if (previous) await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE id=$1 AND sender=$2', [previous.id, from]);
   } catch (error) {
-    if (draftId) await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE id=$1 AND sender=$2', [draftId, from]).catch(() => {});
     await sendWhatsApp(from, `CERFA : ${error.message}`);
   }
   return true;
@@ -1681,6 +1780,7 @@ app.post('/webhook', async (req, res) => {
       } catch(e) { console.error('Dedup error:', e.message); }
 
       taches.vu(from);
+      if (await collecterMessagesCerfa(from, text, msgId)) return;
       if (await handleAdminCerfaCommand(from, text, msgId)) return;
       if (await stories.handleText(from, text)) return;
       if (await newsletter.handleText(from, text)) return;
