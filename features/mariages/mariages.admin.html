@@ -232,11 +232,11 @@ function renderList() {
   if (!list.children.length) list.append(create('p', search ? 'Aucun couple ne correspond à la recherche.' : 'Aucun dossier à afficher.'));
 }
 
-login.onsubmit = async event => {
-  event.preventDefault();
+async function connect(adminPassword, automatic = false) {
   const submit = login.querySelector('button');
+  if (submit.disabled) return;
   submit.disabled = true;
-  password = get('password').value;
+  password = adminPassword;
   try {
     const data = await request('/dossiers');
     if (!schema.length) {
@@ -254,11 +254,32 @@ login.onsubmit = async event => {
     get('form-tab').focus();
   } catch (error) {
     password = '';
-    feedback(error.message);
+    if (!automatic) feedback(error.message);
   } finally {
     submit.disabled = false;
   }
+}
+
+login.onsubmit = event => {
+  event.preventDefault();
+  void connect(get('password').value);
 };
+
+function savedDashboardPassword() {
+  try {
+    if (window.parent === window || window.parent.document.getElementById('mariages-frame') !== window.frameElement) return '';
+    const session = JSON.parse(localStorage.getItem('shliah_session') || 'null');
+    if (session?.role !== 'admin' || !Number.isFinite(session.until) || session.until <= Date.now()) return '';
+    return localStorage.getItem('railway_admin_pw') || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+{
+  const savedPassword = savedDashboardPassword();
+  if (savedPassword) void connect(savedPassword, true);
+}
 
 get('logout').onclick = () => {
   if (dirty && !window.confirm('Abandonner les modifications non enregistrées ?')) return;
