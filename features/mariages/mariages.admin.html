@@ -30,6 +30,18 @@
   @media (max-width: 720px) { .couple-fields { grid-template-columns: 1fr; gap: 0; } }
   legend { padding: 0 8px; font-weight: 700; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
+  #fields > fieldset { padding: 20px; }
+  .section-links { justify-content: flex-start; gap: 6px 14px; padding: 12px 0 18px; }
+  .section-links a { color: var(--accent); font-size: .9rem; text-underline-offset: 3px; }
+  #fields fieldset { scroll-margin-top: 12px; }
+  .equipment-grid { display: grid; gap: 8px; }
+  .equipment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #faf8fd; }
+  .equipment-row:has(input:checked) { background: #f1faf5; border-color: #bfdaca; }
+  .equipment-row label.check { gap: 7px; min-height: 44px; }
+  .equipment-grid > .full { margin-top: 6px; }
+  #dossier-form > .toolbar { position: sticky; bottom: 0; z-index: 1; padding: 12px 0; border-top: 1px solid var(--line); background: #fff; }
+  textarea { resize: vertical; }
+  @media (max-width: 480px) { #fields > fieldset { padding: 12px; } }
   label { display: grid; gap: 5px; align-content: start; font-weight: 550; }
   label.check { display: flex; align-items: center; align-self: end; min-height: 44px; margin-bottom: 1px; }
   label.check input { width: 20px; height: 20px; accent-color: var(--accent); }
@@ -73,6 +85,7 @@
       <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
       <form id="dossier-form">
         <p class="muted">Renseigne au moins un nom pour enregistrer le dossier. Tu peux compléter les autres informations plus tard.</p>
+        <nav id="section-links" class="section-links" aria-label="Accès rapide aux rubriques"></nav>
         <div id="fields"></div>
         <div class="toolbar">
           <button class="primary" id="save">Enregistrer le dossier</button>
@@ -140,25 +153,45 @@ function arrangeSections(sections) {
     { key: 'bride', title: 'Kallah — Future mariée', name: 'brideName', escorts: 'brideEscorts' }
   ];
   const allFields = sections.flatMap(([, fields]) => fields);
-  return sections.map(([title, fields]) => {
+  const ceremonyGroups = [
+    ['Cortège et organisation', ['arrivalTime', 'processionTime', 'processionOrder', 'ceremonyCoordinator', 'yichudPlan']],
+    ['Proches et hommages', ['grandmothers', 'grandfathers', 'otherHonorees', 'memorialNames', 'announcementLead']],
+    ['Rôles sous la ‘houppa', ['tallitHolders', 'ketubahReader', 'firstBlessings', 'chuppahBlessing']],
+    ['Chéva Berakhot', ['sheva1', 'sheva2', 'sheva3', 'sheva4', 'sheva5', 'sheva6', 'sheva7', 'shevaOrder']]
+  ];
+  return sections.flatMap(([title, fields]) => {
     const person = people.find(item => fields.some(([key]) => key === item.name));
     if (person) {
       const escortField = allFields.find(([key]) => key === person.escorts);
-      return [person.title, escortField ? [...fields, escortField] : fields, person.key];
+      return [[person.title, escortField ? [...fields, escortField] : fields, person.key]];
     }
-    return [title, fields.filter(([key]) => !people.some(item => item.escorts === key))];
+    if (fields.some(([key]) => key === 'sheva1')) {
+      const grouped = ceremonyGroups.map(([name, keys]) => [name, keys.flatMap(key => fields.filter(([id]) => id === key))]);
+      const other = fields.filter(([key]) => !people.some(person => person.escorts === key) && !ceremonyGroups.some(([, keys]) => keys.includes(key)));
+      return other.length ? [...grouped, [title, other]] : grouped;
+    }
+    return [[title, fields]];
   });
 }
 
 function buildFields(documentStatuses) {
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
-  for (const [title, fields, person] of schema) {
+  for (const [index, [title, fields, person]] of schema.entries()) {
     const fieldset = create('fieldset');
     const grid = create('div');
-    grid.className = 'fields';
-    for (const [key, title, type] of fields) {
-      const label = create('label', title);
+    const equipment = fields.some(([key]) => key === 'cupsOwner');
+    const rows = new Map();
+    const quickLink = create('a', title.split(' — ')[0]);
+    fieldset.id = 'section-' + index;
+    quickLink.href = '#' + fieldset.id;
+    get('section-links').append(quickLink);
+    grid.className = equipment ? 'equipment-grid' : 'fields';
+    for (const [key, fieldTitle, type] of fields) {
+      const item = equipment && key.match(/^(.+?)(Owner|Ready)$/);
+      const labelText = item?.[2] === 'Owner' ? fieldTitle.split(' — ')[0]
+        : item?.[2] === 'Ready' ? 'Prêt' : fieldTitle.replace(/^Chéva Berakhot — (bénédiction \d+), nom de la personne$/, (_, blessing) => blessing[0].toUpperCase() + blessing.slice(1));
+      const label = create('label', labelText);
       let control;
       if (Array.isArray(type) || type === 'document') {
         control = create('select');
@@ -173,7 +206,7 @@ function buildFields(documentStatuses) {
       } else if (type === 'textarea') {
         label.className = 'full';
         control = create('textarea');
-        control.rows = 3;
+        control.rows = 2;
         control.maxLength = 4000;
       } else {
         control = create('input');
@@ -183,7 +216,24 @@ function buildFields(documentStatuses) {
       }
       control.name = key;
       if (type !== 'checkbox') label.append(control);
-      grid.append(label);
+      if (item) {
+        let row = rows.get(item[1]);
+        if (!row) {
+          row = create('div');
+          row.className = 'equipment-row';
+          rows.set(item[1], row);
+          grid.append(row);
+        }
+        if (item[2] === 'Owner') {
+          control.placeholder = 'Qui l’apporte ?';
+          control.setAttribute('aria-label', fieldTitle);
+        } else {
+          control.setAttribute('aria-label', fieldTitle);
+        }
+        row.append(label);
+      } else {
+        grid.append(label);
+      }
     }
     fieldset.append(create('legend', title), grid);
     if (person) {
