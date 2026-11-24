@@ -27,12 +27,15 @@
     ["weddingDate", "Date de la ‘houppa", "date"],
     ["weddingTime", "Heure de la ‘houppa", "time"],
     ["weddingPlace", "Lieu et adresse"],
-    ["witnessOne", "Nom et prénom du premier témoin"],
-    ["witnessTwo", "Nom et prénom du second témoin"],
-    ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"],
-    ["witnessOnePhone", "Témoin 1 : téléphone", "tel"],
-    ["witnessTwoPhone", "Témoin 2 : téléphone", "tel"],
-    ["witnessChecks", "Témoins : lien entre eux et points à vérifier", "textarea"]
+    ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"]
+  ]],
+  ["Témoins", [
+    ["witnessOne", "Témoin 1 : nom"],
+    ["witnessOneFirstName", "Témoin 1 : prénom"],
+    ["witnessOnePhone", "Témoin 1 : numéro de téléphone", "tel"],
+    ["witnessTwo", "Témoin 2 : nom"],
+    ["witnessTwoFirstName", "Témoin 2 : prénom"],
+    ["witnessTwoPhone", "Témoin 2 : numéro de téléphone", "tel"]
   ]],
   ["Déroulé et personnes à appeler sous la ‘houppa", [
     ["arrivalTime", "Heure d’arrivée des mariés", "time"],
@@ -95,6 +98,7 @@
     ["otherDocuments", "Autres documents à demander, pièces reçues ou précisions", "textarea"]
   ]],
   ["Suivi", [
+    ["witnessChecks", "Notes et vérifications sur les témoins", "textarea"],
     ["checks", "Questions et noms à vérifier", "textarea"],
     ["notes", "Notes du rendez-vous et prochaines démarches", "textarea"]
   ]]
