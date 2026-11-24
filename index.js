@@ -330,7 +330,7 @@ function parseAdminCerfaMessage(rawText) {
     }
     if (key === 'mode') {
       value = parseAdminCerfaPaymentMode(value);
-      if (!value) throw new Error('Indique CB, virement, espèces, chèque, prélèvement ou autre.');
+      if (!value) return;
     }
     if (key === 'dateDon') {
       const french = value.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
@@ -655,6 +655,78 @@ async function lirePhotoCerfa(mediaId) {
   return parseAdminCerfaMessage(fields.split(/\r?\n/).filter(line => /^(?:Montant|Nom|Prénom|Société|Adresse|E-mail|SIRET|SIREN|Mode de paiement|Date du don)\s*:/i.test(line.trim())).join('\n'));
 }
 
+const cerfaPaymentOptions = {
+  cb: { title: 'CB', mode: 'Carte bancaire' },
+  virement: { title: 'Virement', mode: 'Virement' },
+  cheque: { title: 'Chèque', mode: 'Chèque' },
+  especes: { title: 'Espèces', mode: "Remise d'espèces" },
+  autre: { title: 'Autre', mode: 'Autre' }
+};
+
+async function envoyerRecapCerfa(from, id, data) {
+  const missing = cerfaMissing(data);
+  const preview = [
+    '🧾 CERFA à vérifier',
+    ...Object.entries(cerfaLabels).map(([key, label]) => {
+      const value = key === 'montant' && data.montant ? `${data.montant.toLocaleString('fr-FR')} €`
+        : key === 'dateDon' ? data.dateDon.split('-').reverse().join('/') : data[key];
+      return `${label} : ${value || (key === 'mode' ? 'à préciser' : '—')}`;
+    }),
+    !data.mode ? 'Choisis le mode de paiement ci-dessous.'
+      : missing.length ? `À compléter : ${missing.join(', ')}. Envoie « Admin CERFA compléter », puis les champs manquants.`
+        : 'Vérifie les informations, puis appuie sur Valider.'
+  ].join('\n');
+  let response;
+  if (!data.mode) {
+    response = await fetch(`https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: from,
+        type: 'interactive',
+        interactive: {
+          type: 'list',
+          body: { text: preview },
+          action: {
+            button: 'Choisir le mode',
+            sections: [
+              { title: 'Mode de paiement', rows: Object.entries(cerfaPaymentOptions).map(([key, option]) => ({
+                id: `cerfa_mode_${key}_${id}`, title: option.title
+              })) },
+              { title: 'Brouillon', rows: [{ id: `cerfa_cancel_${id}`, title: 'Annuler' }] }
+            ]
+          }
+        }
+      })
+    });
+  } else {
+    const buttons = [{ id: `cerfa_cancel_${id}`, title: 'Annuler' }];
+    if (!missing.length) buttons.unshift({ id: `cerfa_confirm_${id}`, title: 'Valider' });
+    response = await sendWhatsAppButtons(from, preview, buttons);
+  }
+  if (!response.ok) throw new Error('WhatsApp a refusé le récapitulatif. Vérifie la longueur des informations et réessaie.');
+}
+
+async function choisirModeCerfa(from, id, mode) {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE cerfa_whatsapp_drafts SET data=jsonb_set(data, '{mode}', to_jsonb($3::text))
+       WHERE id=$1 AND sender=$2 AND expires_at>NOW()
+       AND (data->>'mode' IS NULL OR data->>'mode'=$3)
+       RETURNING data`,
+      [id, from, mode]
+    );
+    if (!rows.length) {
+      await sendWhatsApp(from, 'Ce choix n’est plus disponible. Utilise le dernier récapitulatif du brouillon.');
+      return;
+    }
+    await envoyerRecapCerfa(from, id, rows[0].data);
+  } catch (error) {
+    await sendWhatsApp(from, `CERFA : ${error.message}`);
+  }
+}
+
 async function handleAdminCerfaCommand(from, text, messageId, mediaId) {
   if (!isAdminCerfaTrigger(text)) return false;
   if (!isAuthorizedAdminCerfa(from)) return true;
@@ -679,21 +751,7 @@ async function handleAdminCerfaCommand(from, text, messageId, mediaId) {
     );
     if (!inserted.rows.length) return true;
     draftId = id;
-    const missing = cerfaMissing(data);
-    const preview = [
-      '🧾 CERFA à vérifier',
-      ...Object.entries(cerfaLabels).map(([key, label]) => {
-        const value = key === 'montant' && data.montant ? `${data.montant.toLocaleString('fr-FR')} €`
-          : key === 'dateDon' ? data.dateDon.split('-').reverse().join('/') : data[key];
-        return `${label} : ${value || '—'}`;
-      }),
-      missing.length ? `À compléter : ${missing.join(', ')}. Envoie « Admin CERFA compléter », puis les champs manquants (ex. Montant : 100 €).`
-        : 'Vérifie les informations, puis appuie sur Valider.'
-    ].join('\n');
-    const buttons = [{ id: `cerfa_cancel_${id}`, title: 'Annuler' }];
-    if (!missing.length) buttons.unshift({ id: `cerfa_confirm_${id}`, title: 'Valider' });
-    const response = await sendWhatsAppButtons(from, preview, buttons);
-    if (!response.ok) throw new Error('WhatsApp a refusé le récapitulatif. Vérifie la longueur des informations et réessaie.');
+    await envoyerRecapCerfa(from, id, data);
     draftId = null;
     if (previous) await pool.query('DELETE FROM cerfa_whatsapp_drafts WHERE id=$1 AND sender=$2', [previous.id, from]);
   } catch (error) {
@@ -705,6 +763,8 @@ async function handleAdminCerfaCommand(from, text, messageId, mediaId) {
 
 async function handleAdminCerfaButton(from, buttonId) {
   if (!isAuthorizedAdminCerfa(from)) return;
+  const choice = /^cerfa_mode_(cb|virement|cheque|especes|autre)_([0-9a-f-]{36})$/.exec(buttonId);
+  if (choice) return choisirModeCerfa(from, choice[2], cerfaPaymentOptions[choice[1]].mode);
   const match = /^cerfa_(confirm|cancel)_([0-9a-f-]{36})$/.exec(buttonId);
   if (!match) return;
   const [, action, id] = match;
