@@ -32,8 +32,6 @@
     ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"],
     ["witnessOnePhone", "Témoin 1 : téléphone", "tel"],
     ["witnessTwoPhone", "Témoin 2 : téléphone", "tel"],
-    ["witnessOneRelation", "Témoin 1 : lien de parenté éventuel"],
-    ["witnessTwoRelation", "Témoin 2 : lien de parenté éventuel"],
     ["witnessChecks", "Témoins : lien entre eux et points à vérifier", "textarea"]
   ]],
   ["Déroulé et personnes à appeler sous la ‘houppa", [
