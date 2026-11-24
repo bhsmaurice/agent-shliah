@@ -278,45 +278,54 @@ function numberToFrenchWords(n) {
   return convert(intPart) + (intPart > 1 ? ' euros' : ' euro');
 }
 
+function parseAdminCerfaPaymentMode(line) {
+  const label = line.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/^mode(?:\s+de\s+(?:paiement|versement))?\s*:\s*/, '')
+    .replace(/[’']/g, "'").replace(/\s+/g, ' ').trim();
+  if (/^(?:c\.?\s*b\.?|carte(?: bancaire)?)$/.test(label)) return 'Carte bancaire';
+  if (/^virement(?: bancaire)?$/.test(label)) return 'Virement';
+  if (/^prelevement(?: bancaire| sepa)?$/.test(label)) return 'Prélèvement';
+  if (/^cheque(?: bancaire)?$/.test(label)) return 'Chèque';
+  if (/^(?:autre|autre moyen de paiement)$/.test(label)) return 'Autre';
+  if (/^(?:(?:en |remise d')?especes?|cash|liquide)$/.test(label)) return "Remise d'espèces";
+  return null;
+}
+
 function parseAdminCerfaMessage(rawText) {
   const withoutTrigger = rawText.replace(/^admin\s+cerfa/i, '').trim();
-  const lines = withoutTrigger.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = withoutTrigger.split('\n').map((line) => line.trim()).filter(Boolean);
+  const modes = 'CB, virement, espèces, chèque, prélèvement ou autre';
   if (lines.length < 4) {
-    throw new Error("Format: Admin CERFA puis 4 lignes -> montant / Nom Prénom / adresse / especes|cb|cheque (+ email et/ou date JJ/MM/AAAA facultatifs, dans n'importe quel ordre)");
+    throw new Error(`Format : Admin CERFA, puis montant, nom, adresse et mode (${modes}), une information par ligne. L’e-mail et la date sont facultatifs.`);
   }
-  const [montantLine, nomPrenomLine, adresseLine, modeLine, ...extraLines] = lines;
+  const [montantLine, nomPrenomLine, adresse, ...details] = lines;
   const montantMatch = montantLine.replace(',', '.').match(/(\d+(\.\d+)?)/);
   if (!montantMatch) throw new Error(`Montant introuvable dans : "${montantLine}"`);
   const montant = parseFloat(montantMatch[1]);
-  const nomParts = nomPrenomLine.replace(/^(mr|mme|m\.|mlle)\s+/i, '').trim().split(/\s+/);
-  const nom = nomParts[0];
-  const prenom = nomParts.slice(1).join(' ') || '-';
-  const adresse = adresseLine;
-  const modeLower = modeLine.toLowerCase();
-  let mode = "Remise d'espèces";
-  if (/cb|carte/.test(modeLower)) mode = 'Carte bancaire';
-  else if (/virement/.test(modeLower)) mode = 'Virement';
-  else if (/pr[eé]l[eè]vement/.test(modeLower)) mode = 'Prélèvement';
-  else if (/ch[eè]que/.test(modeLower)) mode = 'Chèque';
-  else if (/autre/.test(modeLower)) mode = 'Autre';
-  else if (/esp[eè]ce|cash/.test(modeLower)) mode = "Remise d'espèces";
-
+  const [nom, ...prenoms] = nomPrenomLine.replace(/^(mr|mme|m\.|mlle)\s+/i, '').trim().split(/\s+/);
+  const prenom = prenoms.join(' ') || '-';
+  let mode = null;
   let email = null;
   let dateDon = null;
-  for (const line of extraLines) {
-    if (!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
-      email = line;
+  for (const line of details) {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
+      email ||= line;
       continue;
     }
     const dateMatch = line.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
-    if (!dateDon && dateMatch) {
-      const [, jour, moisNum, annee] = dateMatch;
-      const j = jour.padStart(2, '0'), m = moisNum.padStart(2, '0');
-      dateDon = `${annee}-${m}-${j}`;
+    if (dateMatch) {
+      const [, jour, mois, annee] = dateMatch;
+      dateDon ||= `${annee}-${mois.padStart(2, '0')}-${jour.padStart(2, '0')}`;
       continue;
     }
+    const paymentMode = parseAdminCerfaPaymentMode(line);
+    if (!paymentMode) continue;
+    if (mode && mode !== paymentMode) {
+      throw new Error(`Indique un seul mode de paiement : ${modes}.`);
+    }
+    mode = paymentMode;
   }
-
+  if (!mode) throw new Error(`Mode de paiement manquant ou non reconnu. Indique ${modes} sur une ligne séparée.`);
   return { montant, nom, prenom, adresse, mode, email, dateDon };
 }
 
@@ -1262,6 +1271,7 @@ function modeAffichageDonateur(mode) {
   const m = mode.toLowerCase();
   if (m.includes('espèce')) return 'espèces';
   if (m.includes('chèque')) return 'chèque';
+  if (m === 'virement' || m === 'prélèvement') return m;
   if (m.includes('carte') || m.includes('virement') || m.includes('prélèvement')) return 'carte bancaire';
   return mode;
 }
