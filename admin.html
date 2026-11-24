@@ -3145,11 +3145,7 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='mariages'){
     const frame = document.getElementById('mariages-frame');
     if(currentUser==='admin' && !frame.hasAttribute('src')){
-      const base = getUrl() || 'https://agent-shliah-production.up.railway.app';
-      try {
-        const url = new URL(base + '/admin/mariages');
-        if (url.protocol === 'https:') frame.src = url.href;
-      } catch (_) { /* Une adresse Railway invalide reste à corriger dans Config. */ }
+      frame.src = './features/mariages/mariages.admin.html';
     }
   }
   else if(name==='demandes')chargerDemandes();
