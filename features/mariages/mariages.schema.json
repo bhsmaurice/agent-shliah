@@ -49,6 +49,7 @@
   ["Mariage civil et ‘houppa", [
     ["civilDate", "Date du mariage civil", "date"],
     ["weddingDate", "Date de la ‘houppa", "date"],
+    ["weddingDayPeriod", "Moment de la ‘houppa", ["", "En journée", "Après la tombée de la nuit"]],
     ["weddingTime", "Heure de la ‘houppa", "time"],
     ["weddingPlace", "Lieu et adresse"],
     ["customs", "Coutumes familiales et souhaits pour la cérémonie", "textarea"]

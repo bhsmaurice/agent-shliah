@@ -25,7 +25,8 @@
   fieldset, .dossier, #login { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
   .couple-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .wedding-date-block { margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #faf8fd; }
-  .wedding-date-block input { max-width: 240px; }
+  .wedding-date-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), max-content)); gap: 10px 16px; }
+  .wedding-date-controls input, .wedding-date-controls select { min-width: min(100%, 240px); }
   .wedding-date-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px 14px; margin-top: 10px; }
   .wedding-date-results bdi { margin-inline-start: 6px; font-size: 1.18rem; }
   .identity-block { border: 2px solid var(--accent); border-radius: 16px; padding: clamp(10px, 2vw, 18px); }
@@ -593,7 +594,11 @@ function weddingDateField(label, input) {
   results.setAttribute('aria-live', 'polite');
   input.setAttribute('aria-describedby', results.id);
   input.addEventListener('input', refreshWeddingHebrewDate);
-  block.append(label, results);
+  const controls = create('div');
+  controls.className = 'wedding-date-controls';
+  controls.id = 'wedding-date-controls';
+  controls.append(label);
+  block.append(controls, results);
   return block;
 }
 
@@ -601,15 +606,20 @@ function refreshWeddingHebrewDate() {
   const results = get('wedding-date-results');
   if (!results) return;
   const dates = weddingHebrewDates(form.elements.namedItem('weddingDate').value);
-  results.replaceChildren(...dates.map((value, index) => {
-    const line = create('div', index === 0 ? 'En journée' : 'Après la tombée de la nuit');
-    const date = create('bdi', value);
-    date.lang = 'he';
-    date.dir = 'rtl';
-    line.append(date);
-    return line;
-  }));
+  const period = form.elements.namedItem('weddingDayPeriod')?.value;
+  results.replaceChildren();
   results.hidden = !dates.length;
+  if (!dates.length) return;
+  if (!period) {
+    results.textContent = 'Choisis le moment de la ‘houppa pour afficher la date hébraïque.';
+    return;
+  }
+  const line = create('div', 'Date hébraïque');
+  const date = create('bdi', dates[period === 'En journée' ? 0 : 1]);
+  date.lang = 'he';
+  date.dir = 'rtl';
+  line.append(date);
+  results.append(line);
 }
 
 function showStep(index, moveFocus = false) {
@@ -708,7 +718,9 @@ function buildFields(documentStatuses) {
       if (Array.isArray(type) || type === 'document') {
         control = create('select');
         if (type === 'document') control.add(new Option('À renseigner', ''));
-        for (const value of type === 'document' ? documentStatuses : type) control.add(new Option(value));
+        for (const value of type === 'document' ? documentStatuses : type) {
+          control.add(new Option(key === 'weddingDayPeriod' && !value ? 'Choisir jour ou nuit…' : value, value));
+        }
       } else if (type === 'checkbox') {
         control = create('input');
         control.type = 'checkbox';
@@ -742,6 +754,12 @@ function buildFields(documentStatuses) {
       if (key === 'weddingDate') {
         label.firstChild.textContent = 'Date de la ‘houppa';
         identityBlock.before(weddingDateField(label, control));
+        continue;
+      }
+      if (key === 'weddingDayPeriod') {
+        control.setAttribute('aria-describedby', 'wedding-date-results');
+        control.addEventListener('change', refreshWeddingHebrewDate);
+        get('wedding-date-controls').append(label);
         continue;
       }
       if (key === 'ketoubaCityFrench') {
