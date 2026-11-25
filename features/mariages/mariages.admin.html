@@ -63,11 +63,13 @@
   .form-step > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
   .form-step > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
   .form-step > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
-  .section-links button { padding: 5px 9px; border: 1px solid #ded9ea; border-radius: 9px; background: #faf7ff; text-decoration: none; }
+  .section-links { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(115px, 1fr); align-items: stretch; gap: 10px; overflow-x: auto; padding: 8px 4px 15px; }
+  .section-links button { position: relative; display: grid; justify-items: center; align-content: start; gap: 5px; min-width: 0; padding: 8px 6px; border: 1px solid var(--line); border-radius: 11px; background: #faf7ff; text-align: center; font-size: .84rem; line-height: 1.25; }
+  .section-links button:not(:last-child)::after { content: ""; position: absolute; top: 19px; left: 100%; width: 12px; border-top: 2px solid var(--line); pointer-events: none; }
   .section-links button:hover { background: #ede7fa; }
-  .section-links { justify-content: flex-start; gap: 6px 14px; padding: 12px 0 18px; }
-  .section-links button { color: var(--accent); font-size: .9rem; }
   .section-links button[aria-current="step"] { color: white; background: var(--accent); border-color: var(--accent); }
+  .section-count { min-width: 24px; padding: 3px 5px; border-radius: 999px; background: #eee8fa; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .section-count[data-complete="true"] { color: #216746; background: #e3f4e9; }
   .step-heading { margin: 0 0 12px; font-size: 1.13rem; }
   .step-navigation { flex: 1 0 100%; }
   #fields fieldset { scroll-margin-top: 12px; }
@@ -115,8 +117,6 @@
   .wide-view h1 { font-size: clamp(2rem, 4vw, 2.5rem); }
   .wide-view .identity-block label { font-size: 1.075rem; }
   .wide-view .fields input, .wide-view .fields textarea, .wide-view .fields select { padding: 9px; }
-  .wide-view .section-links { gap: 8px; padding: 8px 0 16px; }
-  .wide-view .section-links button { padding: 9px 12px; }
   #print-sheet.one-page-print { display: block; position: fixed; left: -300vw; top: 0; }
   .one-page-paper { width: 280mm; height: 192mm; position: relative; overflow: hidden; }
   .one-page-content { width: 100%; position: absolute; inset: 0 auto auto 0; transform-origin: top left; color: #222; font: 8pt/1.23 system-ui, sans-serif; }
@@ -653,7 +653,10 @@ function showStep(index, moveFocus = false) {
   get('next-step').disabled = index === formSteps.length - 1;
   get('step-progress').textContent = 'Étape ' + (index + 1) + ' sur ' + formSteps.length;
   if (formSteps[index][0] === 'ketoubaWeekday') refreshKetoubaSummary();
-  if (moveFocus) formSteps[index][2].firstElementChild.focus();
+  if (moveFocus) {
+    formSteps[index][3].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    formSteps[index][2].firstElementChild.focus();
+  }
 }
 
 const questionControls = new Map();
@@ -688,6 +691,10 @@ function questionField(element, control, title, type) {
   return wrapper;
 }
 
+function needsResponse(value, type) {
+  return !value || (type === 'document' && ['À demander', 'Demandé'].includes(value));
+}
+
 function questionProgress(answers) {
   const skipped = new Set(answers.skippedQuestions);
   let total = 0;
@@ -696,7 +703,7 @@ function questionProgress(answers) {
     const value = answers[key]?.trim();
     if (skipped.has(key) || (type === 'document' && value === 'Sans objet')) continue;
     total++;
-    if (!value || (type === 'document' && ['À demander', 'Demandé'].includes(value))) remaining++;
+    if (needsResponse(value, type)) remaining++;
   }
   const percent = total ? Math.floor(100 * (total - remaining) / total) : 100;
   const pending = remaining === 1 ? '1 question restante' : remaining + ' questions restantes';
@@ -710,7 +717,8 @@ function readQuestionAnswers() {
 }
 
 function refreshQuestionProgress() {
-  for (const [key, { control, button, state, wrapper, title }] of questionControls) {
+  const missingByPage = new Map();
+  for (const [key, { control, button, state, wrapper, title, type }] of questionControls) {
     const skipped = skippedQuestions.has(key);
     control.hidden = skipped;
     control.disabled = skipped;
@@ -719,6 +727,17 @@ function refreshQuestionProgress() {
     button.hidden = !skipped && Boolean(control.value.trim());
     button.textContent = skipped ? 'Réactiver' : 'Pas de réponse attendue';
     button.setAttribute('aria-label', button.textContent + ' — ' + title);
+    if (!skipped && needsResponse(control.value.trim(), type)) {
+      const page = control.closest('.form-step');
+      missingByPage.set(page, (missingByPage.get(page) || 0) + 1);
+    }
+  }
+  for (const [, title, page, button, badge] of formSteps) {
+    const count = missingByPage.get(page) || 0;
+    badge.textContent = count ? String(count) : '✓';
+    badge.dataset.complete = String(count === 0);
+    const status = count ? count + (count === 1 ? ' question restante' : ' questions restantes') : 'étape complète';
+    button.setAttribute('aria-label', title + ' — ' + status);
   }
   get('question-progress').textContent = questionProgress(readQuestionAnswers());
 }
@@ -735,12 +754,16 @@ function buildFields(documentStatuses) {
     heading.tabIndex = -1;
     page.append(heading);
     container.append(page);
-    const button = create('button', title);
+    const button = create('button');
+    const badge = create('span');
+    badge.className = 'section-count';
+    badge.setAttribute('aria-hidden', 'true');
+    button.append(badge, create('span', title));
     button.type = 'button';
     button.setAttribute('aria-controls', page.id);
     button.onclick = () => showStep(index, true);
     get('section-links').append(button);
-    step.push(page, button);
+    step.push(page, button, badge);
   }
   let page = formSteps[0][2];
   const identityBlock = create('div');
