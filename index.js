@@ -1782,6 +1782,8 @@ app.post('/webhook', async (req, res) => {
       if (await taches.handleText(from, text)) return;
       // RADIO — lien YouTube (admin) → musique sur la web radio + clip
       if (await radio.handleText(from, text)) return;
+      // RADIO — s'inscrire / se désinscrire des nouveautés (tout le monde)
+      if (await radio.handleAbonnement(from, text)) return;
       // LETTRES SÉFER TORAH — l'admin transfère le message d'un parent
       if (await lettresWhatsapp.handle(from, text, message)) return;
       if (await handlePriveCommand(from, text)) return;

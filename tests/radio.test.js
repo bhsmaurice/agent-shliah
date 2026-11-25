@@ -158,3 +158,41 @@ test('Nouveautés : les plus récentes d\'abord, sans jingles ni fichiers hors l
     assert.equal(l[1].pochette, 'https://radio.test/art.jpg');
   } finally { global.fetch = ancien; }
 });
+
+test('Abonnement radio : phrases reconnues', () => {
+  assert.equal(R.demandeAbonnement('Je veux recevoir les nouveautés de la radio 🎵'), 'oui');
+  assert.equal(R.demandeAbonnement('Radio'), 'oui');
+  assert.equal(R.demandeAbonnement('stop radio'), 'stop');
+  assert.equal(R.demandeAbonnement('Désinscrire de la radio'), 'stop');
+  assert.equal(R.demandeAbonnement('la radio est super'), null);
+  assert.equal(R.demandeAbonnement('stop'), null);
+});
+
+test('Abonnement : inscription, puis « Prévenir les abonnés » envoie le modèle à chacun', async () => {
+  const envoyes = [], requetes = [];
+  const pool = { async query(sql, args) {
+    requetes.push({ sql, args });
+    if (/FROM contacts WHERE abonne_radio = TRUE/.test(sql) && /COUNT/.test(sql)) return { rows: [{ n: '2' }] };
+    if (/SELECT phone FROM contacts WHERE abonne_radio/.test(sql)) return { rows: [{ phone: '33611111111' }, { phone: '33622222222' }] };
+    if (/SELECT \* FROM radio_envois WHERE id/.test(sql)) return { rows: [{ id: 7, statut: 'ok', titre: 'Nigoun', auteur: 'Fried', radio: 'hayous', prevenus: null }] };
+    return { rows: [] };
+  } };
+  const ancien = global.fetch;
+  global.fetch = async (url, opts) => { if (String(url).includes('/messages')) envoyes.push(JSON.parse(opts.body)); return new Response(JSON.stringify({ messages: [{ id: 'x' }] })); };
+  try {
+    const radio = init({ app: { get() {}, post() {}, delete() {} }, pool, sendWhatsApp: async (to, t) => envoyes.push({ to, texte: t }), isAdmin: (f) => f === '33770241746', adminPassword: 'pw', whatsappToken: 't', phoneNumberId: 'p' });
+    assert.equal(await radio.handleAbonnement('33611111111', 'Je veux recevoir les nouveautés de la radio'), true);
+    const ins = requetes.find((q) => /INSERT INTO contacts/.test(q.sql));
+    assert.deepEqual(ins.args, ['33611111111', true]);
+    assert.match(envoyes.at(-1).texte, /inscrit/);
+    assert.equal(await radio.handleAbonnement('33611111111', 'bonjour'), false);
+    envoyes.length = 0;
+    await radio.handleBouton('33770241746', 'radio_prevenir_7');
+    const modeles = envoyes.filter((m) => m.type === 'template');
+    assert.deepEqual(modeles.map((m) => m.to), ['33611111111', '33622222222']);
+    assert.equal(modeles[0].template.name, 'radio_nouveaute');
+    assert.equal(modeles[0].template.components[0].parameters[0].text, 'Nigoun (Fried) sur Radio Hayous');
+    assert.match(envoyes.at(-1).texte, /2 abonnés prévenus/);
+    assert.ok(requetes.some((q) => /UPDATE radio_envois SET prevenus/.test(q.sql) && q.args[1] === 2));
+  } finally { global.fetch = ancien; }
+});

@@ -5419,6 +5419,12 @@ document.addEventListener('click', function(e) {
     e.innerHTML = '<span class="ra-led ' + (d.branche.ok ? 'ok' : 'ko') + '"></span><span>' + (d.branche.ok ? '<b>Radio branchée.</b> ' : '<b>Radio pas branchée.</b> ') + esc(d.branche.message) + '</span>' +
       '<a href="https://radio.habadsmaurice.com" target="_blank" rel="noopener">' + ic('external-link') + ' Écouter</a>';
     if (d.radios) NOMS = d.radios;
+    var st = (d.modele && d.modele.statut) || 'INCONNU';
+    var MOD = { APPROVED: ['ok', 'Message WhatsApp validé par Meta'], PENDING: ['', 'Message WhatsApp en attente de validation par Meta'], IN_APPEAL: ['', 'Message WhatsApp en attente de validation par Meta'], REJECTED: ['ko', 'Message WhatsApp refusé par Meta'], MISSING: ['ko', 'Message WhatsApp pas encore créé'], INCONNU: ['', 'État du message WhatsApp inconnu'] }[st] || ['', st];
+    document.getElementById('ra-abo').innerHTML = '<span class="ra-led ' + MOD[0] + '"></span><span><b>' + (d.abonnes || 0) + ' abonné' + ((d.abonnes || 0) > 1 ? 's' : '') + '</b> aux nouveautés · ' + esc(MOD[1]) + '</span>' +
+      (st === 'MISSING' || st === 'REJECTED' ? '<button class="ca-btn primary" id="ra-modele" style="margin-left:auto">' + ic('send') + 'Créer le message</button>' : '');
+    var bm = document.getElementById('ra-modele');
+    if (bm) bm.onclick = async function () { bm.disabled = true; try { var r = await api('/admin/radio/modele', {}); alert((r.ok ? '✓ ' : '❌ ') + r.message); chargerRadio(); } catch (e) { alert('❌ Erreur de connexion'); } bm.disabled = false; };
 
     var envois = d.envois || [];
     document.getElementById('ra-envois').innerHTML = '<h3>' + ic('history') + 'Derniers envois<span class="n">' + envois.length + '</span></h3>' +
@@ -5429,7 +5435,9 @@ document.addEventListener('click', function(e) {
           '<span>' + ic(x.origine === 'whatsapp' ? 'brand-whatsapp' : 'device-desktop') + ' ' + quand(x.created_at) + '</span>' +
           (x.source === 'youtube' ? '<span>' + ic('brand-youtube') + '</span>' : '<span>' + ic('file-music') + '</span>') +
           (x.auteur ? '<span>' + ic('user') + ' ' + esc(x.auteur) + '</span>' : '') +
-          '</div>' + (x.statut === 'erreur' && x.message ? '<div class="ra-err">' + esc(x.message) + '</div>' : '') + '</div></div>';
+          (x.prevenus ? '<span>' + ic('speakerphone') + ' ' + x.prevenus + ' prévenu' + (x.prevenus > 1 ? 's' : '') + '</span>' : '') +
+          '</div>' + (x.statut === 'erreur' && x.message ? '<div class="ra-err">' + esc(x.message) + '</div>' : '') + '</div>' +
+          (x.statut === 'ok' && !x.prevenus && d.abonnes ? '<button class="ca-btn" data-prev="' + x.id + '">' + ic('speakerphone') + 'Prévenir</button>' : '') + '</div>';
       }).join('') : '<div class="ca-empty">Rien encore.<br>Envoie un <b>lien YouTube</b> ou un <b>fichier audio</b> au bot sur WhatsApp, ou colle un lien ci-dessus.</div>');
 
     var clips = d.clips || [];
@@ -5467,6 +5475,12 @@ document.addEventListener('click', function(e) {
     btn.disabled = false;
   }
 
+  async function prevenir(btn) {
+    if (!confirm('Envoyer un message WhatsApp à tous les abonnés de la radio pour cette musique ?')) return;
+    btn.disabled = true;
+    try { var d = await api('/admin/radio/prevenir', { id: btn.dataset.prev }); alert((d.ok ? '✓ ' : '❌ ') + d.message); chargerRadio(); }
+    catch (e) { alert('❌ Erreur de connexion'); btn.disabled = false; }
+  }
   async function supprimer(id) {
     if (!confirm('Retirer ce clip de l\'onglet « Clips » ?')) return;
     try { var d = await api('/admin/radio/clips/' + id + '/supprimer', {}); if (d.ok) chargerRadio(); else alert('❌ Erreur'); }
@@ -5480,6 +5494,7 @@ document.addEventListener('click', function(e) {
     page.innerHTML = '<div class="inner">' +
       '<div class="ca-head"><div><h1>Radio</h1><p>Les musiques envoyées sur la web radio, et les clips.</p></div><button class="ca-btn" id="ra-refresh">' + ic('refresh') + 'Actualiser</button></div>' +
       '<div class="ra-etat" id="ra-etat"><span class="ra-led"></span>Chargement…</div>' +
+      '<div class="ra-etat" id="ra-abo"></div>' +
       '<div class="ca-add ra-add">' + ic('brand-youtube') + '<input id="ra-lien" placeholder="Colle un lien YouTube" aria-label="Lien YouTube">' +
         '<select id="ra-choix" aria-label="Radio"><option value="hayous">Radio Hayous</option><option value="nigounim">Radio Nigounim</option><option value="calme">Radio Calme</option><option value="clip">Clip seulement</option></select>' +
         '<button class="ca-btn primary" id="ra-envoyer">' + ic('send') + 'Envoyer</button></div>' +
@@ -5489,7 +5504,10 @@ document.addEventListener('click', function(e) {
     document.getElementById('ra-refresh').onclick = chargerRadio;
     document.getElementById('ra-envoyer').onclick = envoyer;
     document.getElementById('ra-lien').addEventListener('keydown', function (e) { if (e.key === 'Enter') envoyer(); });
-    page.addEventListener('click', function (e) { var b = e.target.closest('[data-suppr]'); if (b) supprimer(b.dataset.suppr); });
+    page.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-suppr]'); if (b) supprimer(b.dataset.suppr);
+      var p = e.target.closest('[data-prev]'); if (p) prevenir(p);
+    });
   }
 
   function init() {

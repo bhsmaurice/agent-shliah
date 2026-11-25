@@ -11,6 +11,12 @@
 //
 // À n'utiliser que pour les musiques dont on a l'accord de l'artiste.
 //
+// Abonnés (tout le monde) :
+//   « Je veux recevoir les nouveautés de la radio » / « radio »  → inscrit (contacts.abonne_radio)
+//   « stop radio »                                                → désinscrit
+//   Après chaque musique mise en ligne, le bot propose à l'admin « Prévenir les abonnés ? »
+//   (message modèle WhatsApp RADIO_WHATSAPP_TEMPLATE, « radio_nouveaute » par défaut, à faire valider par Meta)
+//
 // Page publique : GET /radio/clips  → liste des clips (pour l'onglet « Clips » de la radio)
 //
 // Variables Railway :
@@ -71,6 +77,16 @@ async function creerTables() {
   await ctx.pool.query(`CREATE TABLE IF NOT EXISTS radio_envois (
     id SERIAL PRIMARY KEY, source TEXT, origine TEXT, lien TEXT, titre TEXT, auteur TEXT, radio TEXT,
     statut TEXT DEFAULT 'en_cours', message TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), fini_le TIMESTAMPTZ)`);
+}
+async function colonnesAbonnes(essai = 0) {
+  try {
+    await ctx.pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS abonne_radio BOOLEAN DEFAULT FALSE');
+    await ctx.pool.query('ALTER TABLE radio_envois ADD COLUMN IF NOT EXISTS prevenus INTEGER');
+  } catch (e) {
+    // la table contacts est créée au démarrage par index.js : on réessaie un peu plus tard
+    if (essai < 5) setTimeout(() => colonnesAbonnes(essai + 1), 5000).unref();
+    else console.error('Radio — abonnés :', e.message);
+  }
 }
 async function noterEnvoi(champs) {
   try {
@@ -145,6 +161,90 @@ async function handleText(from, text) {
   return true;
 }
 
+// ─── Abonnés : recevoir les nouveautés de la radio ────────────
+const RADIO_PUBLIC = 'https://radio.habadsmaurice.com/public/hayous';
+function demandeAbonnement(text) {
+  const t = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(stop|arreter|arret|desabonner|desinscrire|desinscription)( moi)?( de| a)?( la)? radio$/.test(t) || t === 'radio stop') return 'stop';
+  if (t === 'radio' || /nouveautes de la radio|abonner a la radio|inscrire a la radio|abonnement radio|liste de diffusion radio/.test(t)) return 'oui';
+  return null;
+}
+async function handleAbonnement(from, text) {
+  if (!ctx) return false;
+  const quoi = demandeAbonnement(text);
+  if (!quoi) return false;
+  const oui = quoi === 'oui';
+  await ctx.pool.query('INSERT INTO contacts (phone, abonne_radio) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET abonne_radio = $2', [from, oui]);
+  await ctx.sendWhatsApp(from, oui
+    ? `✅ C'est noté, vous êtes inscrit !\n\n🎵 Vous recevrez un message ici à chaque nouvelle musique sur la radio du Beth Habad S Maurice.\n\n🎧 Écouter : ${RADIO_PUBLIC}\n\nPour arrêter, écrivez simplement : stop radio`
+    : `👍 C'est fait, vous ne recevrez plus les nouveautés de la radio.\n\nPour vous réinscrire, écrivez : radio`);
+  return true;
+}
+const modeleRadio = () => process.env.RADIO_WHATSAPP_TEMPLATE || 'radio_nouveaute';
+const TEXTE_MODELE = '🎵 Nouveau sur la radio du Beth Habad S Maurice : {{1}}\n\n🎧 Écoutez maintenant : ' + RADIO_PUBLIC + '\n\nPour ne plus recevoir ces messages, répondez : stop radio';
+async function nbAbonnes() {
+  try { return Number((await ctx.pool.query('SELECT COUNT(*) AS n FROM contacts WHERE abonne_radio = TRUE')).rows[0].n) || 0; } catch (e) { return 0; }
+}
+async function graph(chemin, options) {
+  const r = await fetch(`${GRAPH}/${chemin}`, { ...options, headers: { Authorization: `Bearer ${ctx.whatsappToken}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error((d.error && (d.error.error_user_msg || d.error.message)) || `HTTP ${r.status}`);
+  return d;
+}
+const compteWhatsApp = () => process.env.NEWSLETTER_WHATSAPP_ACCOUNT_ID || '1012876561295832';
+async function etatModele() {
+  try {
+    const d = await graph(`${compteWhatsApp()}/message_templates?name=${encodeURIComponent(modeleRadio())}&fields=name,status,language&limit=20`);
+    const m = (d.data || []).find((x) => x.name === modeleRadio() && x.language === 'fr');
+    return m ? m.status : 'MISSING';
+  } catch (e) { return 'INCONNU'; }
+}
+async function creerModele() {
+  return graph(`${compteWhatsApp()}/message_templates`, { method: 'POST', body: JSON.stringify({
+    name: modeleRadio(), language: 'fr', category: 'MARKETING',
+    components: [{ type: 'BODY', text: TEXTE_MODELE, example: { body_text: [['Hakafot Shniyot (Mendy Jerufi) sur Radio Hayous']] } }]
+  }) });
+}
+// Envoie le message modèle à tous les abonnés. Renvoie { envoyes, echecs }.
+async function prevenirAbonnes(texte, envoiId) {
+  const tels = (await ctx.pool.query('SELECT phone FROM contacts WHERE abonne_radio = TRUE')).rows.map((r) => r.phone);
+  let envoyes = 0, echecs = 0, derniereErreur = null;
+  for (const to of tels) {
+    try {
+      await graph(`${ctx.phoneNumberId}/messages`, { method: 'POST', body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'template',
+        template: { name: modeleRadio(), language: { code: 'fr' }, components: [{ type: 'body', parameters: [{ type: 'text', text: String(texte).replace(/\s+/g, ' ').slice(0, 200) }] }] } }) });
+      envoyes++;
+    } catch (e) { echecs++; derniereErreur = e.message; }
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  if (envoiId) await ctx.pool.query('UPDATE radio_envois SET prevenus = $2 WHERE id = $1', [envoiId, envoyes]).catch(() => {});
+  return { envoyes, echecs, total: tels.length, erreur: derniereErreur };
+}
+function texteNouveaute(e) {
+  const r = radios()[e.radio];
+  return `${e.titre || 'une nouvelle musique'}${e.auteur ? ` (${e.auteur})` : ''}${r ? ` sur ${r.nom}` : ''}`;
+}
+async function proposerPrevenir(from, envoiId) {
+  const n = await nbAbonnes();
+  if (!n || !envoiId) return;
+  await fetch(`${GRAPH}/${ctx.phoneNumberId}/messages`, { method: 'POST', headers: { Authorization: `Bearer ${ctx.whatsappToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to: from, type: 'interactive', interactive: { type: 'button',
+      body: { text: `📣 Prévenir les ${n} abonné${n > 1 ? 's' : ''} de la radio sur WhatsApp ?` },
+      action: { buttons: [{ type: 'reply', reply: { id: `radio_prevenir_${envoiId}`, title: '📣 Oui, prévenir' } }, { type: 'reply', reply: { id: 'radio_pasprevenir', title: 'Non merci' } }] } } }) }).catch(() => {});
+}
+async function gererPrevenir(from, id) {
+  if (id === 'radio_pasprevenir') { await ctx.sendWhatsApp(from, '👍 OK, personne n\'est prévenu.'); return; }
+  const envoiId = Number(id.replace('radio_prevenir_', ''));
+  const e = (await ctx.pool.query('SELECT * FROM radio_envois WHERE id = $1', [envoiId])).rows[0];
+  if (!e) { await ctx.sendWhatsApp(from, 'Je ne retrouve plus cette musique.'); return; }
+  if (e.prevenus) { await ctx.sendWhatsApp(from, `Les abonnés ont déjà été prévenus pour cette musique (${e.prevenus}).`); return; }
+  await ctx.sendWhatsApp(from, '📣 J\'envoie le message aux abonnés…');
+  const r = await prevenirAbonnes(texteNouveaute(e), envoiId);
+  await ctx.sendWhatsApp(from, r.envoyes
+    ? `✅ ${r.envoyes} abonné${r.envoyes > 1 ? 's' : ''} prévenu${r.envoyes > 1 ? 's' : ''}${r.echecs ? ` (${r.echecs} échec${r.echecs > 1 ? 's' : ''})` : ''}.`
+    : `❌ Le message n'est pas parti : ${r.erreur || 'aucun abonné'}.\n\nSi c'est le premier envoi, le modèle WhatsApp « ${modeleRadio()} » doit d'abord être validé par Meta (page admin > Radio).`);
+}
+
 function estFichierAudio(message) {
   if (message.type === 'audio') return !!(message.audio && message.audio.id) && !message.audio.voice;
   if (message.type === 'document') {
@@ -164,6 +264,7 @@ async function handleMedia(from, message) {
 async function handleBouton(from, id) {
   if (!ctx || !ctx.isAdmin(from)) return false;
   if (!String(id).startsWith('radio_')) return false;
+  if (id.startsWith('radio_prevenir_') || id === 'radio_pasprevenir') { await gererPrevenir(from, id); return true; }
   const s = sessions[from];
   if (!s) { await ctx.sendWhatsApp(from, "Je n'ai plus la musique en mémoire. Renvoie-moi le lien ou le fichier 🙂"); return true; }
   delete sessions[from];
@@ -184,18 +285,19 @@ async function handleBouton(from, id) {
   }
   await ctx.sendWhatsApp(from, `⏳ C'est parti pour ${radio.nom}… Je te préviens quand c'est en ligne (ça peut prendre 1 à 2 minutes).`);
   // Le travail continue en arrière-plan : WhatsApp n'attend pas.
-  lancerEnvoi(s, cle, 'whatsapp', (msg) => ctx.sendWhatsApp(from, msg));
+  lancerEnvoi(s, cle, 'whatsapp', (msg) => ctx.sendWhatsApp(from, msg), (envoiId) => proposerPrevenir(from, envoiId));
   return true;
 }
 
 // Démarre un envoi en arrière-plan et le note dans l'historique (page admin « Radio »)
-async function lancerEnvoi(s, cle, origine, dire) {
+async function lancerEnvoi(s, cle, origine, dire, apres) {
   const radio = radios()[cle];
   const id = await noterEnvoi({ source: s.source, origine, lien: s.lien, titre: s.filename, radio: cle });
   traiter(s, cle, radio)
     .then(async (r) => {
       await finirEnvoi(id, { statut: 'ok', titre: r.titre, auteur: r.auteur, message: r.playlist ? `Liste : ${r.playlist}` : null });
       if (dire) await dire(`✅ En ligne sur ${radio.nom} !\n\n🎵 ${r.titre}${r.auteur ? `\n👤 ${r.auteur}` : ''}${r.playlist ? `\n📋 Liste : ${r.playlist}` : ''}${s.source === 'youtube' ? '\n🎬 Clip ajouté dans « Clips »' : ''}`);
+      if (apres) await apres(id).catch(() => {});
     })
     .catch(async (e) => {
       console.error('Radio —', e.message);
@@ -464,9 +566,25 @@ function routes() {
     try {
       const envois = await ctx.pool.query('SELECT * FROM radio_envois ORDER BY created_at DESC LIMIT 60');
       const clips = await ctx.pool.query('SELECT * FROM radio_clips ORDER BY created_at DESC LIMIT 200');
-      res.json({ ok: true, branche, radios: Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.nom])),
+      const [abonnes, modele] = await Promise.all([nbAbonnes(), etatModele()]);
+      res.json({ ok: true, branche, abonnes, modele: { nom: modeleRadio(), statut: modele }, radios: Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.nom])),
         envois: envois.rows, clips: clips.rows.map((c) => ({ ...c, miniature: `https://i.ytimg.com/vi/${c.youtube_id}/mqdefault.jpg` })) });
     } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
+  });
+  // Créer le message modèle WhatsApp (à faire valider par Meta)
+  app.post('/admin/radio/modele', async (req, res) => {
+    if (!okPw(req)) return res.status(401).json({ ok: false });
+    try { await creerModele(); res.json({ ok: true, message: 'Modèle envoyé à Meta. La validation prend en général de quelques minutes à quelques heures.' }); }
+    catch (e) { res.json({ ok: false, message: e.message }); }
+  });
+  // Prévenir les abonnés d'une musique de l'historique
+  app.post('/admin/radio/prevenir', async (req, res) => {
+    if (!okPw(req)) return res.status(401).json({ ok: false });
+    const e = (await ctx.pool.query('SELECT * FROM radio_envois WHERE id = $1', [req.body && req.body.id])).rows[0];
+    if (!e || e.statut !== 'ok') return res.json({ ok: false, message: 'Musique introuvable ou pas encore en ligne.' });
+    if (e.prevenus) return res.json({ ok: false, message: `Déjà prévenus (${e.prevenus}).` });
+    const r = await prevenirAbonnes(texteNouveaute(e), e.id);
+    res.json({ ok: r.envoyes > 0, message: r.envoyes ? `${r.envoyes} abonné(s) prévenu(s)${r.echecs ? `, ${r.echecs} échec(s)` : ''}.` : `Rien n'est parti : ${r.erreur || 'aucun abonné'}.` });
   });
   // Coller un lien YouTube depuis l'ordinateur
   app.post('/admin/radio/lien', async (req, res) => {
@@ -489,12 +607,12 @@ function routes() {
 
 function init(options) {
   ctx = options;
-  creerTables().catch((e) => console.error('Radio — tables :', e.message));
+  creerTables().then(() => colonnesAbonnes()).catch((e) => console.error('Radio — tables :', e.message));
   routes();
   // On prépare yt-dlp à l'avance pour que le premier lien aille vite
   if (process.env.AZURACAST_API_KEY) setTimeout(() => ytdlp().catch((e) => console.error('Radio — yt-dlp :', e.message)), 20000).unref();
   console.log('Radio (WhatsApp → AzuraCast) prête');
-  return { handleText, handleMedia, handleBouton };
+  return { handleText, handleMedia, handleBouton, handleAbonnement };
 }
 
-module.exports = { init, _test: { nouveautes, viderCache: () => { cacheNouveautes = { quand: 0, liste: [] }; }, youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };
+module.exports = { init, _test: { demandeAbonnement, prevenirAbonnes, nouveautes, viderCache: () => { cacheNouveautes = { quand: 0, liste: [] }; }, youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };
