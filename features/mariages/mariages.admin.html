@@ -173,11 +173,11 @@
   </form>
   <div id="workspace" hidden>
     <nav aria-label="Mariages" role="tablist">
-      <button id="form-tab" type="button" role="tab" aria-controls="form-panel" aria-selected="true">Premier rendez-vous</button>
-      <button id="list-tab" type="button" role="tab" aria-controls="list-panel" aria-selected="false" tabindex="-1">Mariages à venir</button>
+      <button id="form-tab" type="button" role="tab" aria-controls="form-panel" aria-selected="false" tabindex="-1">Premier rendez-vous</button>
+      <button id="list-tab" type="button" role="tab" aria-controls="list-panel" aria-selected="true">Mariages à venir</button>
     </nav>
     <button id="open-wide" type="button">Ouvrir en grand ↗</button>
-    <section id="form-panel" role="tabpanel" aria-labelledby="form-tab">
+    <section id="form-panel" role="tabpanel" aria-labelledby="form-tab" hidden>
       <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
       <p id="question-progress" class="question-progress"></p>
       <form id="dossier-form">
@@ -198,7 +198,7 @@
         </div>
       </form>
     </section>
-    <section id="list-panel" role="tabpanel" aria-labelledby="list-tab" hidden>
+    <section id="list-panel" role="tabpanel" aria-labelledby="list-tab">
       <div class="toolbar">
         <label>Rechercher un couple <input id="search" type="search" placeholder="Nom, prénom ou lieu"></label>
         <label>Afficher <select id="filter"><option value="upcoming">Mariages à venir</option><option value="drafts">Brouillons</option><option value="all">Tous les dossiers</option></select></label>
@@ -1029,10 +1029,10 @@ async function connect(adminPassword, automatic = false) {
     const step = Number(launch.get('etape'));
     openDossier(savedDossier || undefined, wideView && Number.isInteger(step) && step >= 0 && step < formSteps.length ? step : 0);
     const listFilter = launch.get('liste');
-    if (wideView && ['upcoming', 'drafts', 'all'].includes(listFilter)) {
-      get('filter').value = listFilter;
-      showTab('list');
-    }
+    const requestedList = wideView && ['upcoming', 'drafts', 'all'].includes(listFilter);
+    const requestedForm = wideView && (savedDossier || (launch.has('etape') && !launch.has('dossier')));
+    get('filter').value = requestedList ? listFilter : 'upcoming';
+    if (requestedList || !requestedForm) showTab('list');
     renderList();
     login.reset();
     login.hidden = true;
