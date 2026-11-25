@@ -39,13 +39,16 @@
   .parents-heading { margin: 6px 0 0; font-size: 1rem; color: var(--person-ink); }
   #print-sheet .parents-heading { margin: 3mm 0 0; color: inherit; font-size: inherit; }
   .fields label[hidden] { display: none; }
-  #fields > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
-  #fields > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
-  #fields > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
-  .section-links a { padding: 5px 9px; border: 1px solid #ded9ea; border-radius: 9px; background: #faf7ff; text-decoration: none; }
-  .section-links a:hover { background: #ede7fa; }
+  .form-step > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
+  .form-step > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
+  .form-step > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
+  .section-links button { padding: 5px 9px; border: 1px solid #ded9ea; border-radius: 9px; background: #faf7ff; text-decoration: none; }
+  .section-links button:hover { background: #ede7fa; }
   .section-links { justify-content: flex-start; gap: 6px 14px; padding: 12px 0 18px; }
-  .section-links a { color: var(--accent); font-size: .9rem; text-underline-offset: 3px; }
+  .section-links button { color: var(--accent); font-size: .9rem; }
+  .section-links button[aria-current="step"] { color: white; background: var(--accent); border-color: var(--accent); }
+  .step-heading { margin: 0 0 12px; font-size: 1.13rem; }
+  .step-navigation { flex: 1 0 100%; }
   #fields fieldset { scroll-margin-top: 12px; }
   .equipment-grid { display: grid; gap: 8px; }
   .equipment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #faf8fd; }
@@ -54,7 +57,7 @@
   .equipment-grid > .full { margin-top: 6px; }
   #dossier-form > .toolbar { position: sticky; bottom: 0; z-index: 1; padding: 12px 0; border-top: 1px solid var(--line); background: #fff; }
   textarea { resize: vertical; }
-  @media (max-width: 480px) { #fields > fieldset { padding: 12px; } }
+  @media (max-width: 480px) { .form-step > fieldset { padding: 12px; } }
   label { display: grid; gap: 5px; align-content: start; font-weight: 550; }
   label.check { display: flex; align-items: center; align-self: end; min-height: 44px; margin-bottom: 1px; }
   label.check input { width: 20px; height: 20px; accent-color: var(--accent); }
@@ -127,11 +130,17 @@
     <section id="form-panel" role="tabpanel" aria-labelledby="form-tab">
       <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
       <form id="dossier-form">
-        <p class="muted">Renseigne au moins un nom pour enregistrer le dossier. Tu peux compléter les autres informations plus tard.</p>
-        <nav id="section-links" class="section-links" aria-label="Accès rapide aux rubriques"></nav>
+        <p class="muted">Tu peux enregistrer un brouillon à tout moment et le retrouver dans la liste des dossiers.</p>
+        <nav id="section-links" class="section-links" aria-label="Étapes du dossier"></nav>
         <div id="fields"></div>
         <div class="toolbar">
+          <div class="toolbar step-navigation">
+            <button type="button" id="previous-step">Précédent</button>
+            <span id="step-progress" class="muted" aria-live="polite"></span>
+            <button type="button" id="next-step">Suivant</button>
+          </div>
           <button class="primary" id="save">Enregistrer le dossier</button>
+          <button id="save-draft" type="submit">Enregistrer comme brouillon</button>
           <button type="button" id="pdf">Imprimer / Enregistrer en PDF</button>
           <button type="button" id="blank-pdf">Imprimer le formulaire vierge</button>
         </div>
@@ -140,7 +149,7 @@
     <section id="list-panel" role="tabpanel" aria-labelledby="list-tab" hidden>
       <div class="toolbar">
         <label>Rechercher un couple <input id="search" type="search" placeholder="Nom, prénom ou lieu"></label>
-        <label>Afficher <select id="filter"><option value="upcoming">Mariages à venir</option><option value="all">Tous les dossiers</option></select></label>
+        <label>Afficher <select id="filter"><option value="upcoming">Mariages à venir</option><option value="drafts">Brouillons</option><option value="all">Tous les dossiers</option></select></label>
         <button type="button" id="refresh">Actualiser</button>
         <button type="button" id="new-list" class="primary">Nouveau dossier</button>
       </div>
@@ -163,6 +172,15 @@ let dossiers = [];
 let current;
 let dirty = false;
 let busy = false;
+let activeStep = 0;
+const formSteps = [
+  ['meetingDate', 'Rendez-vous'],
+  ['groomGivenNames', 'Les futurs mariés'],
+  ['civilDate', 'Mariage et organisation'],
+  ['groomGrandmothers', 'Proches et cérémonie'],
+  ['cupsOwner', 'Matériel'],
+  ['identity', 'Documents et suivi']
+];
 const initial = { status: 'À compléter' };
 
 function create(tag, content) {
@@ -177,7 +195,7 @@ function feedback(message = '') {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ['save', 'logout', 'refresh', 'new-form', 'new-list', 'pdf', 'blank-pdf']) get(id).disabled = value;
+  for (const id of ['save', 'save-draft', 'logout', 'refresh', 'new-form', 'new-list', 'pdf', 'blank-pdf']) get(id).disabled = value;
   for (const fieldset of get('fields').children) fieldset.disabled = value;
 }
 
@@ -330,22 +348,52 @@ function nameField(label, input, extraLabelText) {
   return field;
 }
 
+function showStep(index, moveFocus = false) {
+  activeStep = index;
+  formSteps.forEach(([, , page, button], position) => {
+    page.hidden = position !== index;
+    if (position === index) button.setAttribute('aria-current', 'step');
+    else button.removeAttribute('aria-current');
+  });
+  get('previous-step').disabled = index === 0;
+  get('next-step').disabled = index === formSteps.length - 1;
+  get('step-progress').textContent = 'Étape ' + (index + 1) + ' sur ' + formSteps.length;
+  if (moveFocus) formSteps[index][2].firstElementChild.focus();
+}
+
 function buildFields(documentStatuses) {
+  const container = get('fields');
+  for (const [index, step] of formSteps.entries()) {
+    const [, title] = step;
+    const page = create('section');
+    page.className = 'form-step';
+    page.id = 'form-step-' + index;
+    const heading = create('h3', title);
+    heading.className = 'step-heading';
+    heading.tabIndex = -1;
+    page.append(heading);
+    container.append(page);
+    const button = create('button', title);
+    button.type = 'button';
+    button.setAttribute('aria-controls', page.id);
+    button.onclick = () => showStep(index, true);
+    get('section-links').append(button);
+    step.push(page, button);
+  }
+  let page = formSteps[0][2];
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
   const honoreesFields = create('div');
   honoreesFields.className = 'couple-fields honorees-fields';
   const witnessFields = create('div');
   witnessFields.className = 'witness-fields';
-  for (const [index, [title, fields, person]] of schema.entries()) {
+  for (const [title, fields, person] of schema) {
+    const step = formSteps.find(([key]) => key === fields[0]?.[0]);
+    if (step) page = step[2];
     const fieldset = create('fieldset');
     const grid = create('div');
     const equipment = fields.some(([key]) => key === 'cupsOwner');
     const rows = new Map();
-    const quickLink = create('a', title.split(' — ')[0]);
-    fieldset.id = 'section-' + index;
-    quickLink.href = '#' + fieldset.id;
-    get('section-links').append(quickLink);
     grid.className = equipment ? 'equipment-grid' : 'fields';
     for (const [key, fieldTitle, type] of fields) {
       if (type === 'name-extra') continue;
@@ -419,18 +467,18 @@ function buildFields(documentStatuses) {
     }
     fieldset.append(create('legend', title), grid);
     if (person === 'witness') {
-      if (!witnessFields.isConnected) get('fields').append(witnessFields);
+      if (!witnessFields.isConnected) page.append(witnessFields);
       witnessFields.append(fieldset);
     } else if (person?.endsWith('-honors')) {
-      if (!honoreesFields.isConnected) get('fields').append(honoreesFields);
+      if (!honoreesFields.isConnected) page.append(honoreesFields);
       fieldset.classList.add('person-' + person.split('-')[0]);
       honoreesFields.append(fieldset);
     } else if (person) {
-      if (!coupleFields.isConnected) get('fields').append(coupleFields);
+      if (!coupleFields.isConnected) page.append(coupleFields);
       fieldset.classList.add('person-' + person);
       coupleFields.append(fieldset);
     } else {
-      get('fields').append(fieldset);
+      page.append(fieldset);
     }
   }
 }
@@ -451,7 +499,7 @@ function showTab(name) {
   }
 }
 
-function openDossier(dossier) {
+function openDossier(dossier, step = 0) {
   current = dossier || { id: crypto.randomUUID(), revision: 0, answers: initial };
   const priorSoundNumbers = (current.answers.musicContact?.match(/[+\d][\d ().-]*\d/g) || [])
     .filter(number => /^\d{9,15}$/.test(number.replace(/\D/g, '')));
@@ -468,10 +516,11 @@ function openDossier(dossier) {
       }
     }
   }
-  get('form-title').textContent = couple(current.answers) || 'Nouveau dossier';
+  get('form-title').textContent = couple(current.answers) || (current.answers.status === 'Brouillon' ? 'Brouillon sans nom' : 'Nouveau dossier');
   get('new-form').hidden = !current.revision;
   dirty = false;
   showTab('form');
+  showStep(step);
   feedback();
 }
 
@@ -489,20 +538,22 @@ function displayDate(value) {
 function renderList() {
   const list = get('dossiers');
   const search = get('search').value.trim().toLocaleLowerCase('fr');
+  const filter = get('filter').value;
   const today = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
   const part = key => today.find(item => item.type === key).value;
   const todayDate = [part('year'), part('month'), part('day')].join('-');
   list.replaceChildren();
   for (const dossier of dossiers) {
     const data = dossier.answers;
-    const upcoming = !['Célébré', 'Annulé'].includes(data.status) && (!data.weddingDate || data.weddingDate >= todayDate);
-    if (get('filter').value === 'upcoming' && !upcoming) continue;
+    const upcoming = !['Brouillon', 'Célébré', 'Annulé'].includes(data.status) && (!data.weddingDate || data.weddingDate >= todayDate);
+    if (filter === 'upcoming' && !upcoming) continue;
+    if (filter === 'drafts' && data.status !== 'Brouillon') continue;
     const extraNames = Object.entries(data).filter(([key]) => key.endsWith('Extra')).map(([, value]) => value);
     if (![couple(data), ...extraNames, data.groomHebrew, data.brideHebrew, data.weddingPlace].join(' ').toLocaleLowerCase('fr').includes(search)) continue;
     const row = create('article');
     row.className = 'dossier';
     const info = create('div');
-    info.append(create('strong', couple(data)));
+    info.append(create('strong', couple(data) || 'Brouillon sans nom'));
     info.append(create('div', [data.weddingDate ? displayDate(data.weddingDate) : 'Date à fixer', data.weddingTime, data.weddingPlace, data.status].filter(Boolean).join(' · ')));
     if (data.nextMeeting) info.append(create('div', 'Prochain rendez-vous le ' + displayDate(data.nextMeeting)));
     const open = create('button', 'Ouvrir le dossier');
@@ -511,7 +562,7 @@ function renderList() {
     row.append(info, open);
     list.append(row);
   }
-  if (!list.children.length) list.append(create('p', search ? 'Aucun couple ne correspond à la recherche.' : 'Aucun dossier à afficher.'));
+  if (!list.children.length) list.append(create('p', search ? 'Aucun couple ne correspond à la recherche.' : filter === 'drafts' ? 'Aucun brouillon.' : 'Aucun dossier à afficher.'));
 }
 
 async function connect(adminPassword, automatic = false) {
@@ -580,6 +631,15 @@ get('logout').onclick = () => {
   get('password').focus();
 };
 
+get('previous-step').onclick = () => showStep(activeStep - 1, true);
+get('next-step').onclick = () => showStep(activeStep + 1, true);
+form.addEventListener('invalid', event => {
+  const firstInvalid = Array.from(form.elements).find(control => control.willValidate && !control.validity.valid);
+  if (event.target !== firstInvalid) return;
+  const page = event.target.closest('.form-step');
+  const step = formSteps.findIndex(([, , section]) => section === page);
+  if (step >= 0) showStep(step);
+}, true);
 form.oninput = () => { dirty = true; };
 window.addEventListener('beforeunload', event => {
   if (dirty) event.preventDefault();
@@ -589,8 +649,12 @@ form.onsubmit = async event => {
   event.preventDefault();
   if (busy) return;
   const answers = Object.fromEntries(new FormData(form));
-  if (!couple(answers)) {
+  const draft = event.submitter?.id === 'save-draft';
+  if (draft) answers.status = 'Brouillon';
+  else if (answers.status === 'Brouillon') answers.status = 'À compléter';
+  if (!draft && !couple(answers)) {
     feedback('Renseigne au moins un des deux noms.');
+    showStep(1);
     form.elements.groomGivenNames.focus();
     return;
   }
@@ -603,9 +667,11 @@ form.onsubmit = async event => {
     });
     dossiers = [...dossiers.filter(item => item.id !== dossier.id), dossier];
     dossiers.sort((a, b) => (a.answers.weddingDate || '9999').localeCompare(b.answers.weddingDate || '9999'));
-    openDossier(dossier);
+    openDossier(dossier, activeStep);
+    if (draft) get('filter').value = 'drafts';
+    else if (get('filter').value === 'drafts') get('filter').value = 'all';
     renderList();
-    feedback('Dossier enregistré.');
+    feedback(draft ? 'Brouillon enregistré.' : 'Dossier enregistré.');
   } catch (error) {
     feedback(error.message);
   } finally {

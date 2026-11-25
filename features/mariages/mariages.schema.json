@@ -2,7 +2,7 @@
   ["Rendez-vous", [
     ["meetingDate", "Date du premier rendez-vous", "date"],
     ["nextMeeting", "Date du prochain rendez-vous", "date"],
-    ["status", "État du dossier", ["À compléter", "À vérifier", "Prêt", "Célébré", "Annulé"]]
+    ["status", "État du dossier", ["Brouillon", "À compléter", "À vérifier", "Prêt", "Célébré", "Annulé"]]
   ]],
   ["Futur marié", [
     ["groomGivenNames", "Prénom(s) du ‘Hatan", "name-part"],

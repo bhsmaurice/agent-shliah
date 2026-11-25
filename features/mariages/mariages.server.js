@@ -27,7 +27,7 @@ function validate(input) {
   }
   const hasName = ['groom', 'bride'].some(person =>
     answers[person + 'GivenNames'] || answers[person + 'FamilyName'] || answers[person + 'Name']);
-  return hasName ? answers : null;
+  return hasName || answers.status === 'Brouillon' ? answers : null;
 }
 
 function init({ app, pool, adminPassword }) {
