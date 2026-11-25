@@ -32,6 +32,8 @@
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
   .couple-fields .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .couple-fields .fields > :not(.name-part) { grid-column: 1 / -1; }
+  .parents-heading { margin: 6px 0 0; font-size: 1rem; color: var(--person-ink); }
+  #print-sheet .parents-heading { margin: 3mm 0 0; color: inherit; font-size: inherit; }
   .couple-fields label[hidden] { display: none; }
   #fields > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
   #fields > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
@@ -222,6 +224,13 @@ function arrangeSections(sections) {
   });
 }
 
+function parentsHeading(person, key) {
+  if (!person || key !== person + 'Parents') return;
+  const heading = create('h3', person === 'groom' ? 'Parents du ‘Hatan' : 'Parents de la Kallah');
+  heading.className = 'parents-heading full';
+  return heading;
+}
+
 function hebrewField(label, input) {
   const field = create('div');
   field.className = 'hebrew-field';
@@ -298,6 +307,8 @@ function buildFields(documentStatuses) {
     get('section-links').append(quickLink);
     grid.className = equipment ? 'equipment-grid' : 'fields';
     for (const [key, fieldTitle, type] of fields) {
+      const heading = parentsHeading(person, key);
+      if (heading) grid.append(heading);
       const item = equipment && key.match(/^(.+?)(Owner|Ready)$/);
       const labelText = item?.[2] === 'Owner' ? fieldTitle.split(' — ')[0]
         : item?.[2] === 'Ready' ? 'Prêt' : fieldTitle.replace(/^Chéva Berakhot — (bénédiction \d+), nom de la personne$/, (_, blessing) => blessing[0].toUpperCase() + blessing.slice(1));
@@ -569,6 +580,8 @@ async function printBlank() {
     const grid = create('div');
     grid.className = equipment ? 'paper-equipment' : 'paper-columns';
     for (const [key, label, type] of fields) {
+      const heading = parentsHeading(person, key);
+      if (heading) grid.append(heading);
       if (type === 'legacy') continue;
       const field = create('div');
       field.className = 'paper-field';
@@ -611,10 +624,14 @@ get('pdf').onclick = () => {
   const print = get('print-sheet');
   print.classList.remove('blank-print');
   print.replaceChildren(create('p', 'Beth Habad S Maurice · Dossier de mariage'), create('h1', couple(answers) || 'Premier rendez-vous'));
-  for (const [title, fields] of schema) {
+  for (const [title, fields, person] of schema) {
     const section = create('section');
     section.append(create('h2', title));
     for (const [key, label, type] of fields) {
+      const heading = parentsHeading(person, key);
+      if (heading && fields.some(([field]) => field.startsWith(person) && /(?:Parents|Father|Mother)/.test(field) && answers[field])) {
+        section.append(heading);
+      }
       if (!answers[key] && type !== 'checkbox') continue;
       const line = create('p');
       const answer = create('bdi', type === 'date' ? displayDate(answers[key]) : answers[key] || 'À préparer');
