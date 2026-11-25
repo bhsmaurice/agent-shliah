@@ -32,6 +32,9 @@
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
   .couple-fields .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .couple-fields .fields > :not(.name-part) { grid-column: 1 / -1; }
+  .name-part { display: grid; gap: 5px; align-content: start; min-width: 0; }
+  .name-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+  .name-toggle { min-width: 34px; padding: 4px 8px; }
   .parents-heading { margin: 6px 0 0; font-size: 1rem; color: var(--person-ink); }
   #print-sheet .parents-heading { margin: 3mm 0 0; color: inherit; font-size: inherit; }
   .couple-fields label[hidden] { display: none; }
@@ -291,6 +294,38 @@ function hebrewField(label, input) {
   return field;
 }
 
+function nameField(label, input, extraLabelText) {
+  const field = create('div');
+  field.className = 'name-part';
+  input.id = 'field-' + input.name;
+  label.htmlFor = input.id;
+  const entry = create('div');
+  entry.className = 'name-entry';
+  const extraLabel = create('label', extraLabelText);
+  extraLabel.id = input.id + '-extra';
+  extraLabel.hidden = true;
+  const extra = create('input');
+  extra.name = input.name + 'Extra';
+  extra.maxLength = input.maxLength;
+  extraLabel.append(extra);
+
+  const toggle = create('button', '+');
+  toggle.type = 'button';
+  toggle.className = 'name-toggle';
+  toggle.title = 'Ajouter — ' + extraLabelText;
+  toggle.setAttribute('aria-label', toggle.title);
+  toggle.setAttribute('aria-controls', extraLabel.id);
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.onclick = () => {
+    extraLabel.hidden = !extraLabel.hidden;
+    toggle.setAttribute('aria-expanded', String(!extraLabel.hidden));
+    if (!extraLabel.hidden) extra.focus();
+  };
+  entry.append(input, toggle);
+  field.append(label, entry, extraLabel);
+  return field;
+}
+
 function buildFields(documentStatuses) {
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
@@ -307,6 +342,7 @@ function buildFields(documentStatuses) {
     get('section-links').append(quickLink);
     grid.className = equipment ? 'equipment-grid' : 'fields';
     for (const [key, fieldTitle, type] of fields) {
+      if (type === 'name-extra') continue;
       const heading = parentsHeading(person, key);
       if (heading) grid.append(heading);
       const item = equipment && key.match(/^(.+?)(Owner|Ready)$/);
@@ -334,9 +370,15 @@ function buildFields(documentStatuses) {
         control.type = ['hebrew', 'name-part', 'legacy'].includes(type) ? 'text' : type || 'text';
         control.maxLength = 240;
       }
-      if (type === 'name-part') label.classList.add('name-part');
       if (type === 'legacy') label.hidden = true;
       control.name = key;
+      if (type === 'name-part') {
+        const extraField = fields.find(([name]) => name === key + 'Extra');
+        if (extraField) {
+          grid.append(nameField(label, control, extraField[1]));
+          continue;
+        }
+      }
       if (type === 'hebrew') {
         grid.append(hebrewField(label, control));
         continue;
@@ -399,6 +441,10 @@ function openDossier(dossier) {
       if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
       else control.value = current.answers[key] ?? initial[key] ?? '';
       if (type === 'legacy') control.closest('label').hidden = !control.value;
+      if (type === 'name-extra') {
+        control.closest('label').hidden = !control.value;
+        control.closest('.name-part').querySelector('.name-toggle').setAttribute('aria-expanded', String(Boolean(control.value)));
+      }
     }
   }
   get('form-title').textContent = couple(current.answers) || 'Nouveau dossier';
@@ -430,7 +476,8 @@ function renderList() {
     const data = dossier.answers;
     const upcoming = !['Célébré', 'Annulé'].includes(data.status) && (!data.weddingDate || data.weddingDate >= todayDate);
     if (get('filter').value === 'upcoming' && !upcoming) continue;
-    if (![couple(data), data.groomHebrew, data.brideHebrew, data.weddingPlace].join(' ').toLocaleLowerCase('fr').includes(search)) continue;
+    const extraNames = Object.entries(data).filter(([key]) => key.endsWith('Extra')).map(([, value]) => value);
+    if (![couple(data), ...extraNames, data.groomHebrew, data.brideHebrew, data.weddingPlace].join(' ').toLocaleLowerCase('fr').includes(search)) continue;
     const row = create('article');
     row.className = 'dossier';
     const info = create('div');
@@ -582,7 +629,7 @@ async function printBlank() {
     for (const [key, label, type] of fields) {
       const heading = parentsHeading(person, key);
       if (heading) grid.append(heading);
-      if (type === 'legacy') continue;
+      if (type === 'legacy' || type === 'name-extra') continue;
       const field = create('div');
       field.className = 'paper-field';
       if (type === 'checkbox') {
