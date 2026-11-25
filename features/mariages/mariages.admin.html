@@ -42,6 +42,10 @@
   .name-part { display: grid; gap: 5px; align-content: start; min-width: 0; }
   .name-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
   .name-toggle { min-width: 34px; padding: 4px 8px; }
+  .parent-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .parent-column { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--person-border); border-radius: 10px; background: #fff; }
+  .parent-column h4 { margin: 0; color: var(--person-ink); font-size: 1rem; }
+  @media (max-width: 460px) { .parent-columns { grid-template-columns: 1fr; } }
   .parents-heading { margin: 6px 0 0; font-size: 1rem; color: var(--person-ink); }
   #print-sheet .parents-heading { margin: 3mm 0 0; color: inherit; font-size: inherit; }
   .fields label[hidden] { display: none; }
@@ -621,6 +625,15 @@ function buildFields(documentStatuses) {
     const equipment = fields.some(([key]) => key === 'cupsOwner');
     const rows = new Map();
     grid.className = equipment ? 'equipment-grid' : 'fields';
+    const parentColumns = new Map();
+    if (!identity && isCouple(person)) {
+      for (const [role, title] of [['Father', 'Père'], ['Mother', 'Mère']]) {
+        const column = create('section');
+        column.className = 'parent-column';
+        column.append(create('h4', title));
+        parentColumns.set(role, column);
+      }
+    }
     for (const [key, fieldTitle, type] of fields) {
       if (type === 'name-extra') continue;
       if (typeof type === 'string' && type.startsWith('archived')) {
@@ -633,6 +646,14 @@ function buildFields(documentStatuses) {
       }
       const heading = parentsHeading(person, key);
       if (heading) grid.append(heading);
+      const parent = [...parentColumns.keys()].find(role => key.startsWith(person + role));
+      if (parent && !parentColumns.get(parent).isConnected && !parentColumns.get(parent).parentElement) {
+        const columns = create('div');
+        columns.className = 'parent-columns';
+        columns.append(...parentColumns.values());
+        grid.append(columns);
+      }
+      const fieldContainer = parentColumns.get(parent) || grid;
       const item = equipment && key.match(/^(.+?)(Owner|Ready)$/);
       const labelText = item?.[2] === 'Owner' ? fieldTitle.split(' — ')[0]
         : item?.[2] === 'Ready' ? 'Prêt' : fieldTitle.replace(/^Chéva Berakhot — (bénédiction \d+), nom de la personne$/, (_, blessing) => blessing[0].toUpperCase() + blessing.slice(1));
@@ -663,12 +684,12 @@ function buildFields(documentStatuses) {
       if (type === 'name-part') {
         const extraField = fields.find(([name]) => name === key + 'Extra');
         if (extraField) {
-          grid.append(nameField(label, control, extraField[1]));
+          fieldContainer.append(nameField(label, control, extraField[1]));
           continue;
         }
       }
       if (type === 'hebrew') {
-        grid.append(hebrewField(label, control));
+        fieldContainer.append(hebrewField(label, control));
         continue;
       }
       if (type !== 'checkbox') label.append(control);
