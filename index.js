@@ -1675,6 +1675,7 @@ app.post('/webhook', async (req, res) => {
       if (buttonId && buttonId.indexOf('nl_') === 0) { await newsletter.handleButton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('post_') === 0) { await posts.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('rep_') === 0) { await repertoire.handleBouton(from, buttonId); return; }
+      if (buttonId && buttonId.indexOf('radio_') === 0) { await radio.handleBouton(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('sms_') === 0) { await smsBot.handleBouton(from, buttonId); return; }
             if (buttonId && buttonId.indexOf('tsedaka_') === 0) { await gererBoutonTsedaka(from, buttonId); return; }
       if (buttonId && buttonId.indexOf('inscription_') === 0) { await gererBoutonInscription(from, buttonId); return; }
@@ -1747,7 +1748,16 @@ app.post('/webhook', async (req, res) => {
         await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING', [msgId]);
       } catch (e) { console.error('Dedup error:', e.message); }
       taches.vu(from);
+      // RADIO — fichier audio (pas un vocal) → sur la web radio
+      if (await radio.handleMedia(from, message)) return;
       await taches.handleAudio(from, message);
+      return;
+    }
+
+    // RADIO — fichier audio envoyé comme document (mp3, m4a…)
+    if (message && message.type === 'document') {
+      const inserted = await pool.query('INSERT INTO messages_traites (msg_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING msg_id', [message.id]).catch(() => ({ rows: [1] }));
+      if (inserted.rows.length) await radio.handleMedia(message.from, message);
       return;
     }
 
@@ -1770,6 +1780,8 @@ app.post('/webhook', async (req, res) => {
       if (await smsBot.handleText(from, text)) return;
       // MON CARNET — « tâche … », « mes tâches », « fait 2 », « résumé » (admin)
       if (await taches.handleText(from, text)) return;
+      // RADIO — lien YouTube (admin) → musique sur la web radio + clip
+      if (await radio.handleText(from, text)) return;
       // LETTRES SÉFER TORAH — l'admin transfère le message d'un parent
       if (await lettresWhatsapp.handle(from, text, message)) return;
       if (await handlePriveCommand(from, text)) return;
@@ -3487,6 +3499,8 @@ require('./features/mariages/mariages.server').init({ app, pool, adminPassword: 
 const stories = require('./features/stories/stories.server').init({ app, pool, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE, adminPassword: ADMIN_PASSWORD, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID, publicBaseUrl: PUBLIC_BASE_URL, downloadMedia: telechargerMediaWhatsApp, getMeta: () => posts.configMeta(true), isHolyTime: date => posts.verifierChabbat(date), envoyerEmail });
 const newsletter = require('./features/newsletter/newsletter.server').init({ app, pool, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPhone: ADMIN_PHONE, adminPassword: ADMIN_PASSWORD, publicBaseUrl: PUBLIC_BASE_URL, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID, getShabbat: getHorairesChabbatCached });
 // MON CARNET — tâches personnelles de l'admin (WhatsApp + page admin) : voir features/taches/
+// RADIO — envoyer une musique sur la web radio depuis WhatsApp : voir features/radio/
+const radio = require('./features/radio/radio.bot').init({ app, pool, sendWhatsApp, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID });
 const taches = require('./features/taches/taches.bot').init({ app, pool, sendWhatsApp, envoyerEmail, isAdmin: isAuthorizedAdminCerfa, adminPassword: ADMIN_PASSWORD, adminPhone: ADMIN_PHONE, anthropicKey: ANTHROPIC_API_KEY, whatsappToken: WHATSAPP_TOKEN, phoneNumberId: PHONE_NUMBER_ID });
 require('./features/pin/pin.server').init({ app, pool, adminPassword: ADMIN_PASSWORD, sendWhatsApp, adminPhone: ADMIN_PHONE });
 // SMS (SMSFactor) — page /admin/sms, commande WhatsApp « sms », secours, réponses : voir features/sms/
