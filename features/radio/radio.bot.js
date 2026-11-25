@@ -82,6 +82,8 @@ async function colonnesAbonnes(essai = 0) {
   try {
     await ctx.pool.query('ALTER TABLE contacts ADD COLUMN IF NOT EXISTS abonne_radio BOOLEAN DEFAULT FALSE');
     await ctx.pool.query('ALTER TABLE radio_envois ADD COLUMN IF NOT EXISTS prevenus INTEGER');
+  await ctx.pool.query(`CREATE TABLE IF NOT EXISTS radio_push (token TEXT PRIMARY KEY, plateforme TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(), vu_le TIMESTAMPTZ DEFAULT NOW())`);
   } catch (e) {
     // la table contacts est créée au démarrage par index.js : on réessaie un peu plus tard
     if (essai < 5) setTimeout(() => colonnesAbonnes(essai + 1), 5000).unref();
@@ -183,7 +185,45 @@ async function handleAbonnement(from, text) {
 const modeleRadio = () => process.env.RADIO_WHATSAPP_TEMPLATE || 'radio_nouveaute';
 const TEXTE_MODELE = '🎵 Nouveau sur la radio du Beth Habad S Maurice : {{1}}\n\n🎧 Écoutez maintenant : ' + RADIO_PUBLIC + '\n\nPour ne plus recevoir ces messages, répondez : stop radio';
 async function nbAbonnes() {
-  try { return Number((await ctx.pool.query('SELECT COUNT(*) AS n FROM contacts WHERE abonne_radio = TRUE')).rows[0].n) || 0; } catch (e) { return 0; }
+  let wa = 0, appli = 0;
+  try { wa = Number((await ctx.pool.query('SELECT COUNT(*) AS n FROM contacts WHERE abonne_radio = TRUE')).rows[0].n) || 0; } catch (e) { /* table pas prête */ }
+  try { appli = Number((await ctx.pool.query('SELECT COUNT(*) AS n FROM radio_push')).rows[0].n) || 0; } catch (e) { /* table pas prête */ }
+  return wa + appli;
+}
+
+// ─── Notifications de l'appli (Expo) ──────────────────────────
+const JETON = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,}\]$/;
+async function inscrirePush(token, plateforme) {
+  if (!JETON.test(String(token || ''))) return false;
+  await ctx.pool.query(`INSERT INTO radio_push (token, plateforme) VALUES ($1, $2)
+    ON CONFLICT (token) DO UPDATE SET plateforme = EXCLUDED.plateforme, vu_le = NOW()`, [token, String(plateforme || '').slice(0, 20) || null]);
+  return true;
+}
+// Envoie la notification à tous les téléphones inscrits ; retire ceux qui ont supprimé l'appli.
+async function envoyerPush(texte) {
+  let jetons = [];
+  try { jetons = (await ctx.pool.query('SELECT token FROM radio_push')).rows.map((r) => r.token); } catch (e) { return { envoyes: 0, echecs: 0 }; }
+  let envoyes = 0, echecs = 0;
+  for (let i = 0; i < jetons.length; i += 100) {
+    const lot = jetons.slice(i, i + 100);
+    try {
+      const r = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, signal: AbortSignal.timeout(20000),
+        body: JSON.stringify(lot.map((to) => ({ to, title: '🎵 Nouveau sur la radio', body: texte, sound: 'default', channelId: 'nouveautes', data: { ecran: 'nouveautes' } })))
+      });
+      const d = await r.json().catch(() => ({}));
+      const tickets = Array.isArray(d.data) ? d.data : [];
+      for (let k = 0; k < lot.length; k++) {
+        const t = tickets[k] || {};
+        if (t.status === 'ok') envoyes++;
+        else {
+          echecs++;
+          if (t.details && t.details.error === 'DeviceNotRegistered') await ctx.pool.query('DELETE FROM radio_push WHERE token = $1', [lot[k]]).catch(() => {});
+        }
+      }
+    } catch (e) { echecs += lot.length; }
+  }
+  return { envoyes, echecs };
 }
 async function graph(chemin, options) {
   const r = await fetch(`${GRAPH}/${chemin}`, { ...options, headers: { Authorization: `Bearer ${ctx.whatsappToken}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000) });
@@ -217,8 +257,9 @@ async function prevenirAbonnes(texte, envoiId) {
     } catch (e) { echecs++; derniereErreur = e.message; }
     await new Promise((r) => setTimeout(r, 120));
   }
-  if (envoiId) await ctx.pool.query('UPDATE radio_envois SET prevenus = $2 WHERE id = $1', [envoiId, envoyes]).catch(() => {});
-  return { envoyes, echecs, total: tels.length, erreur: derniereErreur };
+  const appli = await envoyerPush(texte);
+  if (envoiId) await ctx.pool.query('UPDATE radio_envois SET prevenus = $2 WHERE id = $1', [envoiId, envoyes + appli.envoyes]).catch(() => {});
+  return { envoyes: envoyes + appli.envoyes, whatsapp: envoyes, appli: appli.envoyes, echecs: echecs + appli.echecs, total: tels.length, erreur: derniereErreur };
 }
 function texteNouveaute(e) {
   const r = radios()[e.radio];
@@ -241,7 +282,7 @@ async function gererPrevenir(from, id) {
   await ctx.sendWhatsApp(from, '📣 J\'envoie le message aux abonnés…');
   const r = await prevenirAbonnes(texteNouveaute(e), envoiId);
   await ctx.sendWhatsApp(from, r.envoyes
-    ? `✅ ${r.envoyes} abonné${r.envoyes > 1 ? 's' : ''} prévenu${r.envoyes > 1 ? 's' : ''}${r.echecs ? ` (${r.echecs} échec${r.echecs > 1 ? 's' : ''})` : ''}.`
+    ? `✅ ${r.envoyes} abonné${r.envoyes > 1 ? 's' : ''} prévenu${r.envoyes > 1 ? 's' : ''} (${r.whatsapp} sur WhatsApp, ${r.appli} sur l'appli)${r.echecs ? `, ${r.echecs} échec${r.echecs > 1 ? 's' : ''}` : ''}.`
     : `❌ Le message n'est pas parti : ${r.erreur || 'aucun abonné'}.\n\nSi c'est le premier envoi, le modèle WhatsApp « ${modeleRadio()} » doit d'abord être validé par Meta (page admin > Radio).`);
 }
 
@@ -546,6 +587,18 @@ function routes() {
   app.delete('/admin/radio/clips/:id', supprimerClip);
   app.post('/admin/radio/clips/:id/supprimer', supprimerClip);
 
+  // Public : un téléphone avec l'appli s'inscrit aux notifications des nouveautés
+  app.post('/radio/push', async (req, res) => {
+    try {
+      const ok = await inscrirePush(req.body && req.body.token, req.body && req.body.plateforme);
+      res.status(ok ? 200 : 400).json({ ok });
+    } catch (e) { res.status(500).json({ ok: false }); }
+  });
+  app.delete('/radio/push', async (req, res) => {
+    try { await ctx.pool.query('DELETE FROM radio_push WHERE token = $1', [req.body && req.body.token]); res.json({ ok: true }); }
+    catch (e) { res.status(500).json({ ok: false }); }
+  });
+
   // Public : dernières musiques ajoutées sur les 3 radios (onglet « Nouveautés »)
   app.get('/radio/nouveautes', async (req, res) => {
     try {
@@ -615,4 +668,4 @@ function init(options) {
   return { handleText, handleMedia, handleBouton, handleAbonnement };
 }
 
-module.exports = { init, _test: { demandeAbonnement, prevenirAbonnes, nouveautes, viderCache: () => { cacheNouveautes = { quand: 0, liste: [] }; }, youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };
+module.exports = { init, _test: { inscrirePush, envoyerPush, demandeAbonnement, prevenirAbonnes, nouveautes, viderCache: () => { cacheNouveautes = { quand: 0, liste: [] }; }, youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };
