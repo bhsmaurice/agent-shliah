@@ -128,6 +128,9 @@
     ["civilAct", "Justificatif du mariage civil", "document"],
     ["birthActs", "Actes de naissance", "document"],
     ["familyKetubot", "Ketoubot des parents ou autres justificatifs familiaux", "document"],
+    ["brideCourseCertificate", "Attestation des cours de la Kallah", "document"],
+    ["groomCourseCertificate", "Attestation des cours du ‘Hatan", "document"],
+    ["mikvehCertificate", "Attestation de mikvé", "document"],
     ["otherDocuments", "Autres documents à demander, pièces reçues ou précisions", "textarea"]
   ]],
   ["Suivi", [
