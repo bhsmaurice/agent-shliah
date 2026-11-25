@@ -85,6 +85,18 @@
   #feedback:empty { display: none; }
   #feedback { padding: 8px 12px; background: #f3effa; border-radius: 8px; }
   #print-sheet { display: none; }
+  #return-admin { color: var(--accent); font-size: .9rem; font-weight: 650; }
+  #open-wide { margin-bottom: 12px; }
+  .wide-view main { max-width: 1680px; }
+  .wide-view .identity-block label { font-size: clamp(1.1rem, 1.35vw, 1.3rem); }
+  .wide-view .fields input, .wide-view .fields textarea, .wide-view .fields select { padding: 12px; }
+  @media (min-width: 960px) {
+    .wide-view #dossier-form { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px 26px; align-items: start; }
+    .wide-view #dossier-form > p { grid-column: 2; margin-bottom: 0; }
+    .wide-view .section-links { position: sticky; top: 16px; grid-column: 1; grid-row: 2 / span 2; display: grid; gap: 8px; padding: 0; }
+    .wide-view .section-links button { text-align: left; padding: 10px 12px; }
+    .wide-view #fields, .wide-view #dossier-form > .toolbar { grid-column: 2; }
+  }
   @media print {
     @page { margin: 14mm; }
     @page marriage-blank { size: A4 portrait; margin: 11mm 13mm; }
@@ -120,6 +132,7 @@
 <main>
   <header>
     <div><p class="muted">Shliah Bot · Beth Habad S Maurice</p><h1>Mariages</h1></div>
+    <a id="return-admin" href="https://bhsmaurice.github.io/agent-shliah/admin.html" hidden>← Retour à l’admin</a>
     <button id="logout" type="button" hidden>Se déconnecter</button>
   </header>
   <p id="feedback" role="status" aria-live="polite"></p>
@@ -132,6 +145,7 @@
       <button id="form-tab" type="button" role="tab" aria-controls="form-panel" aria-selected="true">Premier rendez-vous</button>
       <button id="list-tab" type="button" role="tab" aria-controls="list-panel" aria-selected="false" tabindex="-1">Mariages à venir</button>
     </nav>
+    <button id="open-wide" type="button">Ouvrir en grand ↗</button>
     <section id="form-panel" role="tabpanel" aria-labelledby="form-tab">
       <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
       <form id="dossier-form">
@@ -168,6 +182,32 @@
 const get = id => document.getElementById(id);
 const form = get('dossier-form');
 const login = get('login');
+const wideView = new URLSearchParams(location.search).get('vue') === 'large';
+const launch = new URLSearchParams(location.hash.slice(1));
+if (wideView) {
+  document.body.classList.add('wide-view');
+  get('open-wide').hidden = true;
+  get('return-admin').hidden = false;
+  if (location.hostname === 'bhsmaurice.github.io') get('return-admin').href = new URL('../../admin.html', location.href);
+}
+
+get('open-wide').onclick = () => {
+  if (dirty) {
+    feedback('Enregistre tes modifications ou ton brouillon avant d’ouvrir la vue grand format.');
+    get('feedback').scrollIntoView({ block: 'nearest' });
+    return;
+  }
+  const url = new URL(location.href);
+  url.searchParams.set('vue', 'large');
+  const selection = new URLSearchParams({ etape: String(activeStep) });
+  if (!get('list-panel').hidden) {
+    selection.set('liste', get('filter').value);
+  } else if (current?.revision) {
+    selection.set('dossier', current.id);
+  }
+  url.hash = selection.toString();
+  window.open(url.href, '_blank', 'noopener');
+};
 const endpoint = location.origin === 'https://bhsmaurice.github.io'
   ? 'https://agent-shliah-production.up.railway.app/admin/mariages'
   : '/admin/mariages';
@@ -595,13 +635,20 @@ async function connect(adminPassword, automatic = false) {
       buildFields(configuration.documentStatuses);
     }
     dossiers = data.dossiers;
-    openDossier();
+    const savedDossier = wideView && dossiers.find(dossier => dossier.id === launch.get('dossier'));
+    const step = Number(launch.get('etape'));
+    openDossier(savedDossier || undefined, wideView && Number.isInteger(step) && step >= 0 && step < formSteps.length ? step : 0);
+    const listFilter = launch.get('liste');
+    if (wideView && ['upcoming', 'drafts', 'all'].includes(listFilter)) {
+      get('filter').value = listFilter;
+      showTab('list');
+    }
     renderList();
     login.reset();
     login.hidden = true;
     get('logout').hidden = false;
     get('workspace').hidden = false;
-    get('form-tab').focus();
+    get(get('list-panel').hidden ? 'form-tab' : 'list-tab').focus();
   } catch (error) {
     password = '';
     if (!automatic) feedback(error.message);
@@ -617,7 +664,9 @@ login.onsubmit = event => {
 
 function savedDashboardPassword() {
   try {
-    if (window.parent === window || window.parent.document.getElementById('mariages-frame') !== window.frameElement) return '';
+    const embedded = window.parent !== window && window.parent.document.getElementById('mariages-frame') === window.frameElement;
+    const standaloneDashboard = wideView && window.parent === window && location.origin === 'https://bhsmaurice.github.io';
+    if (!embedded && !standaloneDashboard) return '';
     const session = JSON.parse(localStorage.getItem('shliah_session') || 'null');
     if (session?.role !== 'admin' || !Number.isFinite(session.until) || session.until <= Date.now()) return '';
     return localStorage.getItem('railway_admin_pw') || '';
