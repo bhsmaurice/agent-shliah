@@ -56,6 +56,12 @@
   .full { grid-column: 1 / -1; }
   input, select, textarea { min-width: 0; width: 100%; color: var(--ink); padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
   input[dir="rtl"] { font-size: 1.18em; }
+  .hebrew-field { display: grid; gap: 5px; align-content: start; min-width: 0; }
+  .hebrew-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+  .hebrew-keyboard { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .hebrew-keyboard[hidden] { display: none; }
+  .hebrew-keyboard button, .hebrew-toggle { min-width: 36px; min-height: 36px; padding: 4px 7px; }
+  .hebrew-keyboard button[lang="he"] { font-size: 1.18em; }
   #login { max-width: 440px; }
   #list-panel .toolbar { align-items: end; margin-bottom: 18px; }
   #list-panel label { min-width: min(100%, 240px); }
@@ -213,6 +219,66 @@ function arrangeSections(sections) {
   });
 }
 
+function hebrewField(label, input) {
+  const field = create('div');
+  field.className = 'hebrew-field';
+  const entry = create('div');
+  entry.className = 'hebrew-entry';
+  input.id = 'field-' + input.name;
+  input.dir = 'rtl';
+  input.lang = 'he';
+  label.htmlFor = input.id;
+
+  const toggle = create('button', '⌨');
+  toggle.className = 'hebrew-toggle';
+  toggle.type = 'button';
+  toggle.title = 'Clavier hébreu';
+  toggle.setAttribute('aria-label', 'Clavier hébreu — ' + label.textContent);
+  const keyboard = create('div');
+  keyboard.className = 'hebrew-keyboard';
+  keyboard.id = 'keyboard-' + input.name;
+  keyboard.dir = 'rtl';
+  toggle.setAttribute('aria-controls', keyboard.id);
+
+  function setOpen(open) {
+    keyboard.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+  }
+  setOpen(false);
+  toggle.onclick = () => {
+    const open = keyboard.hidden;
+    const previous = form.querySelector('.hebrew-toggle[aria-expanded="true"]');
+    if (previous && previous !== toggle) previous.click();
+    setOpen(open);
+  };
+
+  const letters = [...'אבגדהוזחטיכלמנסעפצקרשתךםןףץ'];
+  for (const [caption, character] of [...letters.map(letter => [letter, letter]), ['Espace', ' '], ['Effacer', '']]) {
+    const key = create('button', caption);
+    key.type = 'button';
+    if (letters.includes(character)) key.lang = 'he';
+    key.onclick = () => {
+      let start = input.selectionStart;
+      const end = input.selectionEnd;
+      if (!character && start === end) start = Math.max(0, start - 1);
+      if (input.value.length - (end - start) + character.length > input.maxLength) return;
+      const original = input.value;
+      input.setRangeText(character, start, end, 'end');
+      if (input.value !== original) input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    keyboard.append(key);
+  }
+  field.onkeydown = event => {
+    if (event.key === 'Escape' && !keyboard.hidden) {
+      setOpen(false);
+      toggle.focus();
+    }
+  };
+  entry.append(input, toggle);
+  field.append(label, entry, keyboard);
+  return field;
+}
+
 function buildFields(documentStatuses) {
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
@@ -253,9 +319,12 @@ function buildFields(documentStatuses) {
         control = create('input');
         control.type = type === 'hebrew' ? 'text' : type || 'text';
         control.maxLength = 240;
-        if (type === 'hebrew') control.dir = 'rtl';
       }
       control.name = key;
+      if (type === 'hebrew') {
+        grid.append(hebrewField(label, control));
+        continue;
+      }
       if (type !== 'checkbox') label.append(control);
       if (item) {
         let row = rows.get(item[1]);
