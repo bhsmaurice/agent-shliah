@@ -24,7 +24,9 @@ function validate(input) {
     if (type === 'document' && value && !documentStatuses.includes(value)) return null;
     answers[key] = value.trim();
   }
-  return answers.groomName || answers.brideName ? answers : null;
+  const hasName = ['groom', 'bride'].some(person =>
+    answers[person + 'GivenNames'] || answers[person + 'FamilyName'] || answers[person + 'Name']);
+  return hasName ? answers : null;
 }
 
 function init({ app, pool, adminPassword }) {
@@ -47,7 +49,10 @@ function init({ app, pool, adminPassword }) {
     res.set('Cache-Control', 'no-store');
     res.sendFile(join(__dirname, 'mariages.admin.html'));
   });
-  app.get(base + '/schema', (_req, res) => res.json({ schema, documentStatuses }));
+  app.get(base + '/schema', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ schema, documentStatuses });
+  });
 
   function privateRoute(handler) {
     return async (req, res) => {

@@ -30,6 +30,9 @@
   @media (max-width: 720px) { .couple-fields { grid-template-columns: 1fr; gap: 0; } }
   legend { padding: 0 8px; font-weight: 700; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px 18px; }
+  .couple-fields .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .couple-fields .fields > :not(.name-part) { grid-column: 1 / -1; }
+  .couple-fields label[hidden] { display: none; }
   #fields > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
   #fields > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
   #fields > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
@@ -317,9 +320,11 @@ function buildFields(documentStatuses) {
         control.maxLength = 4000;
       } else {
         control = create('input');
-        control.type = type === 'hebrew' ? 'text' : type || 'text';
+        control.type = ['hebrew', 'name-part', 'legacy'].includes(type) ? 'text' : type || 'text';
         control.maxLength = 240;
       }
+      if (type === 'name-part') label.classList.add('name-part');
+      if (type === 'legacy') label.hidden = true;
       control.name = key;
       if (type === 'hebrew') {
         grid.append(hebrewField(label, control));
@@ -360,7 +365,11 @@ function buildFields(documentStatuses) {
 }
 
 function couple(answers) {
-  return [answers.groomName, answers.brideName].filter(Boolean).join(' et ');
+  return ['groom', 'bride'].map(person => {
+    const name = [answers[person + 'GivenNames'], answers[person + 'FamilyName']]
+      .map(part => part?.trim()).filter(Boolean).join(' ');
+    return name || answers[person + 'Name']?.trim();
+  }).filter(Boolean).join(' et ');
 }
 
 function showTab(name) {
@@ -378,6 +387,7 @@ function openDossier(dossier) {
       const control = form.elements.namedItem(key);
       if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
       else control.value = current.answers[key] ?? initial[key] ?? '';
+      if (type === 'legacy') control.closest('label').hidden = !control.value;
     }
   }
   get('form-title').textContent = couple(current.answers) || 'Nouveau dossier';
@@ -500,9 +510,9 @@ form.onsubmit = async event => {
   event.preventDefault();
   if (busy) return;
   const answers = Object.fromEntries(new FormData(form));
-  if (!couple({ groomName: answers.groomName.trim(), brideName: answers.brideName.trim() })) {
+  if (!couple(answers)) {
     feedback('Renseigne au moins un des deux noms.');
-    form.elements.groomName.focus();
+    form.elements.groomGivenNames.focus();
     return;
   }
   setBusy(true);
@@ -559,6 +569,7 @@ async function printBlank() {
     const grid = create('div');
     grid.className = equipment ? 'paper-equipment' : 'paper-columns';
     for (const [key, label, type] of fields) {
+      if (type === 'legacy') continue;
       const field = create('div');
       field.className = 'paper-field';
       if (type === 'checkbox') {
