@@ -68,6 +68,21 @@ async function creerTables() {
   await ctx.pool.query(`CREATE TABLE IF NOT EXISTS radio_clips (
     id SERIAL PRIMARY KEY, youtube_id TEXT UNIQUE NOT NULL, titre TEXT, auteur TEXT,
     lien TEXT NOT NULL, radio TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`);
+  await ctx.pool.query(`CREATE TABLE IF NOT EXISTS radio_envois (
+    id SERIAL PRIMARY KEY, source TEXT, origine TEXT, lien TEXT, titre TEXT, auteur TEXT, radio TEXT,
+    statut TEXT DEFAULT 'en_cours', message TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), fini_le TIMESTAMPTZ)`);
+}
+async function noterEnvoi(champs) {
+  try {
+    const r = await ctx.pool.query('INSERT INTO radio_envois (source, origine, lien, titre, radio) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [champs.source, champs.origine, champs.lien || null, champs.titre || null, champs.radio || null]);
+    return r.rows[0] ? r.rows[0].id : null;
+  } catch (e) { return null; }
+}
+async function finirEnvoi(id, champs) {
+  if (!id) return;
+  await ctx.pool.query('UPDATE radio_envois SET statut=$2, message=$3, titre=COALESCE($4, titre), auteur=COALESCE($5, auteur), fini_le=NOW() WHERE id=$1',
+    [id, champs.statut, champs.message || null, champs.titre || null, champs.auteur || null]).catch(() => {});
 }
 async function enregistrerClip({ youtubeId: yid, lien, titre, auteur, radio }) {
   await ctx.pool.query(
@@ -169,15 +184,29 @@ async function handleBouton(from, id) {
   }
   await ctx.sendWhatsApp(from, `⏳ C'est parti pour ${radio.nom}… Je te préviens quand c'est en ligne (ça peut prendre 1 à 2 minutes).`);
   // Le travail continue en arrière-plan : WhatsApp n'attend pas.
-  traiter(from, s, cle, radio).catch(async (e) => {
-    console.error('Radio —', e.message);
-    await ctx.sendWhatsApp(from, `❌ Ça n'a pas marché : ${e.message}`).catch(() => {});
-  });
+  lancerEnvoi(s, cle, 'whatsapp', (msg) => ctx.sendWhatsApp(from, msg));
   return true;
 }
 
+// Démarre un envoi en arrière-plan et le note dans l'historique (page admin « Radio »)
+async function lancerEnvoi(s, cle, origine, dire) {
+  const radio = radios()[cle];
+  const id = await noterEnvoi({ source: s.source, origine, lien: s.lien, titre: s.filename, radio: cle });
+  traiter(s, cle, radio)
+    .then(async (r) => {
+      await finirEnvoi(id, { statut: 'ok', titre: r.titre, auteur: r.auteur, message: r.playlist ? `Liste : ${r.playlist}` : null });
+      if (dire) await dire(`✅ En ligne sur ${radio.nom} !\n\n🎵 ${r.titre}${r.auteur ? `\n👤 ${r.auteur}` : ''}${r.playlist ? `\n📋 Liste : ${r.playlist}` : ''}${s.source === 'youtube' ? '\n🎬 Clip ajouté dans « Clips »' : ''}`);
+    })
+    .catch(async (e) => {
+      console.error('Radio —', e.message);
+      await finirEnvoi(id, { statut: 'erreur', message: e.message });
+      if (dire) await dire(`❌ Ça n'a pas marché : ${e.message}`).catch(() => {});
+    });
+  return id;
+}
+
 // ─── Travail en arrière-plan ──────────────────────────────────
-async function traiter(from, s, cle, radio) {
+async function traiter(s, cle, radio) {
   const dossier = await fs.mkdtemp(path.join(os.tmpdir(), 'radio-'));
   try {
     let fichier, titre = null, auteur = null;
@@ -202,7 +231,7 @@ async function traiter(from, s, cle, radio) {
     }
     const chemin = await envoyerSurAzuracast(radio.id, fichier);
     const playlist = await ajouterALaPlaylist(radio.id, chemin);
-    await ctx.sendWhatsApp(from, `✅ En ligne sur ${radio.nom} !\n\n🎵 ${titre || path.basename(chemin)}${auteur ? `\n👤 ${auteur}` : ''}${playlist ? `\n📋 Liste : ${playlist}` : ''}${s.source === 'youtube' ? '\n🎬 Clip ajouté dans « Clips »' : ''}`);
+    return { titre: titre || path.basename(chemin).replace(EXT_AUDIO, ''), auteur, playlist };
   } finally {
     await fs.rm(dossier, { recursive: true, force: true }).catch(() => {});
   }
@@ -374,11 +403,47 @@ function routes() {
       res.json({ ok: true, clips: r.rows.map((c) => ({ ...c, miniature: `https://i.ytimg.com/vi/${c.youtube_id}/hqdefault.jpg` })) });
     } catch (e) { res.status(500).json({ ok: false }); }
   });
-  app.delete('/admin/radio/clips/:id', async (req, res) => {
-    const pw = (req.query && req.query.password) || (req.body && req.body.password);
-    if (pw !== ctx.adminPassword) return res.status(401).json({ ok: false });
+  const okPw = (req) => ((req.query && req.query.password) || (req.body && req.body.password)) === ctx.adminPassword;
+  async function supprimerClip(req, res) {
+    if (!okPw(req)) return res.status(401).json({ ok: false });
     await ctx.pool.query('DELETE FROM radio_clips WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
+  }
+  app.delete('/admin/radio/clips/:id', supprimerClip);
+  app.post('/admin/radio/clips/:id/supprimer', supprimerClip);
+
+  // Page admin « Radio » : état du branchement, historique, clips
+  app.get('/admin/radio', async (req, res) => {
+    if (!okPw(req)) return res.status(401).json({ ok: false });
+    const r = radios();
+    let branche = { ok: false, message: 'La variable AZURACAST_API_KEY n\'est pas encore ajoutée sur Railway.' };
+    if (process.env.AZURACAST_API_KEY) {
+      try { await azura('GET', `/station/${r.hayous.id}/playlists`); branche = { ok: true, message: `Branchée sur ${azuraUrl().replace(/^https?:\/\//, '')}` }; }
+      catch (e) { branche = { ok: false, message: e.message }; }
+    }
+    try {
+      const envois = await ctx.pool.query('SELECT * FROM radio_envois ORDER BY created_at DESC LIMIT 60');
+      const clips = await ctx.pool.query('SELECT * FROM radio_clips ORDER BY created_at DESC LIMIT 200');
+      res.json({ ok: true, branche, radios: Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.nom])),
+        envois: envois.rows, clips: clips.rows.map((c) => ({ ...c, miniature: `https://i.ytimg.com/vi/${c.youtube_id}/mqdefault.jpg` })) });
+    } catch (e) { res.status(500).json({ ok: false, message: e.message }); }
+  });
+  // Coller un lien YouTube depuis l'ordinateur
+  app.post('/admin/radio/lien', async (req, res) => {
+    if (!okPw(req)) return res.status(401).json({ ok: false });
+    const yid = youtubeId(req.body && req.body.lien);
+    const cle = String((req.body && req.body.radio) || '');
+    if (!yid) return res.json({ ok: false, message: 'Ce n\'est pas un lien YouTube.' });
+    const s = { source: 'youtube', youtubeId: yid, lien: `https://www.youtube.com/watch?v=${yid}` };
+    if (cle === 'clip') {
+      const info = await infosYoutube(yid).catch(() => ({}));
+      await enregistrerClip({ youtubeId: yid, lien: s.lien, titre: info.titre, auteur: info.auteur });
+      return res.json({ ok: true, message: `Clip ajouté${info.titre ? ' : ' + info.titre : ''}` });
+    }
+    if (!radios()[cle]) return res.json({ ok: false, message: 'Choisis une radio.' });
+    if (!process.env.AZURACAST_API_KEY) return res.json({ ok: false, message: 'La radio n\'est pas encore branchée (AZURACAST_API_KEY).' });
+    const id = await lancerEnvoi(s, cle, 'admin', null);
+    res.json({ ok: true, id, message: `C'est parti pour ${radios()[cle].nom} (1 à 2 minutes).` });
   });
 }
 

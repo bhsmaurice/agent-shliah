@@ -4679,6 +4679,7 @@ document.addEventListener('click', function(e) {
     { tab: 'infos', label: 'Infos du bot', ico: 'info-circle', group: 'Bot' },
     { tab: 'histoires', label: 'Histoires', ico: 'book', group: 'Bot' },
     { tab: 'musiques', label: 'Musiques', ico: 'music', group: 'Bot' },
+    { tab: 'radio', label: 'Radio', ico: 'radio', group: 'Bot', admin: true },
     { tab: 'questions', label: 'Questions', ico: 'messages', group: 'Bot' },
     { tab: 'contacts', label: 'Contacts', ico: 'users', group: 'Communauté' },
     { tab: 'mariages', label: 'Mariages', ico: 'heart', group: 'Communauté', admin: true },
@@ -4708,7 +4709,7 @@ document.addEventListener('click', function(e) {
     { tab: 'corbeille', label: 'Corbeille', ico: 'trash', group: 'Outils' },
     { tab: 'config', label: 'Config', ico: 'settings', group: 'Outils' }
   ];
-  var MOTS = { stories: 'statut story stories instagram facebook whatsapp nigoun musique rappel samedi', carnet: 'tâches taches todo à faire rappel liste organiser', posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', corbeille: 'supprimés' };
+  var MOTS = { stories: 'statut story stories instagram facebook whatsapp nigoun musique rappel samedi', carnet: 'tâches taches todo à faire rappel liste organiser', posts: 'instagram facebook réseaux sociaux publication story programmé', ajouter: 'ajouter une info nouvelle information tableau de bord', cerfa: 'reçu fiscal recu', paiements: 'argent payer stripe', demandes: 'pane prière', contacts: 'téléphone numéro', broadcast: 'envoyer message groupé whatsapp', lettres: 'sefer torah enfants', 'tsedaka-ext': 'dons donateurs', config: 'réglages paramètres pin', musiques: 'playlist chants', radio: 'web radio youtube clips hayous nigounim calme azuracast', corbeille: 'supprimés' };
   var GRP = { '': 'home', 'Bot': 'bot', 'Communauté': 'com', 'Dons et reçus': 'don', 'Outils': 'out' };
   function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
   function go(p) { if (p.run) p.run(); else if (p.tab === 'lettres') ouvrirLettresSeferTorah(); else showTab(p.tab); }
@@ -5362,6 +5363,139 @@ document.addEventListener('click', function(e) {
     var orig = window.showTab;
     window.showTab = function (name) { orig.apply(this, arguments); if (name === 'carnet' || name === 'ajouter') chargerCarnet(); };
     if (document.getElementById('app').style.display === 'block') chargerCarnet();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<style id="radio-admin">
+/* ═══ Page « Radio » : musiques envoyées sur la web radio ═══ */
+#tab-radio .inner { max-width: 900px !important; }
+.ra-etat { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #DFE6F1; border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #4A5D86; }
+.ra-led { width: 11px; height: 11px; border-radius: 50%; background: #C9D1E0; flex-shrink: 0; }
+.ra-led.ok { background: #3FA35B; box-shadow: 0 0 0 4px #E3F4E7; }
+.ra-led.ko { background: #D0453F; box-shadow: 0 0 0 4px #FBE7E6; }
+.ra-etat a { margin-left: auto; color: #253D78; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.ra-add { flex-wrap: wrap; }
+.ra-add select { border: 1px solid #DFE6F1; border-radius: 10px; padding: 8px; font: 14px Arial; color: #253D78; background: #fff; }
+@media (max-width: 640px) { .ra-add { padding: 10px; } .ra-add > .ti { display: none; } .ra-add input { flex-basis: 100%; padding: 6px 4px 10px; border-bottom: 1px solid #EEF1F6; } .ra-add select { flex: 1; } }
+.ra-statut { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+.ra-statut.ok { background: #E3F4E7; color: #2F7A45; }
+.ra-statut.erreur { background: #FBE7E6; color: #A33B3E; }
+.ra-statut.en_cours { background: #FCF1DD; color: #A86A0E; }
+.ra-err { font-size: 12px; color: #A33B3E; margin-top: 4px; white-space: pre-wrap; }
+.ra-clips { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 14px; }
+.ra-clip { border: 1px solid #EEF1F6; border-radius: 12px; overflow: hidden; background: #fff; }
+.ra-clip img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #EEF1F6; }
+.ra-clip div { padding: 8px 10px; font-size: 13px; color: #253D78; line-height: 1.35; }
+.ra-clip small { display: block; color: #7D8AA4; margin-top: 2px; }
+.ra-clip .ra-act { display: flex; gap: 6px; padding: 0 10px 10px; }
+.ra-clip .ca-btn { padding: 5px 10px; font-size: 12px; }
+</style>
+<script id="radio-admin-js">
+/* ═══ Page « Radio » : état, coller un lien, historique, clips ═══
+   Lit /admin/radio ; envoie /admin/radio/lien ; supprime un clip. */
+(function () {
+  function ic(n) { return '<i class="ti ti-' + n + '" aria-hidden="true"></i>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var NOMS = { hayous: 'Radio Hayous', nigounim: 'Radio Nigounim', calme: 'Radio Calme' };
+  var STATUT = { ok: 'En ligne', erreur: 'Raté', en_cours: 'En cours…' };
+  var minuteur = null;
+
+  function quand(iso) {
+    var d = new Date(iso), maintenant = new Date();
+    var h = String(d.getHours()).padStart(2, '0') + 'h' + String(d.getMinutes()).padStart(2, '0');
+    if (d.toDateString() === maintenant.toDateString()) return "Aujourd'hui " + h;
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' ' + h;
+  }
+  async function api(route, body) {
+    var url = getUrl(), pw = getAdminPw();
+    var r = body ? await fetch(url + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ password: pw }, body)) })
+                 : await fetch(url + route + '?password=' + encodeURIComponent(pw));
+    return r.json();
+  }
+
+  function afficher(d) {
+    var e = document.getElementById('ra-etat');
+    e.innerHTML = '<span class="ra-led ' + (d.branche.ok ? 'ok' : 'ko') + '"></span><span>' + (d.branche.ok ? '<b>Radio branchée.</b> ' : '<b>Radio pas branchée.</b> ') + esc(d.branche.message) + '</span>' +
+      '<a href="https://radio.habadsmaurice.com" target="_blank" rel="noopener">' + ic('external-link') + ' Écouter</a>';
+    if (d.radios) NOMS = d.radios;
+
+    var envois = d.envois || [];
+    document.getElementById('ra-envois').innerHTML = '<h3>' + ic('history') + 'Derniers envois<span class="n">' + envois.length + '</span></h3>' +
+      (envois.length ? envois.map(function (x) {
+        return '<div class="ca-row" style="cursor:default"><div class="ca-t"><b>' + esc(x.titre || x.lien || 'Musique') + '</b><div class="ca-meta">' +
+          '<span class="ra-statut ' + esc(x.statut) + '">' + (STATUT[x.statut] || esc(x.statut)) + '</span>' +
+          '<span>' + ic('radio') + ' ' + esc(NOMS[x.radio] || x.radio || '') + '</span>' +
+          '<span>' + ic(x.origine === 'whatsapp' ? 'brand-whatsapp' : 'device-desktop') + ' ' + quand(x.created_at) + '</span>' +
+          (x.source === 'youtube' ? '<span>' + ic('brand-youtube') + '</span>' : '<span>' + ic('file-music') + '</span>') +
+          (x.auteur ? '<span>' + ic('user') + ' ' + esc(x.auteur) + '</span>' : '') +
+          '</div>' + (x.statut === 'erreur' && x.message ? '<div class="ra-err">' + esc(x.message) + '</div>' : '') + '</div></div>';
+      }).join('') : '<div class="ca-empty">Rien encore.<br>Envoie un <b>lien YouTube</b> ou un <b>fichier audio</b> au bot sur WhatsApp, ou colle un lien ci-dessus.</div>');
+
+    var clips = d.clips || [];
+    document.getElementById('ra-clips').innerHTML = '<h3>' + ic('movie') + 'Clips<span class="n">' + clips.length + '</span></h3>' +
+      (clips.length ? '<div class="ra-clips">' + clips.map(function (c) {
+        return '<div class="ra-clip"><img loading="lazy" src="' + esc(c.miniature) + '" alt=""><div>' + esc(c.titre || 'Clip') + (c.auteur ? '<small>' + esc(c.auteur) + '</small>' : '') + '</div>' +
+          '<div class="ra-act"><a class="ca-btn" href="' + esc(c.lien) + '" target="_blank" rel="noopener">' + ic('player-play') + 'Voir</a>' +
+          '<button class="ca-btn danger" data-suppr="' + c.id + '">' + ic('trash') + 'Retirer</button></div></div>';
+      }).join('') + '</div>' : '<div class="ca-empty">Aucun clip pour l\'instant.</div>');
+
+    clearTimeout(minuteur);
+    if (envois.some(function (x) { return x.statut === 'en_cours'; }) && document.getElementById('tab-radio').classList.contains('active')) minuteur = setTimeout(chargerRadio, 5000);
+  }
+
+  async function chargerRadio() {
+    if (!getUrl()) { document.getElementById('ra-etat').textContent = "Configure l'adresse du serveur dans Config."; return; }
+    try {
+      var d = await api('/admin/radio');
+      if (!d.ok) { document.getElementById('ra-etat').textContent = 'Impossible de charger la radio.'; return; }
+      afficher(d);
+    } catch (e) { document.getElementById('ra-etat').textContent = 'Erreur de connexion au serveur.'; }
+  }
+  window.chargerRadio = chargerRadio;
+
+  async function envoyer() {
+    var inp = document.getElementById('ra-lien'), sel = document.getElementById('ra-choix'), btn = document.getElementById('ra-envoyer');
+    var lien = inp.value.trim();
+    if (!lien) { inp.focus(); return; }
+    btn.disabled = true;
+    try {
+      var d = await api('/admin/radio/lien', { lien: lien, radio: sel.value });
+      alert((d.ok ? '✓ ' : '❌ ') + (d.message || (d.ok ? 'Envoyé' : 'Erreur')));
+      if (d.ok) { inp.value = ''; chargerRadio(); }
+    } catch (e) { alert('❌ Erreur de connexion'); }
+    btn.disabled = false;
+  }
+
+  async function supprimer(id) {
+    if (!confirm('Retirer ce clip de l\'onglet « Clips » ?')) return;
+    try { var d = await api('/admin/radio/clips/' + id + '/supprimer', {}); if (d.ok) chargerRadio(); else alert('❌ Erreur'); }
+    catch (e) { alert('❌ Erreur de connexion'); }
+  }
+
+  function construire() {
+    var main = document.querySelector('.main-content');
+    if (!main || document.getElementById('tab-radio')) return;
+    var page = document.createElement('div'); page.className = 'page'; page.id = 'tab-radio';
+    page.innerHTML = '<div class="inner">' +
+      '<div class="ca-head"><div><h1>Radio</h1><p>Les musiques envoyées sur la web radio, et les clips.</p></div><button class="ca-btn" id="ra-refresh">' + ic('refresh') + 'Actualiser</button></div>' +
+      '<div class="ra-etat" id="ra-etat"><span class="ra-led"></span>Chargement…</div>' +
+      '<div class="ca-add ra-add">' + ic('brand-youtube') + '<input id="ra-lien" placeholder="Colle un lien YouTube" aria-label="Lien YouTube">' +
+        '<select id="ra-choix" aria-label="Radio"><option value="hayous">Radio Hayous</option><option value="nigounim">Radio Nigounim</option><option value="calme">Radio Calme</option><option value="clip">Clip seulement</option></select>' +
+        '<button class="ca-btn primary" id="ra-envoyer">' + ic('send') + 'Envoyer</button></div>' +
+      '<div class="ca-hint">Seulement les musiques dont tu as l\'accord de l\'artiste. Sur WhatsApp, envoie simplement le lien ou le fichier au bot.</div>' +
+      '<div class="ca-sec" id="ra-envois"></div><div class="ca-sec" id="ra-clips"></div></div>';
+    main.appendChild(page);
+    document.getElementById('ra-refresh').onclick = chargerRadio;
+    document.getElementById('ra-envoyer').onclick = envoyer;
+    document.getElementById('ra-lien').addEventListener('keydown', function (e) { if (e.key === 'Enter') envoyer(); });
+    page.addEventListener('click', function (e) { var b = e.target.closest('[data-suppr]'); if (b) supprimer(b.dataset.suppr); });
+  }
+
+  function init() {
+    construire();
+    var orig = window.showTab;
+    window.showTab = function (name) { orig.apply(this, arguments); if (name === 'radio') chargerRadio(); };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

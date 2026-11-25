@@ -77,7 +77,7 @@ test('Clé refusée : message clair', async () => {
 test('Seul l\'admin déclenche ; lien → liste de radios ; « Clip seulement » range le clip', async () => {
   const envoyes = [], requetes = [], routesGet = {};
   const pool = { async query(sql, args) { requetes.push({ sql, args }); return { rows: [] }; } };
-  const app = { get: (p, h) => { routesGet[p] = h; }, delete: () => {} };
+  const app = { get: (p, h) => { routesGet[p] = h; }, post: () => {}, delete: () => {} };
   const ancien = global.fetch;
   global.fetch = async (url, opts) => {
     if (String(url).includes('/messages')) { envoyes.push(JSON.parse(opts.body)); return new Response('{}'); }
@@ -100,5 +100,37 @@ test('Seul l\'admin déclenche ; lien → liste de radios ; « Clip seulement »
     // Un vocal n'est pas pris par la radio (il reste pour « Mon carnet »)
     assert.equal(await radio.handleMedia('33770241746', { type: 'audio', audio: { id: 'v', voice: true } }), false);
     assert.ok(routesGet['/radio/clips']);
+  } finally { global.fetch = ancien; }
+});
+
+test('Page admin « Radio » : mot de passe, état, coller un lien « clip »', async () => {
+  const routes = {}, requetes = [];
+  const app = { get: (p, h) => { routes['GET ' + p] = h; }, post: (p, h) => { routes['POST ' + p] = h; }, delete: (p, h) => { routes['DELETE ' + p] = h; } };
+  const pool = { async query(sql, args) {
+    requetes.push({ sql, args });
+    if (/FROM radio_envois/.test(sql)) return { rows: [{ id: 1, statut: 'ok', titre: 'Nigoun', radio: 'hayous' }] };
+    if (/FROM radio_clips/.test(sql)) return { rows: [{ id: 3, youtube_id: 'dQw4w9WgXcQ', titre: 'Clip' }] };
+    return { rows: [] };
+  } };
+  const ancien = global.fetch;
+  global.fetch = async (url) => {
+    if (String(url).includes('oembed')) return new Response(JSON.stringify({ title: 'Simha' }));
+    if (String(url).includes('/playlists')) return new Response('[]');
+    return new Response('{}');
+  };
+  const rep = () => { const r = { code: 200, corps: null, status(c) { r.code = c; return r; }, json(j) { r.corps = j; return r; }, set() { return r; } }; return r; };
+  try {
+    process.env.AZURACAST_API_KEY = 'cle';
+    init({ app, pool, sendWhatsApp: async () => {}, isAdmin: () => true, adminPassword: 'pw', whatsappToken: 't', phoneNumberId: 'p' });
+    let r = rep(); await routes['GET /admin/radio']({ query: { password: 'faux' } }, r); assert.equal(r.code, 401);
+    r = rep(); await routes['GET /admin/radio']({ query: { password: 'pw' } }, r);
+    assert.equal(r.corps.ok, true); assert.equal(r.corps.branche.ok, true);
+    assert.equal(r.corps.envois.length, 1); assert.match(r.corps.clips[0].miniature, /dQw4w9WgXcQ/);
+    r = rep(); await routes['POST /admin/radio/lien']({ body: { password: 'pw', lien: 'pas un lien', radio: 'hayous' } }, r); assert.equal(r.corps.ok, false);
+    r = rep(); await routes['POST /admin/radio/lien']({ body: { password: 'pw', lien: 'https://youtu.be/dQw4w9WgXcQ', radio: 'clip' } }, r);
+    assert.equal(r.corps.ok, true); assert.match(r.corps.message, /Simha/);
+    assert.ok(requetes.some((q) => /INSERT INTO radio_clips/.test(q.sql)));
+    r = rep(); await routes['POST /admin/radio/clips/:id/supprimer']({ params: { id: '3' }, body: { password: 'pw' } }, r);
+    assert.equal(r.corps.ok, true);
   } finally { global.fetch = ancien; }
 });
