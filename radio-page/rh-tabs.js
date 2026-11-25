@@ -75,7 +75,7 @@
     "#rh-clips .side svg{width:24px;height:24px}",
     "#rh-clips .top{position:absolute;left:0;right:0;top:0;padding:calc(14px + env(safe-area-inset-top)) 18px 30px;background:linear-gradient(rgba(0,0,0,.45),transparent);font-size:17px;font-weight:700;z-index:3;pointer-events:none;display:flex;justify-content:space-between;align-items:center}",
     "#rh-clips .top .n{font-size:13px;font-weight:600;opacity:.7}",
-    "#rh-clips .snd{position:absolute;left:50%;transform:translateX(-50%);top:calc(60px + env(safe-area-inset-top));z-index:4;border:0;font:inherit;font-size:15px;font-weight:600;color:#000;background:#fff;padding:10px 18px;border-radius:22px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;animation:rhPulse 2s ease-in-out infinite}",
+    "#rh-clips .snd{position:absolute;left:50%;transform:translateX(-50%);top:calc(60px + env(safe-area-inset-top));z-index:6;border:0;font:inherit;font-size:15px;font-weight:600;color:#000;background:#fff;padding:10px 18px;border-radius:22px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;animation:rhPulse 2s ease-in-out infinite}",
     "#rh-clips .snd svg{width:20px;height:20px}",
     "@keyframes rhPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}}",
     "#rh-yt-wrap{position:fixed;z-index:2;opacity:0;pointer-events:none;transition:opacity .35s;background:#000}",
@@ -83,6 +83,16 @@
     "#rh-yt-wrap iframe{width:100%;height:100%;border:0;display:block}",
     "#rh-clips .vide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:10px;color:rgba(255,255,255,.75);font-size:16px;line-height:1.5}",
     "#rh-clips .vide b{color:#fff;font-size:22px}",
+    "#rh-clips .feed.peek .sl{animation:rhPeek 1.6s cubic-bezier(.45,0,.2,1) 2}",
+    "@keyframes rhPeek{0%,100%{transform:translateY(0)}35%,55%{transform:translateY(-120px)}}",
+    "#rh-guide{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.35);opacity:0;transition:opacity .35s;pointer-events:none}",
+    "#rh-guide.on{opacity:1;pointer-events:auto}",
+    "#rh-guide .main{width:74px;height:74px;color:#fff;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5));animation:rhSwipe 1.6s ease-in-out infinite}",
+    "#rh-guide .chev{display:flex;flex-direction:column;align-items:center;margin-bottom:-6px}#rh-guide .chev svg{width:30px;height:30px;color:#fff;margin-top:-14px;animation:rhChev 1.6s ease-in-out infinite}#rh-guide .chev svg:nth-child(2){animation-delay:.15s;opacity:.7}#rh-guide .chev svg:nth-child(3){animation-delay:.3s;opacity:.4}",
+    "#rh-guide b{color:#fff;font-size:20px;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}",
+    "#rh-guide small{color:rgba(255,255,255,.85);font-size:14px;margin-top:-8px}",
+    "@keyframes rhSwipe{0%{transform:translateY(40px);opacity:0}20%{opacity:1}70%{transform:translateY(-50px);opacity:1}100%{transform:translateY(-60px);opacity:0}}",
+    "@keyframes rhChev{0%,100%{transform:translateY(6px);opacity:.2}50%{transform:translateY(-6px);opacity:1}}",
     "#rh-clips .hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom));font-size:13px;opacity:.7;white-space:nowrap;pointer-events:none;transition:opacity .6s}"
   ].join("\n");
   document.head.appendChild(css);
@@ -200,9 +210,29 @@
         if (d > 40) wrap.classList.remove("vu"); else if (d < 4 && pret && player.getPlayerState() === 1) { placer(); wrap.classList.add("vu"); } } } var h = document.getElementById("rh-hint"); if (h && feed.scrollTop > 50) h.style.opacity = 0; };
     if (vue === "clips") entrerClips();
   }
+  // Petit guide « glissez vers le haut » (les 3 premières fois), comme TikTok
+  var guideFait = false;
+  function guide(){
+    if (guideFait || clips.length < 2) return;
+    var n = +(lire("rh_guide") || 0); if (n >= 3) return;
+    guideFait = true; ecrire("rh_guide", String(n + 1));
+    var CH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>';
+    var g = document.createElement("div"); g.id = "rh-guide";
+    g.innerHTML = '<div class="chev">' + CH + CH + CH + '</div>' +
+      '<svg class="main" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 4.2a1.6 1.6 0 0 1 3.2 0v6.1l.5-.1a1.6 1.6 0 0 1 1.9 1.1l.1.4.4-.1a1.6 1.6 0 0 1 1.9 1.1l.1.4h.3a1.6 1.6 0 0 1 1.8 1.6v3.1a5.9 5.9 0 0 1-5.9 5.9h-1.4a5.9 5.9 0 0 1-4.8-2.5l-3.1-4.4a1.6 1.6 0 0 1 2.4-2.1l1.6 1.4z"/></svg>' +
+      '<b>Glissez vers le haut</b><small>pour voir le clip suivant</small>';
+    document.getElementById("rh-clips").appendChild(g);
+    function fermer(){ g.classList.remove("on"); var etait = feed.classList.contains("peek"); feed.classList.remove("peek");
+      if (etait && wrap && pret && player.getPlayerState() === 1) { placer(); wrap.classList.add("vu"); } setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 400); feed.removeEventListener("scroll", fermer); }
+    g.addEventListener("click", fermer); g.addEventListener("touchstart", fermer, { passive: true });
+    feed.addEventListener("scroll", fermer, { passive: true });
+    setTimeout(function(){ if (vue === "clips" && g.parentNode) { g.classList.add("on"); feed.classList.add("peek"); if (wrap) wrap.classList.remove("vu"); } }, 900);
+    setTimeout(fermer, 4600);
+  }
   function entrerClips(){
     if (!clips.length) return;
     chargerYT();
+    guide();
     var i = Math.round(feed.scrollTop / (feed.clientHeight || 1));
     actif = -1; choisir(Math.max(0, Math.min(clips.length - 1, i)));
   }
@@ -250,7 +280,7 @@
       events: {
         onReady: function(){ pret = true; var i = actif; actif = -1; if (vue === "clips") choisir(i < 0 ? 0 : i); },
         onStateChange: function(e){
-          if (e.data === 1) { if (wrap) wrap.classList.add("vu"); var pl = feed.children[actif] && feed.children[actif].querySelector(".pl"); if (pl) pl.style.opacity = 0; placer(); }
+          if (e.data === 1) { if (wrap && !feed.classList.contains("peek")) wrap.classList.add("vu"); var pl = feed.children[actif] && feed.children[actif].querySelector(".pl"); if (pl) pl.style.opacity = 0; placer(); }
           if (e.data === 0 && actif + 1 < clips.length) feed.children[actif + 1].scrollIntoView({ behavior: "smooth" });
           if (e.data === 0 && actif + 1 >= clips.length) { player.seekTo(0); player.playVideo(); }
         }
