@@ -88,6 +88,7 @@
   #feedback:empty { display: none; }
   #feedback { padding: 8px 12px; background: #f3effa; border-radius: 8px; }
   #print-sheet { display: none; }
+  .city-suggestion { margin-top: 5px; padding: 5px 10px; justify-self: start; }
   .ketouba-summary { margin-bottom: 14px; }
   .ketouba-summary dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px 18px; margin: 0; }
   .ketouba-summary dt { font-weight: 650; }
@@ -339,6 +340,72 @@ const hebrewDateOptions = {
     return [String(year), 'ה׳' + hebrewNumber(year % 1000)];
   })
 };
+
+const ketoubaCities = [
+  ['S Maurice', 'סן מוריס', 'Saint-Maurice'],
+  ['Charenton-le-Pont', 'שרנטון לה פון', 'Charenton'],
+  ['Maisons-Alfort', 'מזון אלפור'],
+  ['Paris', 'פריז'],
+  ['Vincennes', 'ונסן'],
+  ['Saint-Mandé', 'סן מנדה'],
+  ['Joinville-le-Pont', 'ז׳ואנוויל לה פון', 'Joinville'],
+  ['Créteil', 'קרטיי'],
+  ['Nogent-sur-Marne', 'נוז׳אן סיר מארן'],
+  ['Montreuil', 'מונטריי'],
+  ['Boulogne-Billancourt', 'בולון בילנקור', 'Boulogne'],
+  ['Neuilly-sur-Seine', 'נויי סיר סן', 'Neuilly'],
+  ['Sarcelles', 'סרסל'],
+  ['Versailles', 'ורסאי'],
+  ['Lyon', 'ליון'],
+  ['Marseille', 'מרסיי'],
+  ['Strasbourg', 'שטרסבורג'],
+  ['Nice', 'ניס'],
+  ['Toulouse', 'טולוז'],
+  ['Bordeaux', 'בורדו'],
+  ['Lille', 'ליל'],
+  ['Nantes', 'נאנט'],
+  ['Jérusalem', 'ירושלים'],
+  ['Tel-Aviv', 'תל אביב'],
+  ['Netanya', 'נתניה'],
+  ['Haïfa', 'חיפה']
+];
+
+function cityKey(value) {
+  return value.normalize('NFD').replace(/\p{Mark}/gu, '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function addCitySuggestion(input, label) {
+  const options = create('datalist');
+  options.id = 'ketouba-city-options';
+  const cities = new Map();
+  for (const [name, hebrew, ...aliases] of ketoubaCities) {
+    options.append(new Option(name, name));
+    for (const spelling of [name, ...aliases]) cities.set(cityKey(spelling), hebrew);
+  }
+  input.setAttribute('list', options.id);
+  const suggestion = create('button');
+  suggestion.type = 'button';
+  suggestion.className = 'city-suggestion';
+  const spelling = create('bdi');
+  spelling.lang = 'he';
+  suggestion.append('Utiliser ', spelling);
+  function update() {
+    spelling.textContent = cities.get(cityKey(input.value)) || '';
+    suggestion.hidden = !spelling.textContent;
+  }
+  input.addEventListener('input', update);
+  suggestion.onclick = () => {
+    const target = form.elements.namedItem('ketoubaCity');
+    target.value = spelling.textContent;
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.focus();
+  };
+  const wrapper = create('div');
+  wrapper.append(label, options, suggestion);
+  input.refreshCitySuggestion = update;
+  update();
+  return wrapper;
+}
 
 function hebrewField(label, input) {
   const field = create('div');
@@ -605,6 +672,10 @@ function buildFields(documentStatuses) {
         continue;
       }
       if (type !== 'checkbox') label.append(control);
+      if (key === 'ketoubaCityFrench') {
+        grid.append(addCitySuggestion(control, label));
+        continue;
+      }
       if (item) {
         let row = rows.get(item[1]);
         if (!row) {
@@ -678,6 +749,7 @@ function openDossier(dossier, step = 0) {
       if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
       else control.value = current.answers[key] ?? (key === 'soundPhone' ? priorSoundPhone : initial[key] ?? '');
       if (type === 'hebrew') control.setCustomValidity('');
+      if (key === 'ketoubaCityFrench') control.refreshCitySuggestion();
       if (type === 'legacy' || type === 'legacy-textarea') control.closest('label').hidden = !control.value;
       if (type === 'name-extra') {
         control.closest('label').hidden = !control.value;

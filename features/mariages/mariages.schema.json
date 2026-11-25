@@ -105,6 +105,7 @@
     ["ketoubaDay", "Jour du mois hébraïque", "hebrew"],
     ["ketoubaMonth", "Mois hébraïque", "hebrew"],
     ["ketoubaYear", "Année hébraïque telle qu’elle doit être inscrite", "hebrew"],
+    ["ketoubaCityFrench", "Ville de la ‘houppa en français"],
     ["ketoubaCity", "Ville de la ‘houppa en hébreu", "hebrew"],
     ["ketoubaWitnessOneHebrew", "Nom hébraïque du premier témoin", "hebrew"],
     ["ketoubaWitnessTwoHebrew", "Nom hébraïque du second témoin", "hebrew"]
