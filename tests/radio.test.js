@@ -196,3 +196,29 @@ test('Abonnement : inscription, puis « Prévenir les abonnés » envoie le mod�
     assert.ok(requetes.some((q) => /UPDATE radio_envois SET prevenus/.test(q.sql) && q.args[1] === 2));
   } finally { global.fetch = ancien; }
 });
+
+test('Appli : inscription des téléphones et envoi des notifications (retire les appli supprimées)', async () => {
+  const requetes = [];
+  const pool = { async query(sql, args) {
+    requetes.push({ sql, args });
+    if (/SELECT token FROM radio_push/.test(sql)) return { rows: [{ token: 'ExponentPushToken[aaaaaaaaaaaa]' }, { token: 'ExponentPushToken[bbbbbbbbbbbb]' }] };
+    return { rows: [] };
+  } };
+  const ancien = global.fetch, envois = [];
+  global.fetch = async (url, opts) => {
+    if (String(url).includes('exp.host')) { envois.push(JSON.parse(opts.body)); return new Response(JSON.stringify({ data: [{ status: 'ok' }, { status: 'error', details: { error: 'DeviceNotRegistered' } }] })); }
+    return new Response('{}');
+  };
+  try {
+    init({ app: { get() {}, post() {}, delete() {} }, pool, sendWhatsApp: async () => {}, isAdmin: () => false, adminPassword: 'pw', whatsappToken: 't', phoneNumberId: 'p' });
+    assert.equal(await R.inscrirePush('pas-un-jeton', 'ios'), false);
+    assert.equal(await R.inscrirePush('ExponentPushToken[aaaaaaaaaaaa]', 'ios'), true);
+    assert.ok(requetes.some((q) => /INSERT INTO radio_push/.test(q.sql) && q.args[0] === 'ExponentPushToken[aaaaaaaaaaaa]'));
+    const r = await R.envoyerPush('Nigoun sur Radio Hayous');
+    assert.deepEqual(r, { envoyes: 1, echecs: 1 });
+    assert.equal(envois[0].length, 2);
+    assert.equal(envois[0][0].body, 'Nigoun sur Radio Hayous');
+    assert.equal(envois[0][0].data.ecran, 'nouveautes');
+    assert.ok(requetes.some((q) => /DELETE FROM radio_push/.test(q.sql) && q.args[0] === 'ExponentPushToken[bbbbbbbbbbbb]'));
+  } finally { global.fetch = ancien; }
+});
