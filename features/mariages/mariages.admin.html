@@ -95,13 +95,8 @@
   .wide-view main { max-width: 1680px; }
   .wide-view .identity-block label { font-size: clamp(1.1rem, 1.35vw, 1.3rem); }
   .wide-view .fields input, .wide-view .fields textarea, .wide-view .fields select { padding: 12px; }
-  @media (min-width: 960px) {
-    .wide-view #dossier-form { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px 26px; align-items: start; }
-    .wide-view #dossier-form > p { grid-column: 2; margin-bottom: 0; }
-    .wide-view .section-links { position: sticky; top: 16px; grid-column: 1; grid-row: 2 / span 2; display: grid; gap: 8px; padding: 0; }
-    .wide-view .section-links button { text-align: left; padding: 10px 12px; }
-    .wide-view #fields, .wide-view #dossier-form > .toolbar { grid-column: 2; }
-  }
+  .wide-view .section-links { gap: 8px; padding: 8px 0 16px; }
+  .wide-view .section-links button { padding: 9px 12px; }
   @media print {
     @page { margin: 14mm; }
     @page marriage-blank { size: A4 portrait; margin: 11mm 13mm; }

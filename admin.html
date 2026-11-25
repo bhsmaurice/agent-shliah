@@ -2551,11 +2551,6 @@ async function genererCerfaTsedaka(donId, phone, nom, adresse, mode) {
   <div id="paiements-container"></div>
 </div></div>
 <!-- DEMANDES -->
-<div class="page" id="tab-mariages">
-  <iframe id="mariages-frame" title="Mariages · Premier rendez-vous et mariages à venir"
-    referrerpolicy="no-referrer" style="display:block;width:100%;height:80vh;height:80dvh;border:0;background:#fff"></iframe>
-</div>
-
 <div class="page" id="tab-demandes"><div class="inner">
   <div class="card"><button class="btn-main" onclick="chargerDemandes()">🔄 Rafraîchir les demandes</button></div>
   <div id="demandes-stats" style="display:none"><div class="stats-row" id="stats-row"></div></div>
@@ -3066,7 +3061,7 @@ function updateDots(state){for(let i=0;i<6;i++){const d=document.getElementById(
 async function checkPin(){pinEnCours=true;const err=document.getElementById('login-error');err.textContent='Vérification…';let d={};try{const r=await fetch(pinServeur()+'/api/admin/pin/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pinBuffer})});d=await r.json();}catch(e){pinEnCours=false;updateDots('error');err.textContent='Serveur injoignable — vérifiez votre connexion';setTimeout(()=>{pinBuffer='';updateDots();},800);return;}pinEnCours=false;if(d.ok){const role=d.role;currentUser=role;err.textContent='';if(role==='user2'&&d.name)localStorage.setItem(PIN2_NAME_KEY,d.name);['shliah_admin_pin','shliah_user2_pin'].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});localStorage.setItem(SESSION_KEY,JSON.stringify({role,until:Date.now()+SESSION_DURATION}));document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';
 chargerStatsHome();const s=localStorage.getItem('railway_url');if(s){document.getElementById('server-url').value=s;document.getElementById('current-url').textContent=s;}const p=localStorage.getItem('railway_admin_pw');if(p)document.getElementById('admin-pw-config').value=p;applyUserRole(role);}else{updateDots('error');if(d.bloque){lockUntil=Date.now()+d.bloque*1000;err.textContent=d.bloque>=60?`Trop de tentatives — bloqué ${Math.ceil(d.bloque/60)} min`:`Trop de tentatives — bloqué ${d.bloque}s`;}else if(d.essai){err.textContent=`Code incorrect (${d.essai}/${d.max||5})`;}else{err.textContent=d.message||'Code incorrect';}setTimeout(()=>{pinBuffer='';updateDots();},800);}}
 function applyUserRole(role){if(role==='user2'){document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.add('hidden'));document.getElementById('header-user-badge').textContent=getPin2Name();document.getElementById('header-user-badge').style.background='rgba(45,122,79,0.2)';document.getElementById('header-user-badge').style.color='#2D7A4F';}else{document.querySelectorAll('.tab-admin-only').forEach(t=>t.classList.remove('hidden'));document.getElementById('header-user-badge').textContent='Admin';document.getElementById('header-user-badge').style.background='';document.getElementById('header-user-badge').style.color='';}const av=document.getElementById('header-avatar');if(av)av.textContent=(document.getElementById('header-user-badge').textContent||'A').charAt(0).toUpperCase();}
-function logout(){document.getElementById('mariages-frame').removeAttribute('src');localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+function logout(){localStorage.removeItem(SESSION_KEY);pinBuffer='';updateDots();currentUser='admin';activeLoginUser='admin';document.getElementById('login-error').textContent='';document.getElementById('login-user-label').textContent='👤 Administrateur';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
 
 
 
@@ -3134,7 +3129,11 @@ function getUrl(){return(localStorage.getItem('railway_url')||'').replace(/\/$/,
 function ouvrirLettresSeferTorah(){const base=getUrl()||'https://agent-shliah-production.up.railway.app';const pw=getAdminPw();window.open(base+'/lettres-sefer-torah'+(pw?'#access='+encodeURIComponent(pw):''),'_blank','noopener');}
 function getAdminPw(){return localStorage.getItem('railway_admin_pw')||'';}
 function toggleSidebar(force){const sb=document.getElementById('app-sidebar'),ov=document.getElementById('sidebar-overlay');const open=force!==undefined?force:!sb.classList.contains('mobile-open');sb.classList.toggle('mobile-open',open);ov.classList.toggle('active',open);}
-function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
+function ouvrirMariages(){
+  if(currentUser!=='admin')return;
+  window.open('./features/mariages/mariages.admin.html?vue=large', '_blank', 'noopener');
+}
+function showTab(name){if(name==='mariages'){ouvrirMariages();toggleSidebar(false);return;}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab,.sidenav-item').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');document.querySelectorAll('[data-tab="'+name+'"]').forEach(t=>t.classList.add('active'));toggleSidebar(false);
   if(name==='ajouter')chargerStatsHome();
   else if(name==='broadcast')loadBroadcastContacts();
   else if(name==='cerfa'){const dEl=document.getElementById('cerfa-date');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);chargerCerfa();}
@@ -3142,12 +3141,6 @@ function showTab(name){document.querySelectorAll('.page').forEach(p=>p.classList
   else if(name==='histoires')chargerHistoires();
   else if(name==='musiques'){chargerMusiques();chargerPlaylistes();}
   else if(name==='contacts')chargerContacts();
-  else if(name==='mariages'){
-    const frame = document.getElementById('mariages-frame');
-    if(currentUser==='admin' && !frame.hasAttribute('src')){
-      frame.src = './features/mariages/mariages.admin.html?v=entete-doree';
-    }
-  }
   else if(name==='demandes')chargerDemandes();
   else if(name==='corbeille')chargerCorbeille();
   else if(name==='questions')chargerConvs();
@@ -4682,7 +4675,7 @@ document.addEventListener('click', function(e) {
     { tab: 'radio', label: 'Radio', ico: 'radio', group: 'Bot', admin: true },
     { tab: 'questions', label: 'Questions', ico: 'messages', group: 'Bot' },
     { tab: 'contacts', label: 'Contacts', ico: 'users', group: 'Communauté' },
-    { tab: 'mariages', label: 'Mariages', ico: 'heart', group: 'Communauté', admin: true },
+    { tab: 'mariages', label: 'Mariages', ico: 'heart', group: 'Communauté', admin: true, ext: true },
     { tab: 'demandes', label: 'Demandes', ico: 'inbox', group: 'Communauté' },
     { tab: 'broadcast', label: 'Broadcast', ico: 'speakerphone', group: 'Communauté' },
     { tab: 'posts', label: 'Posts Insta / Facebook', ico: 'brand-instagram', group: 'Communauté', admin: true },
