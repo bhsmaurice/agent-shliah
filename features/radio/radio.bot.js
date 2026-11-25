@@ -392,6 +392,38 @@ async function ajouterALaPlaylist(stationId, chemin) {
   return p.name;
 }
 
+// ─── Nouveautés (dernières musiques ajoutées) ─────────────────
+let cacheNouveautes = { quand: 0, liste: [] };
+const EXCLURE = /jingle|annonce|pause|habillage|pub/i;
+async function nouveautes() {
+  if (!process.env.AZURACAST_API_KEY) return [];
+  if (Date.now() - cacheNouveautes.quand < 5 * 60 * 1000) return cacheNouveautes.liste;
+  const liste = [];
+  for (const [cle, r] of Object.entries(radios())) {
+    try {
+      const [fichiers, listes] = await Promise.all([azura('GET', `/station/${r.id}/files`), azura('GET', `/station/${r.id}/playlists`).catch(() => [])]);
+      const exclues = new Set((listes || []).filter((p) => p.is_jingle || EXCLURE.test(p.name || '')).map((p) => p.id));
+      for (const f of fichiers || []) {
+        const pl = f.playlists || [];
+        if (pl.length && pl.every((p) => exclues.has(p.id))) continue;
+        if (EXCLURE.test(f.path || '') && !pl.length) continue;
+        if (!pl.length) continue; // pas dans une liste = pas à l'antenne
+        liste.push({
+          radio: cle, radio_nom: r.nom,
+          titre: f.title || String(f.path || '').split('/').pop().replace(EXT_AUDIO, ''),
+          artiste: f.artist || null,
+          duree: Math.round(f.length || 0),
+          ajoute: f.uploaded_at || f.mtime || 0,
+          pochette: f.art ? String(f.art).replace(/^http:/, 'https:') : null
+        });
+      }
+    } catch (e) { console.error('Radio — nouveautés :', e.message); }
+  }
+  liste.sort((a, b) => b.ajoute - a.ajoute);
+  cacheNouveautes = { quand: Date.now(), liste: liste.slice(0, 40) };
+  return cacheNouveautes.liste;
+}
+
 // ─── Routes ───────────────────────────────────────────────────
 function routes() {
   const app = ctx.app;
@@ -411,6 +443,14 @@ function routes() {
   }
   app.delete('/admin/radio/clips/:id', supprimerClip);
   app.post('/admin/radio/clips/:id/supprimer', supprimerClip);
+
+  // Public : dernières musiques ajoutées sur les 3 radios (onglet « Nouveautés »)
+  app.get('/radio/nouveautes', async (req, res) => {
+    try {
+      res.set('Cache-Control', 'public, max-age=120');
+      res.json({ ok: true, musiques: await nouveautes() });
+    } catch (e) { res.status(500).json({ ok: false }); }
+  });
 
   // Page admin « Radio » : état du branchement, historique, clips
   app.get('/admin/radio', async (req, res) => {
@@ -457,4 +497,4 @@ function init(options) {
   return { handleText, handleMedia, handleBouton };
 }
 
-module.exports = { init, _test: { youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };
+module.exports = { init, _test: { nouveautes, viderCache: () => { cacheNouveautes = { quand: 0, liste: [] }; }, youtubeId, nomFichierPropre, estFichierAudio, choixDepuisTexte, envoyerSurAzuracast, ajouterALaPlaylist, choisirPlaylist, sessions, setCtx: (c) => { ctx = c; } } };

@@ -134,3 +134,27 @@ test('Page admin « Radio » : mot de passe, état, coller un lien « clip »', 
     assert.equal(r.corps.ok, true);
   } finally { global.fetch = ancien; }
 });
+
+test('Nouveautés : les plus récentes d\'abord, sans jingles ni fichiers hors liste', async () => {
+  process.env.AZURACAST_API_KEY = 'cle';
+  R.viderCache();
+  const ancien = global.fetch;
+  global.fetch = async (url) => {
+    const u = String(url);
+    if (u.endsWith('/playlists')) return new Response(JSON.stringify([{ id: 1, name: 'default' }, { id: 9, name: 'Jingles', is_jingle: true }]));
+    if (u.includes('/station/2/files')) return new Response(JSON.stringify([
+      { title: 'Ancienne', artist: 'A', path: 'a.mp3', uploaded_at: 100, playlists: [{ id: 1 }], art: 'http://radio.test/art.jpg' },
+      { title: 'Nouvelle', artist: 'B', path: 'b.mp3', uploaded_at: 300, playlists: [{ id: 1 }] },
+      { title: 'Jingle', path: 'jingles/j.mp3', uploaded_at: 999, playlists: [{ id: 9 }] },
+      { title: 'Hors liste', path: 'c.mp3', uploaded_at: 500, playlists: [] }
+    ]));
+    if (u.includes('/files')) return new Response('[]');
+    return new Response('[]');
+  };
+  try {
+    const l = await R.nouveautes();
+    assert.deepEqual(l.map((m) => m.titre), ['Nouvelle', 'Ancienne']);
+    assert.equal(l[0].radio, 'hayous');
+    assert.equal(l[1].pochette, 'https://radio.test/art.jpg');
+  } finally { global.fetch = ancien; }
+});
