@@ -349,6 +349,11 @@ function hebrewField(label, input) {
   input.dir = 'rtl';
   input.lang = 'he';
   label.htmlFor = input.id;
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
+    const hebrewOnly = /^[\p{Script=Hebrew}\s'".’״׳־-]+$/u;
+    input.setCustomValidity(!value || hebrewOnly.test(value) ? '' : 'Utilise uniquement des lettres hébraïques dans ce champ.');
+  });
 
   const toggle = create('button', '⌨');
   toggle.className = 'hebrew-toggle';
@@ -401,14 +406,16 @@ function hebrewField(label, input) {
   if (dateOptions) {
     const select = create('select');
     select.setAttribute('aria-label', 'Choisir — ' + label.textContent);
-    select.add(new Option('Choisir dans la liste…', ''));
+    select.lang = 'he';
+    select.dir = 'rtl';
+    select.add(new Option('בחרו מהרשימה…', ''));
     if (input.name === 'ketoubaYear') {
       const parts = new Intl.DateTimeFormat('en-u-ca-hebrew', { year: 'numeric', timeZone: 'Europe/Paris' }).formatToParts(new Date());
       const currentYear = Number(parts.find(part => part.type === 'year')?.value);
       const currentOption = dateOptions.find(([year]) => Number(year) === currentYear);
-      if (currentOption) select.add(new Option(currentOption[0] + ' (année en cours)', currentOption[1]));
+      if (currentOption) select.add(new Option(currentOption[1] + ' (השנה הנוכחית)', currentOption[1]));
     }
-    for (const [title, value] of dateOptions) select.add(new Option(title, value));
+    for (const [, value] of dateOptions) select.add(new Option(value, value));
     select.onchange = () => {
       if (select.value && input.value !== select.value) {
         input.value = select.value;
@@ -670,6 +677,7 @@ function openDossier(dossier, step = 0) {
       const control = form.elements.namedItem(key);
       if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
       else control.value = current.answers[key] ?? (key === 'soundPhone' ? priorSoundPhone : initial[key] ?? '');
+      if (type === 'hebrew') control.setCustomValidity('');
       if (type === 'legacy' || type === 'legacy-textarea') control.closest('label').hidden = !control.value;
       if (type === 'name-extra') {
         control.closest('label').hidden = !control.value;
