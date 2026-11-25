@@ -24,6 +24,9 @@
   :focus-visible { outline: 3px solid #896dde; outline-offset: 2px; }
   fieldset, .dossier, #login { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
   .couple-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .question-skip { display: block; width: fit-content; margin-top: 3px; padding: 2px 6px; font-size: .78rem; border-color: transparent; background: transparent; }
+  .question-skip[aria-pressed="true"] { background: #eeebf8; border-color: var(--line); }
+  .question-progress { margin: 3px 0 8px; font-weight: 650; color: var(--accent); }
   .wedding-date-block { margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #faf8fd; }
   .wedding-date-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), max-content)); gap: 10px 16px; }
   .wedding-date-controls input, .wedding-date-controls select { min-width: min(100%, 240px); }
@@ -162,6 +165,7 @@
     <button id="open-wide" type="button">Ouvrir en grand ↗</button>
     <section id="form-panel" role="tabpanel" aria-labelledby="form-tab">
       <div class="toolbar"><h2 id="form-title">Nouveau dossier</h2><button type="button" id="new-form" hidden>Nouveau dossier</button></div>
+      <p id="question-progress" class="question-progress"></p>
       <form id="dossier-form">
         <p class="muted">Tu peux enregistrer un brouillon à tout moment et le retrouver dans la liste des dossiers.</p>
         <nav id="section-links" class="section-links" aria-label="Étapes du dossier"></nav>
@@ -636,6 +640,64 @@ function showStep(index, moveFocus = false) {
   if (moveFocus) formSteps[index][2].firstElementChild.focus();
 }
 
+const questionControls = new Map();
+let skippedQuestions = new Set();
+
+function questionField(element, control, title, type) {
+  if (control.name === 'status' || ['checkbox', 'legacy', 'legacy-textarea'].includes(type)) return element;
+  const button = create('button', 'Pas de réponse attendue');
+  button.type = 'button';
+  button.className = 'question-skip';
+  button.setAttribute('aria-label', 'Pas de réponse attendue — ' + title);
+  button.setAttribute('aria-pressed', 'false');
+  button.onclick = () => {
+    if (skippedQuestions.has(control.name)) skippedQuestions.delete(control.name);
+    else skippedQuestions.add(control.name);
+    dirty = true;
+    refreshQuestionProgress();
+  };
+  questionControls.set(control.name, { control, button, type });
+  if (element.tagName === 'LABEL') {
+    const wrapper = create('div');
+    wrapper.className = element.className;
+    wrapper.append(element, button);
+    return wrapper;
+  }
+  element.append(button);
+  return element;
+}
+
+function questionProgress(answers) {
+  const skipped = new Set(answers.skippedQuestions);
+  let total = 0;
+  let remaining = 0;
+  for (const [key, { type }] of questionControls) {
+    const value = answers[key]?.trim();
+    if (skipped.has(key) || (type === 'document' && value === 'Sans objet')) continue;
+    total++;
+    if (!value || (type === 'document' && ['À demander', 'Demandé'].includes(value))) remaining++;
+  }
+  const percent = total ? Math.floor(100 * (total - remaining) / total) : 100;
+  const pending = remaining === 1 ? '1 question restante' : remaining + ' questions restantes';
+  return percent + ' % complété · ' + pending;
+}
+
+function readQuestionAnswers() {
+  const answers = Object.fromEntries(new FormData(form));
+  answers.skippedQuestions = [...skippedQuestions];
+  return answers;
+}
+
+function refreshQuestionProgress() {
+  for (const [key, { control, button }] of questionControls) {
+    const skipped = skippedQuestions.has(key);
+    button.hidden = Boolean(control.value.trim());
+    button.setAttribute('aria-pressed', String(skipped));
+    button.textContent = skipped ? '✓ Pas de réponse attendue' : 'Pas de réponse attendue';
+  }
+  get('question-progress').textContent = questionProgress(readQuestionAnswers());
+}
+
 function buildFields(documentStatuses) {
   const container = get('fields');
   for (const [index, step] of formSteps.entries()) {
@@ -742,28 +804,28 @@ function buildFields(documentStatuses) {
       if (type === 'name-part') {
         const extraField = fields.find(([name]) => name === key + 'Extra');
         if (extraField) {
-          fieldContainer.append(nameField(label, control, extraField[1]));
+          fieldContainer.append(questionField(nameField(label, control, extraField[1]), control, fieldTitle, type));
           continue;
         }
       }
       if (type === 'hebrew') {
-        fieldContainer.append(hebrewField(label, control));
+        fieldContainer.append(questionField(hebrewField(label, control), control, fieldTitle, type));
         continue;
       }
       if (type !== 'checkbox') label.append(control);
       if (key === 'weddingDate') {
         label.firstChild.textContent = 'Date de la ‘houppa';
-        identityBlock.before(weddingDateField(label, control));
+        identityBlock.before(weddingDateField(questionField(label, control, fieldTitle, type), control));
         continue;
       }
       if (key === 'weddingDayPeriod') {
         control.setAttribute('aria-describedby', 'wedding-date-results');
         control.addEventListener('change', refreshWeddingHebrewDate);
-        get('wedding-date-controls').append(label);
+        get('wedding-date-controls').append(questionField(label, control, fieldTitle, type));
         continue;
       }
       if (key === 'ketoubaCityFrench') {
-        grid.append(addCitySuggestion(control, label));
+        grid.append(questionField(addCitySuggestion(control, label), control, fieldTitle, type));
         continue;
       }
       if (item) {
@@ -780,9 +842,9 @@ function buildFields(documentStatuses) {
         } else {
           control.setAttribute('aria-label', fieldTitle);
         }
-        row.append(label);
+        row.append(questionField(label, control, fieldTitle, type));
       } else {
-        grid.append(label);
+        grid.append(questionField(label, control, fieldTitle, type));
       }
     }
     fieldset.append(create('legend', title), grid);
@@ -847,6 +909,8 @@ function openDossier(dossier, step = 0) {
       }
     }
   }
+  skippedQuestions = new Set(current.answers.skippedQuestions);
+  refreshQuestionProgress();
   refreshWeddingHebrewDate();
   get('form-title').textContent = couple(current.answers) || (current.answers.status === 'Brouillon' ? 'Brouillon sans nom' : 'Nouveau dossier');
   get('new-form').hidden = !current.revision;
@@ -887,6 +951,9 @@ function renderList() {
     const info = create('div');
     info.append(create('strong', couple(data) || 'Brouillon sans nom'));
     info.append(create('div', [data.weddingDate ? displayDate(data.weddingDate) : 'Date à fixer', data.weddingTime, data.weddingPlace, data.status].filter(Boolean).join(' · ')));
+    const progress = create('p', questionProgress(data));
+    progress.className = 'question-progress';
+    info.append(progress);
     if (data.nextMeeting) info.append(create('div', 'Prochain rendez-vous le ' + displayDate(data.nextMeeting)));
     const open = create('button', 'Ouvrir le dossier');
     open.type = 'button';
@@ -981,7 +1048,11 @@ form.addEventListener('invalid', event => {
   const step = formSteps.findIndex(([, , section]) => section === page);
   if (step >= 0) showStep(step);
 }, true);
-form.oninput = () => { dirty = true; };
+form.oninput = event => {
+  if (questionControls.has(event.target.name) && event.target.value.trim()) skippedQuestions.delete(event.target.name);
+  dirty = true;
+  refreshQuestionProgress();
+};
 window.addEventListener('beforeunload', event => {
   if (dirty) event.preventDefault();
 });
@@ -989,7 +1060,7 @@ window.addEventListener('beforeunload', event => {
 form.onsubmit = async event => {
   event.preventDefault();
   if (busy) return;
-  const answers = Object.fromEntries(new FormData(form));
+  const answers = readQuestionAnswers();
   const draft = event.submitter?.id === 'save-draft';
   if (draft) answers.status = 'Brouillon';
   else if (answers.status === 'Brouillon') answers.status = 'À compléter';

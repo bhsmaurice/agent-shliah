@@ -6,6 +6,9 @@ const schema = require('./mariages.schema.json');
 
 const base = '/admin/mariages';
 const fields = schema.flatMap(([, section]) => section);
+const questionKeys = new Set(fields.filter(([key, , type]) =>
+  key !== 'status' && !['checkbox', 'name-extra', 'legacy', 'legacy-textarea', 'archived', 'archived-textarea'].includes(type)
+).map(([key]) => key));
 const documentStatuses = ['À demander', 'Demandé', 'Reçu', 'Vérifié', 'Sans objet'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -25,6 +28,9 @@ function validate(input) {
     if (type === 'document' && value && !documentStatuses.includes(value)) return null;
     answers[key] = value.trim();
   }
+  const skipped = input.skippedQuestions ?? [];
+  if (!Array.isArray(skipped) || skipped.length > questionKeys.size || skipped.some(key => !questionKeys.has(key))) return null;
+  answers.skippedQuestions = [...new Set(skipped)].filter(key => !answers[key]).sort();
   const hasName = ['groom', 'bride'].some(person =>
     answers[person + 'GivenNames'] || answers[person + 'FamilyName'] || answers[person + 'Name']);
   return hasName || answers.status === 'Brouillon' ? answers : null;
