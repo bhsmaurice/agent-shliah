@@ -100,6 +100,15 @@
     ["musicTracks", "Morceaux souhaités et moments de diffusion", "archived-textarea"],
     ["musicSetup", "Heure d’installation, balance et consignes techniques", "archived-textarea"]
   ]],
+  ["Ketouba", [
+    ["ketoubaWeekday", "Jour de la semaine en hébreu", "hebrew"],
+    ["ketoubaDay", "Jour du mois hébraïque", "hebrew"],
+    ["ketoubaMonth", "Mois hébraïque", "hebrew"],
+    ["ketoubaYear", "Année hébraïque telle qu’elle doit être inscrite", "hebrew"],
+    ["ketoubaCity", "Ville de la ‘houppa en hébreu", "hebrew"],
+    ["ketoubaWitnessOneHebrew", "Nom hébraïque du premier témoin", "hebrew"],
+    ["ketoubaWitnessTwoHebrew", "Nom hébraïque du second témoin", "hebrew"]
+  ]],
   ["Matériel de la ‘houppa", [
     ["cupsOwner", "Coupes pour les bénédictions — qui l’apporte ?"],
     ["cupsReady", "Coupes pour les bénédictions prêt", "checkbox"],

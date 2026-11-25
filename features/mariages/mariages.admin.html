@@ -85,6 +85,11 @@
   #feedback:empty { display: none; }
   #feedback { padding: 8px 12px; background: #f3effa; border-radius: 8px; }
   #print-sheet { display: none; }
+  .ketouba-summary { margin-bottom: 14px; }
+  .ketouba-summary dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px 18px; margin: 0; }
+  .ketouba-summary dt { font-weight: 650; }
+  .ketouba-summary dd { margin: 0; overflow-wrap: anywhere; }
+  .ketouba-summary dd button { margin-inline-start: 8px; padding: 2px 8px; font-size: .875rem; }
   #return-admin { color: var(--accent); font-size: .9rem; font-weight: 650; }
   #open-wide { margin-bottom: 12px; }
   .wide-view main { max-width: 1680px; }
@@ -220,6 +225,7 @@ let busy = false;
 let activeStep = 0;
 const formSteps = [
   [null, 'Identité des futurs mariés'],
+  ['ketoubaWeekday', 'Ketouba'],
   ['meetingDate', 'Rendez-vous et familles'],
   ['civilDate', 'Mariage et organisation'],
   ['groomGrandmothers', 'Proches et cérémonie'],
@@ -393,6 +399,39 @@ function nameField(label, input, extraLabelText) {
   return field;
 }
 
+const ketoubaReferences = [
+  ['Nom hébraïque du ‘Hatan', 'groomHebrew'],
+  ['Nom hébraïque du père du ‘Hatan', 'groomFatherHebrew'],
+  ['Nom hébraïque de la Kallah', 'brideHebrew'],
+  ['Nom hébraïque du père de la Kallah', 'brideFatherHebrew'],
+  ['Premier témoin', 'witnessOneFirstName', 'witnessOne'],
+  ['Second témoin', 'witnessTwoFirstName', 'witnessTwo']
+];
+
+function refreshKetoubaSummary() {
+  const summary = get('ketouba-summary');
+  if (!summary) return;
+  summary.replaceChildren();
+  for (const [label, ...keys] of ketoubaReferences) {
+    const item = create('div');
+    const row = create('dd');
+    const value = keys.map(key => form.elements.namedItem(key).value.trim()).filter(Boolean).join(' ');
+    const name = create('bdi', value || 'À renseigner');
+    const edit = create('button', value ? 'Modifier' : 'Renseigner');
+    edit.type = 'button';
+    edit.setAttribute('aria-label', edit.textContent + ' — ' + label);
+    edit.onclick = () => {
+      const control = form.elements.namedItem(keys[0]);
+      const page = control.closest('.form-step');
+      showStep(formSteps.findIndex(([, , section]) => section === page));
+      control.focus();
+    };
+    row.append(name, edit);
+    item.append(create('dt', label), row);
+    summary.append(item);
+  }
+}
+
 function showStep(index, moveFocus = false) {
   activeStep = index;
   formSteps.forEach(([, , page, button], position) => {
@@ -403,6 +442,7 @@ function showStep(index, moveFocus = false) {
   get('previous-step').disabled = index === 0;
   get('next-step').disabled = index === formSteps.length - 1;
   get('step-progress').textContent = 'Étape ' + (index + 1) + ' sur ' + formSteps.length;
+  if (formSteps[index][0] === 'ketoubaWeekday') refreshKetoubaSummary();
   if (moveFocus) formSteps[index][2].firstElementChild.focus();
 }
 
@@ -536,6 +576,14 @@ function buildFields(documentStatuses) {
       group.append(fieldset);
     } else {
       page.append(fieldset);
+      if (fields[0]?.[0] === 'ketoubaWeekday') {
+        const recap = create('fieldset');
+        recap.className = 'ketouba-summary';
+        const summary = create('dl');
+        summary.id = 'ketouba-summary';
+        recap.append(create('legend', 'Mariés et témoins'), summary);
+        page.append(recap, create('p', 'La ketouba prévoit les signatures des deux témoins et du ‘Hatan.'));
+      }
     }
   }
 }
@@ -751,8 +799,8 @@ async function printBlank() {
   const sheet = get('print-sheet');
   sheet.replaceChildren();
   sheet.classList.add('blank-print');
-  const starts = ['Rendez-vous', 'Cortège et organisation', 'Matériel de la ‘houppa'];
-  const headings = ['Premier rendez-vous', 'Déroulé de la ‘houppa', 'Matériel, documents et suivi'];
+  const starts = ['Rendez-vous', 'Cortège et organisation', 'Ketouba'];
+  const headings = ['Premier rendez-vous', 'Déroulé de la ‘houppa', 'Ketouba, matériel et documents'];
   let page;
   let witnesses;
   let honorees;
