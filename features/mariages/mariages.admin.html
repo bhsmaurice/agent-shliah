@@ -306,6 +306,40 @@ function parentsHeading(person, key) {
   return heading;
 }
 
+function hebrewNumber(number) {
+  let letters = '';
+  for (const [value, letter] of [[400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'], [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'], [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']]) {
+    while (number >= value) {
+      if (number === 15 || number === 16) {
+        letters += number === 15 ? 'טו' : 'טז';
+        number = 0;
+        break;
+      }
+      letters += letter;
+      number -= value;
+    }
+  }
+  return letters.length === 1 ? letters + '׳' : letters.slice(0, -1) + '״' + letters.slice(-1);
+}
+
+const hebrewDateOptions = {
+  ketoubaWeekday: [
+    ['Dimanche', 'ראשון'], ['Lundi', 'שני'], ['Mardi', 'שלישי'], ['Mercredi', 'רביעי'],
+    ['Jeudi', 'חמישי'], ['Vendredi', 'שישי'], ['Chabbat', 'שבת']
+  ],
+  ketoubaDay: Array.from({ length: 30 }, (_, index) => [String(index + 1), hebrewNumber(index + 1)]),
+  ketoubaMonth: [
+    ['Tichri', 'תשרי'], ['‘Hechvan', 'חשוון'], ['Kislev', 'כסלו'], ['Tévet', 'טבת'],
+    ['Chevat', 'שבט'], ['Adar', 'אדר'], ['Adar I', 'אדר א׳'], ['Adar II', 'אדר ב׳'],
+    ['Nissan', 'ניסן'], ['Iyar', 'אייר'], ['Sivan', 'סיוון'], ['Tamouz', 'תמוז'],
+    ['Av', 'אב'], ['Eloul', 'אלול']
+  ],
+  ketoubaYear: Array.from({ length: 101 }, (_, index) => {
+    const year = 5750 + index;
+    return [String(year), 'ה׳' + hebrewNumber(year % 1000)];
+  })
+};
+
 function hebrewField(label, input) {
   const field = create('div');
   field.className = 'hebrew-field';
@@ -362,7 +396,29 @@ function hebrewField(label, input) {
     }
   };
   entry.append(input, toggle);
-  field.append(label, entry, keyboard);
+  field.append(label);
+  const dateOptions = hebrewDateOptions[input.name];
+  if (dateOptions) {
+    const select = create('select');
+    select.setAttribute('aria-label', 'Choisir — ' + label.textContent);
+    select.add(new Option('Choisir dans la liste…', ''));
+    if (input.name === 'ketoubaYear') {
+      const parts = new Intl.DateTimeFormat('en-u-ca-hebrew', { year: 'numeric', timeZone: 'Europe/Paris' }).formatToParts(new Date());
+      const currentYear = Number(parts.find(part => part.type === 'year')?.value);
+      const currentOption = dateOptions.find(([year]) => Number(year) === currentYear);
+      if (currentOption) select.add(new Option(currentOption[0] + ' (année en cours)', currentOption[1]));
+    }
+    for (const [title, value] of dateOptions) select.add(new Option(title, value));
+    select.onchange = () => {
+      if (select.value && input.value !== select.value) {
+        input.value = select.value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      select.selectedIndex = 0;
+    };
+    field.append(select);
+  }
+  field.append(entry, keyboard);
   return field;
 }
 
