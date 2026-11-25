@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mariages · Shliah Bot</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;600&amp;display=swap">
 <style>
   :root { color-scheme: light; --ink: #252841; --muted: #575d76; --accent: #5138a0; --line: #ded9ea; }
   * { box-sizing: border-box; }
@@ -72,6 +73,8 @@
   @media (max-width: 580px) { .witness-fields { grid-template-columns: 1fr; gap: 0; } }
   .full { grid-column: 1 / -1; }
   input, select, textarea { min-width: 0; width: 100%; color: var(--ink); padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  [lang="he"] { font-family: "Frank Ruhl Libre", "Times New Roman", serif; font-weight: 600; }
+  .identity-block input[lang="he"] { font-weight: 600; }
   input[dir="rtl"] { font-size: 1.18em; }
   .hebrew-field { display: grid; gap: 5px; align-content: start; min-width: 0; }
   .hebrew-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
@@ -413,6 +416,7 @@ function refreshKetoubaSummary() {
     const row = create('dd');
     const value = keys.map(key => form.elements.namedItem(key).value.trim()).filter(Boolean).join(' ');
     const name = create('bdi', value || 'À renseigner');
+    if (value && keys[0].endsWith('Hebrew')) name.lang = 'he';
     const edit = create('button', value ? 'Modifier' : 'Renseigner');
     edit.type = 'button';
     edit.setAttribute('aria-label', edit.textContent + ' — ' + label);
