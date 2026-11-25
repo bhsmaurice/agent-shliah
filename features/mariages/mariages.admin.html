@@ -114,8 +114,19 @@
   .wide-view .fields input, .wide-view .fields textarea, .wide-view .fields select { padding: 9px; }
   .wide-view .section-links { gap: 8px; padding: 8px 0 16px; }
   .wide-view .section-links button { padding: 9px 12px; }
+  #print-sheet.one-page-print { display: block; position: fixed; left: -300vw; top: 0; }
+  .one-page-paper { width: 280mm; height: 192mm; position: relative; overflow: hidden; }
+  .one-page-content { width: 100%; position: absolute; inset: 0 auto auto 0; transform-origin: top left; color: #222; font: 8pt/1.23 system-ui, sans-serif; }
+  #print-sheet .one-page-content h1 { font-size: 15pt; margin: 0 0 2mm; border-bottom: 1px solid #bbb; }
+  .one-page-columns { column-count: 4; column-gap: 4mm; column-rule: 1px solid #ddd; }
+  #print-sheet .one-page-content h2 { font-size: 9pt; margin: 0 0 1mm; break-after: avoid; }
+  .one-page-columns section { margin-bottom: 2mm; }
+  #print-sheet .one-page-content p { margin: 0 0 .65mm; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: avoid; }
+  #print-sheet .one-page-content [lang="he"] { font-size: inherit; }
   @media print {
     @page { margin: 14mm; }
+    @page marriage-single { size: A4 landscape; margin: 7mm; }
+    #print-sheet.one-page-print { position: static; page: marriage-single; }
     @page marriage-blank { size: A4 portrait; margin: 11mm 13mm; }
     main { display: none; }
     #print-sheet { display: block; font-size: 11pt; }
@@ -179,6 +190,7 @@
           <button class="primary" id="save">Enregistrer le dossier</button>
           <button id="save-draft" type="submit">Enregistrer comme brouillon</button>
           <button type="button" id="pdf">Imprimer / Enregistrer en PDF</button>
+          <button type="button" id="single-pdf">Imprimer sur une page</button>
           <button type="button" id="blank-pdf">Imprimer le formulaire vierge</button>
         </div>
       </form>
@@ -259,7 +271,7 @@ function feedback(message = '') {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ['save', 'save-draft', 'logout', 'refresh', 'new-form', 'new-list', 'pdf', 'blank-pdf']) get(id).disabled = value;
+  for (const id of ['save', 'save-draft', 'logout', 'refresh', 'new-form', 'new-list', 'pdf', 'blank-pdf', 'single-pdf']) get(id).disabled = value;
   for (const fieldset of get('fields').children) fieldset.disabled = value;
 }
 
@@ -1171,6 +1183,55 @@ async function printBlank() {
   window.print();
 }
 
+function fitSinglePage() {
+  const paper = get('print-sheet').querySelector('.one-page-paper');
+  if (!paper) return;
+  const content = paper.firstElementChild;
+  content.style.transform = 'scale(' + Math.min(1, (paper.clientHeight - 2) / Math.max(1, content.scrollHeight)) + ')';
+}
+
+function printSinglePage() {
+  const answers = readQuestionAnswers();
+  const skipped = new Set(answers.skippedQuestions);
+  const sheet = get('print-sheet');
+  const paper = create('div');
+  paper.className = 'one-page-paper';
+  const content = create('div');
+  content.className = 'one-page-content';
+  content.append(create('h1', couple(answers) || 'Dossier de mariage'));
+  const columns = create('div');
+  columns.className = 'one-page-columns';
+  for (const [title, fields] of schema) {
+    const section = create('section');
+    section.append(create('h2', title));
+    for (const [key, label, type] of fields) {
+      if (typeof type === 'string' && type.startsWith('archived')) continue;
+      const value = answers[key];
+      if (!value && ['legacy', 'legacy-textarea', 'name-extra'].includes(type)) continue;
+      const displayed = value && type === 'date' ? displayDate(value)
+        : value || (skipped.has(key) ? 'Pas de réponse attendue' : '________');
+      const line = create('p');
+      const answer = create('bdi', displayed);
+      if (type === 'hebrew' && value) {
+        answer.lang = 'he';
+        answer.dir = 'rtl';
+      }
+      line.append(create('strong', label + ' — '), answer);
+      section.append(line);
+    }
+    if (section.children.length > 1) columns.append(section);
+  }
+  content.append(columns);
+  paper.append(content);
+  sheet.classList.remove('blank-print');
+  sheet.classList.add('one-page-print');
+  sheet.replaceChildren(paper);
+  fitSinglePage();
+  window.print();
+}
+
+get('single-pdf').onclick = printSinglePage;
+window.addEventListener('beforeprint', fitSinglePage);
 get('blank-pdf').onclick = printBlank;
 
 get('pdf').onclick = () => {
@@ -1202,7 +1263,7 @@ get('pdf').onclick = () => {
   window.print();
 };
 window.addEventListener('afterprint', () => {
-  get('print-sheet').classList.remove('blank-print');
+  get('print-sheet').classList.remove('blank-print', 'one-page-print');
   get('print-sheet').replaceChildren();
 });
 
