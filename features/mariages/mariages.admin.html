@@ -23,6 +23,11 @@
   :focus-visible { outline: 3px solid #896dde; outline-offset: 2px; }
   fieldset, .dossier, #login { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
   .couple-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .identity-block { border: 2px solid var(--accent); border-radius: 16px; padding: clamp(10px, 2vw, 18px); }
+  .couple-fields.identity-block legend { font-size: clamp(1.25rem, 2.5vw, 1.6rem); font-weight: 800; }
+  .identity-block label, .identity-block input { font-size: 1.125rem; font-weight: 750; }
+  .identity-block input[dir="rtl"] { font-size: 1.35rem; }
+  .identity-block fieldset { margin-bottom: 0; }
   .couple-fields fieldset { min-width: 0; border-color: var(--person-border); background: var(--person-bg); }
   .person-groom { --person-border: #9dbdd8; --person-bg: #f1f7fc; --person-ink: #214e73; }
   .person-bride { --person-border: #d9abc7; --person-bg: #fcf3f9; --person-ink: #78385f; }
@@ -174,8 +179,8 @@ let dirty = false;
 let busy = false;
 let activeStep = 0;
 const formSteps = [
-  ['meetingDate', 'Rendez-vous'],
-  ['groomGivenNames', 'Les futurs mariés'],
+  [null, 'Identité des futurs mariés'],
+  ['meetingDate', 'Rendez-vous et familles'],
   ['civilDate', 'Mariage et organisation'],
   ['groomGrandmothers', 'Proches et cérémonie'],
   ['cupsOwner', 'Matériel'],
@@ -381,13 +386,24 @@ function buildFields(documentStatuses) {
     step.push(page, button);
   }
   let page = formSteps[0][2];
+  const identityBlock = create('div');
+  identityBlock.className = 'identity-block couple-fields';
+  page.append(identityBlock);
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
   const honoreesFields = create('div');
   honoreesFields.className = 'couple-fields honorees-fields';
   const witnessFields = create('div');
   witnessFields.className = 'witness-fields';
-  for (const [title, fields, person] of schema) {
+  const isCouple = person => person === 'groom' || person === 'bride';
+  const isIdentity = (key, person) => ['GivenNames', 'GivenNamesExtra', 'FamilyName', 'FamilyNameExtra', 'Name', 'Hebrew']
+    .some(suffix => key === person + suffix);
+  const identitySections = schema.filter(([, , person]) => isCouple(person)).map(([title, fields, person]) =>
+    [title, fields.filter(([key]) => isIdentity(key, person)), person, true]);
+  const otherSections = schema.map(([title, fields, person]) => isCouple(person)
+    ? [title, fields.filter(([key]) => !isIdentity(key, person)), person]
+    : [title, fields, person]);
+  for (const [title, fields, person, identity] of [...identitySections, ...otherSections]) {
     const step = formSteps.find(([key]) => key === fields[0]?.[0]);
     if (step) page = step[2];
     const fieldset = create('fieldset');
@@ -474,9 +490,10 @@ function buildFields(documentStatuses) {
       fieldset.classList.add('person-' + person.split('-')[0]);
       honoreesFields.append(fieldset);
     } else if (person) {
-      if (!coupleFields.isConnected) page.append(coupleFields);
+      const group = identity ? identityBlock : coupleFields;
+      if (!group.isConnected) page.append(group);
       fieldset.classList.add('person-' + person);
-      coupleFields.append(fieldset);
+      group.append(fieldset);
     } else {
       page.append(fieldset);
     }
@@ -654,7 +671,7 @@ form.onsubmit = async event => {
   else if (answers.status === 'Brouillon') answers.status = 'À compléter';
   if (!draft && !couple(answers)) {
     feedback('Renseigne au moins un des deux noms.');
-    showStep(1);
+    showStep(0);
     form.elements.groomGivenNames.focus();
     return;
   }
