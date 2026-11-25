@@ -14,7 +14,8 @@ function validate(input) {
   const answers = {};
   for (const [key, , type] of fields) {
     const value = input[key] ?? '';
-    if (typeof value !== 'string' || value.length > (type === 'textarea' ? 4000 : 240) || value.includes('\0')) return null;
+    const limit = ['textarea', 'legacy-textarea', 'archived-textarea'].includes(type) ? 4000 : 240;
+    if (typeof value !== 'string' || value.length > limit || value.includes('\0')) return null;
     if (value && type === 'date') {
       const parsed = new Date(value);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(+parsed) || parsed.toISOString().slice(0, 10) !== value) return null;

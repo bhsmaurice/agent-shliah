@@ -26,6 +26,7 @@
   .couple-fields fieldset { min-width: 0; border-color: var(--person-border); background: var(--person-bg); }
   .person-groom { --person-border: #9dbdd8; --person-bg: #f1f7fc; --person-ink: #214e73; }
   .person-bride { --person-border: #d9abc7; --person-bg: #fcf3f9; --person-ink: #78385f; }
+  .honorees-fields .fields { grid-template-columns: minmax(0, 1fr); }
   .couple-fields legend { font-size: 1.2rem; color: var(--person-ink); }
   @media (max-width: 720px) { .couple-fields { grid-template-columns: 1fr; gap: 0; } }
   legend { padding: 0 8px; font-weight: 700; }
@@ -37,7 +38,7 @@
   .name-toggle { min-width: 34px; padding: 4px 8px; }
   .parents-heading { margin: 6px 0 0; font-size: 1rem; color: var(--person-ink); }
   #print-sheet .parents-heading { margin: 3mm 0 0; color: inherit; font-size: inherit; }
-  .couple-fields label[hidden] { display: none; }
+  .fields label[hidden] { display: none; }
   #fields > fieldset { padding: 20px; border-top: 3px solid #b6cee5; background: #f7fbff; }
   #fields > fieldset:nth-of-type(even) { border-top-color: #e1b8d1; background: #fff8fc; }
   #fields > fieldset legend { color: #473461; background: white; border-radius: 8px; padding: 3px 10px; }
@@ -196,10 +197,13 @@ function arrangeSections(sections) {
     { key: 'bride', title: 'Kallah — Future mariée', name: 'brideName', escorts: 'brideEscorts' }
   ];
   const allFields = sections.flatMap(([, fields]) => fields);
+  const honorKeys = ['Grandmothers', 'Grandfathers', 'OtherHonorees', 'MemorialNames'];
   const ceremonyGroups = [
     ['Cortège et organisation', ['arrivalTime', 'processionTime', 'processionOrder', 'ceremonyCoordinator', 'yichudPlan']],
-    ['Musique et sonorisation', ['musicType', 'musicContact', 'musicTracks', 'musicSetup']],
-    ['Proches et hommages', ['grandmothers', 'grandfathers', 'otherHonorees', 'memorialNames', 'announcementLead']],
+    ['Sonorisation', ['soundPhone', 'musicType', 'musicContact', 'musicTracks', 'musicSetup']],
+    ['Proches et hommages du ‘Hatan', honorKeys.map(key => 'groom' + key), 'groom-honors'],
+    ['Proches et hommages de la Kallah', honorKeys.map(key => 'bride' + key), 'bride-honors'],
+    ['Annonces sous la ‘houppa', ['announcementLead', 'grandmothers', 'grandfathers', 'otherHonorees', 'memorialNames']],
     ['Rôles sous la ‘houppa', ['tallitHolders', 'ketubahReader', 'firstBlessings', 'chuppahBlessing']],
     ['Chéva Berakhot', ['sheva1', 'sheva2', 'sheva3', 'sheva4', 'sheva5', 'sheva6', 'sheva7', 'shevaOrder']]
   ];
@@ -219,7 +223,7 @@ function arrangeSections(sections) {
       return [[person.title, escortField ? [...fields, escortField] : fields, person.key]];
     }
     if (fields.some(([key]) => key === 'sheva1')) {
-      const grouped = ceremonyGroups.map(([name, keys]) => [name, keys.flatMap(key => fields.filter(([id]) => id === key))]);
+      const grouped = ceremonyGroups.map(([name, keys, person]) => [name, keys.flatMap(key => fields.filter(([id]) => id === key)), person]);
       const other = fields.filter(([key]) => !people.some(person => person.escorts === key) && !ceremonyGroups.some(([, keys]) => keys.includes(key)));
       return other.length ? [...grouped, [title, other]] : grouped;
     }
@@ -329,6 +333,8 @@ function nameField(label, input, extraLabelText) {
 function buildFields(documentStatuses) {
   const coupleFields = create('div');
   coupleFields.className = 'couple-fields';
+  const honoreesFields = create('div');
+  honoreesFields.className = 'couple-fields honorees-fields';
   const witnessFields = create('div');
   witnessFields.className = 'witness-fields';
   for (const [index, [title, fields, person]] of schema.entries()) {
@@ -343,6 +349,14 @@ function buildFields(documentStatuses) {
     grid.className = equipment ? 'equipment-grid' : 'fields';
     for (const [key, fieldTitle, type] of fields) {
       if (type === 'name-extra') continue;
+      if (typeof type === 'string' && type.startsWith('archived')) {
+        const control = create(type === 'archived-textarea' ? 'textarea' : 'input');
+        if (type === 'archived') control.type = 'hidden';
+        control.name = key;
+        control.hidden = true;
+        grid.append(control);
+        continue;
+      }
       const heading = parentsHeading(person, key);
       if (heading) grid.append(heading);
       const item = equipment && key.match(/^(.+?)(Owner|Ready)$/);
@@ -360,7 +374,7 @@ function buildFields(documentStatuses) {
         control.value = 'Oui';
         label.className = 'check';
         label.prepend(control);
-      } else if (type === 'textarea') {
+      } else if (type === 'textarea' || type === 'legacy-textarea') {
         label.className = 'full';
         control = create('textarea');
         control.rows = 2;
@@ -370,7 +384,7 @@ function buildFields(documentStatuses) {
         control.type = ['hebrew', 'name-part', 'legacy'].includes(type) ? 'text' : type || 'text';
         control.maxLength = 240;
       }
-      if (type === 'legacy') label.hidden = true;
+      if (type === 'legacy' || type === 'legacy-textarea') label.hidden = true;
       control.name = key;
       if (type === 'name-part') {
         const extraField = fields.find(([name]) => name === key + 'Extra');
@@ -407,6 +421,10 @@ function buildFields(documentStatuses) {
     if (person === 'witness') {
       if (!witnessFields.isConnected) get('fields').append(witnessFields);
       witnessFields.append(fieldset);
+    } else if (person?.endsWith('-honors')) {
+      if (!honoreesFields.isConnected) get('fields').append(honoreesFields);
+      fieldset.classList.add('person-' + person.split('-')[0]);
+      honoreesFields.append(fieldset);
     } else if (person) {
       if (!coupleFields.isConnected) get('fields').append(coupleFields);
       fieldset.classList.add('person-' + person);
@@ -435,12 +453,15 @@ function showTab(name) {
 
 function openDossier(dossier) {
   current = dossier || { id: crypto.randomUUID(), revision: 0, answers: initial };
+  const priorSoundNumbers = (current.answers.musicContact?.match(/[+\d][\d ().-]*\d/g) || [])
+    .filter(number => /^\d{9,15}$/.test(number.replace(/\D/g, '')));
+  const priorSoundPhone = priorSoundNumbers.length === 1 ? priorSoundNumbers[0] : '';
   for (const [, fields] of schema) {
     for (const [key, , type] of fields) {
       const control = form.elements.namedItem(key);
       if (type === 'checkbox') control.checked = current.answers[key] === 'Oui';
-      else control.value = current.answers[key] ?? initial[key] ?? '';
-      if (type === 'legacy') control.closest('label').hidden = !control.value;
+      else control.value = current.answers[key] ?? (key === 'soundPhone' ? priorSoundPhone : initial[key] ?? '');
+      if (type === 'legacy' || type === 'legacy-textarea') control.closest('label').hidden = !control.value;
       if (type === 'name-extra') {
         control.closest('label').hidden = !control.value;
         control.closest('.name-part').querySelector('.name-toggle').setAttribute('aria-expanded', String(Boolean(control.value)));
@@ -602,6 +623,7 @@ async function printBlank() {
   const headings = ['Premier rendez-vous', 'Déroulé de la ‘houppa', 'Matériel, documents et suivi'];
   let page;
   let witnesses;
+  let honorees;
   for (const [title, fields, person] of schema) {
     const pageIndex = starts.indexOf(title);
     if (pageIndex !== -1 || !page) {
@@ -629,7 +651,7 @@ async function printBlank() {
     for (const [key, label, type] of fields) {
       const heading = parentsHeading(person, key);
       if (heading) grid.append(heading);
-      if (type === 'legacy' || type === 'name-extra') continue;
+      if (typeof type === 'string' && /^(?:legacy|archived|name-extra)/.test(type)) continue;
       const field = create('div');
       field.className = 'paper-field';
       if (type === 'checkbox') {
@@ -643,7 +665,7 @@ async function printBlank() {
         line.className = 'paper-line';
         field.append(line);
         if (equipment && !key.endsWith('Owner')) field.classList.add('full');
-        if (['memorialNames', 'processionOrder', 'notes'].includes(key)) field.append(line.cloneNode());
+        if ((/MemorialNames$/.test(key) || ['processionOrder', 'notes'].includes(key))) field.append(line.cloneNode());
       }
       grid.append(field);
     }
@@ -655,6 +677,13 @@ async function printBlank() {
         page.append(witnesses);
       }
       witnesses.append(section);
+    } else if (person?.endsWith('-honors')) {
+      if (!honorees) {
+        honorees = create('div');
+        honorees.className = 'paper-witnesses';
+        page.append(honorees);
+      }
+      honorees.append(section);
     } else {
       page.append(section);
     }
@@ -679,6 +708,7 @@ get('pdf').onclick = () => {
       if (heading && fields.some(([field]) => field.startsWith(person) && /(?:Parents|Father|Mother)/.test(field) && answers[field])) {
         section.append(heading);
       }
+      if (typeof type === 'string' && type.startsWith('archived')) continue;
       if (!answers[key] && type !== 'checkbox') continue;
       const line = create('p');
       const answer = create('bdi', type === 'date' ? displayDate(answers[key]) : answers[key] || 'À préparer');
