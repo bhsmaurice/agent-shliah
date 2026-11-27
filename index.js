@@ -387,12 +387,9 @@ function parseAdminCerfaMessage(rawText) {
     const identity = remaining[0].replace(/^(mr|mme|m\.|mlle)\s+/i, '');
     if ((data.siret || data.siren) && !data.societe && !data.prenom) {
       parseValue('societe', identity);
-    } else if (!data.prenom && identity === identity.toUpperCase()) {
-      parseValue('nom', identity);
     } else {
-      const [nom, ...prenoms] = data.prenom ? [identity] : identity.split(/\s+/);
-      parseValue('nom', nom);
-      if (prenoms.length) parseValue('prenom', prenoms.join(' '));
+      // Le nom est gardé exactement comme il a été écrit (pas de découpage nom / prénom).
+      parseValue('nom', identity);
     }
   }
   return data;
@@ -476,7 +473,7 @@ async function generateCerfaPDF({ numero, nom, prenom, adresse, montant, mode, d
   };
 
   const dateVersement = dateVersementOverride || new Date().toLocaleDateString('fr-FR');
-  const nomDonateurComplet = `${prenom} ${nom}`.toUpperCase();
+  const nomDonateurComplet = `${prenom || ''} ${nom || ''}`.trim().toUpperCase();
   const montantNum = Number(montant);
   const formatMontantFr = (n) => {
     const isInt = Number.isInteger(n);
